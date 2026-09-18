@@ -16,7 +16,7 @@
 CNPG_VERSION="${CNPG_VERSION:-1.30.0}"                          # datasource=github-releases depName=cloudnative-pg/cloudnative-pg
 BARMAN_PLUGIN_VERSION="${BARMAN_PLUGIN_VERSION:-v0.15.0}"       # datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.2}"         # datasource=github-releases depName=cert-manager/cert-manager
-MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-10-15T17-29-55Z}" # datasource=docker depName=quay.io/minio/minio
+MINIO_IMAGE="${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z}" # datasource=docker depName=quay.io/minio/minio
 MC_IMAGE="${MC_IMAGE:-quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z}"          # datasource=docker depName=quay.io/minio/mc
 
 # Pins of the disposable cluster, aligned with .github/workflows/e2e-tests.yaml.

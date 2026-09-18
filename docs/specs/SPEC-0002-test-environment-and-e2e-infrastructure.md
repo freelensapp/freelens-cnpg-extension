@@ -45,7 +45,7 @@ spec adds its own cases to the suite).
 | CloudNativePG operator | 1.30.0 | `releases/cnpg-1.30.0.yaml` at the tag |
 | cert-manager | v1.21.2 | `cert-manager/cert-manager` release manifest |
 | Barman Cloud plugin | v0.15.0 | release asset `manifest.yaml` |
-| MinIO | `RELEASE.2025-10-15T17-29-55Z` | `quay.io/minio/minio` |
+| MinIO | `RELEASE.2025-09-07T16-13-09Z` (the newest tag published on quay.io) | `quay.io/minio/minio` |
 | PostgreSQL image | the operator's default for 1.30.0 (18.x) | operator |
 
 Local prerequisites: Docker with at least 8 GB for its VM, `kind`,
