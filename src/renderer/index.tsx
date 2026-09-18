@@ -17,6 +17,15 @@ import { OverviewPage } from "./pages/overview-page";
 // first so the root opens it (SPEC-0004 "Placement"); the Clusters group holds
 // the PostgreSQL Clusters list (SPEC-0003 "Sidebar"; the title is qualified
 // because the host already has a "Cluster" sidebar item).
+// The pages probe the CRD store per API version (newest first) and fall back
+// to the explanatory panel when the operator is absent (DESIGN.md section 6).
+const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: OverviewPage, version: "v1" },
+]);
+const AvailableClustersPage = createAvailableVersionPage(ClusterV1.crd.title, [
+  { kubeObjectClass: ClusterV1, PageComponent: ClustersPageV1, version: "v1" },
+]);
+
 export default class CnpgRenderer extends Renderer.LensExtension {
   kubeObjectDetailItems = [
     {
@@ -35,17 +44,15 @@ export default class CnpgRenderer extends Renderer.LensExtension {
     {
       id: OVERVIEW_PAGE_ID,
       components: {
-        Page: createAvailableVersionPage("PostgreSQL Clusters", [
-          { kubeObjectClass: ClusterV1, PageComponent: OverviewPage, version: "v1" },
-        ]),
+        // The extension instance is what the pages need to build their own
+        // URLs and to report errors; the host passes no props of its own.
+        Page: () => <AvailableOverviewPage extension={this} />,
       },
     },
     {
       id: CLUSTERS_PAGE_ID,
       components: {
-        Page: createAvailableVersionPage(ClusterV1.crd.title, [
-          { kubeObjectClass: ClusterV1, PageComponent: ClustersPageV1, version: "v1" },
-        ]),
+        Page: () => <AvailableClustersPage extension={this} />,
       },
     },
   ];

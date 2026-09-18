@@ -27,11 +27,15 @@ const { observer } = MobxReact;
 
 const {
   Component: { TabLayout },
-  Navigation: { createPageParam, showDetails },
+  Navigation: { getDetailsUrl },
 } = Renderer;
 
-/** The list layout keeps its search box in the global `search` query parameter. */
-const searchParam = createPageParam<string>({ name: "search", defaultValue: "" });
+/** The host mounts an extension's pages under `/extension/<name with @ dropped and / as -->/<pageId>`. */
+function extensionPageUrl(extensionName: string, pageId: string, search?: string): string {
+  const base = `/extension/${extensionName.replace(/^@/, "").replace(/\//g, "--")}/${pageId}`;
+  // The list layout keeps its search box in the global `search` query parameter.
+  return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+}
 
 export interface OverviewPageProps {
   extension: Renderer.LensExtension;
@@ -59,13 +63,12 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
       (scheduleStore?.items ?? []) as ScheduledBackup[],
     );
 
-    const openList = async (search?: string) => {
-      await extension.navigate(CLUSTERS_PAGE_ID);
-      searchParam.set(search ?? "");
-    };
-    const openTile = (tile: ClusterTileModel) => {
+    const listUrl = (search?: string) => extensionPageUrl(extension.name, CLUSTERS_PAGE_ID, search);
+    // The tile links to the host's own details URL of the cluster, the same
+    // mechanism the LinkTo components use, so the drawer opens from any page.
+    const detailsUrlOf = (tile: ClusterTileModel): string | undefined => {
       const cluster = clusterStore.getByName(tile.name, tile.namespace);
-      if (cluster) showDetails(cluster.selfLink, true);
+      return cluster ? getDetailsUrl(cluster.selfLink) : undefined;
     };
 
     return (
@@ -88,7 +91,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                   .filter(([, count]) => count > 0)
                   .map(([state, count]) => `${state}: ${count}`)
                   .join(", ")}
-                onClick={() => openList()}
+                to={listUrl()}
                 data-testid="cnpg-stat-clusters"
               >
                 <HealthPie byState={summary.byState} />
@@ -98,7 +101,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                 value={`${summary.instancesReady}/${summary.instancesTotal}`}
                 className={summary.instancesReady < summary.instancesTotal ? "warning" : ""}
                 tooltip="Ready instances over declared instances, all clusters"
-                onClick={() => openList("Degraded")}
+                to={listUrl("Degraded")}
                 data-testid="cnpg-stat-instances"
               />
               <StatTile
@@ -106,7 +109,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                 value={summary.archivingFailing}
                 className={summary.archivingFailing > 0 ? "error" : ""}
                 tooltip="Clusters whose ContinuousArchiving condition is False"
-                onClick={() => openList("Failing")}
+                to={listUrl("Failing")}
                 data-testid="cnpg-stat-archiving"
               />
               <StatTile
@@ -114,7 +117,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                 value={summary.backupsOverdue}
                 className={summary.backupsOverdue > 0 ? "warning" : ""}
                 tooltip="Clusters without a successful backup in the last 24 hours, hibernated ones excluded"
-                onClick={() => openList()}
+                to={listUrl()}
                 data-testid="cnpg-stat-backups"
               />
               <StatTile
@@ -122,7 +125,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                 value={summary.certificatesExpiring}
                 className={summary.certificatesExpiring > 0 ? "warning" : ""}
                 tooltip="Clusters with a certificate expiring within 30 days or already expired"
-                onClick={() => openList()}
+                to={listUrl()}
                 data-testid="cnpg-stat-certificates"
               />
             </div>
@@ -147,7 +150,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
           ) : (
             <div className={styles.grid} data-testid="cnpg-overview-grid">
               {summary.tiles.map((tile) => (
-                <ClusterTile key={tile.id} tile={tile} onOpen={openTile} />
+                <ClusterTile key={tile.id} tile={tile} detailsUrl={detailsUrlOf(tile)} />
               ))}
             </div>
           )}

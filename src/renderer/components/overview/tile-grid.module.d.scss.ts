@@ -12,6 +12,7 @@ declare const classNames: {
   readonly statLabel: "statLabel";
   readonly statDetail: "statDetail";
   readonly statChart: "statChart";
+  readonly chart: "chart";
   readonly grid: "grid";
   readonly attention: "attention";
   readonly tileHeader: "tileHeader";

@@ -239,13 +239,71 @@ describe("CloudNativePG extension against the fixture cluster", () => {
 
       expect(await single.innerText()).toContain("barman-cloud");
 
-      await frame.locator('[data-testid="cnpg-overview-tile-cnpg-e2e-e2e-main"]').click();
+      await cluster.captureScreenshot(frame, "overview");
+      await frame
+        .locator('[data-testid="cnpg-overview-tile-cnpg-e2e-e2e-main"]')
+        .getByText("e2e-main", { exact: true })
+        .first()
+        .click();
 
-      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const drawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Health" });
 
       await drawer.waitFor({ state: "visible", timeout: 60_000 });
       expect(await drawer.innerText()).toContain("e2e-main");
+      await cluster.captureScreenshot(frame, "overview-drawer");
       await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "opens the list filtered on the failing clusters from the Overview strip (SPEC-0004)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+      await frame.locator('[data-testid="cnpg-stat-archiving"]').click();
+      await frame.waitForSelector('h5 >> text="PostgreSQL Clusters"', { timeout: 60_000 });
+
+      await cluster.expectRow(frame, "e2e-single", "Degraded");
+      await cluster.expectNoRow(frame, "e2e-main");
+
+      // Leave the list unfiltered for the cases that follow.
+      const search = frame.locator(".SearchInput input").first();
+
+      await search.fill("");
+      await cluster.expectRow(frame, "e2e-main", "Healthy");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "captures the M1 views on both themes for the review",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.expectRow(frame, "e2e-main", "Healthy");
+      await cluster.captureScreenshot(frame, "clusters-dark");
+
+      await cnpg.setColorTheme(app, window, "Light");
+      try {
+        await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+        await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
+        await cluster.captureScreenshot(frame, "overview-light");
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await cluster.expectRow(frame, "e2e-main", "Healthy");
+        await cluster.captureScreenshot(frame, "clusters-light");
+        await frame
+          .locator(".TableRow", { hasText: "e2e-main" })
+          .first()
+          .locator(".TableCell", { hasText: "e2e-main" })
+          .first()
+          .click();
+        await frame
+          .locator(".Drawer.KubeObjectDetails", { hasText: "Certificates" })
+          .waitFor({ state: "visible", timeout: 60_000 });
+        await cluster.captureScreenshot(frame, "drawer-light");
+        await cluster.closeDetails(frame);
+      } finally {
+        await cnpg.setColorTheme(app, window, "Dark");
+      }
     },
     TIMEOUT,
   );

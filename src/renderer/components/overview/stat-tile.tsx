@@ -14,7 +14,7 @@ import styles from "./tile-grid.module.scss";
 import type { ClusterHealthState } from "../cluster-health";
 
 const {
-  Component: { PieChart },
+  Component: { MaybeLink, PieChart },
 } = Renderer;
 
 export interface StatTileProps {
@@ -24,26 +24,20 @@ export interface StatTileProps {
   tooltip?: string;
   /** Applied to the figure: a host status class when the figure demands attention. */
   className?: string;
-  onClick?: () => void;
+  /** Where the tile leads (a host route); without it the tile is inert. */
+  to?: string;
   "data-testid"?: string;
   children?: React.ReactNode;
 }
 
-export function StatTile({ label, value, detail, tooltip, className, onClick, children, ...rest }: StatTileProps) {
+export function StatTile({ label, value, detail, tooltip, className, to, children, ...rest }: StatTileProps) {
   return (
-    <button
-      type="button"
-      className={styles.statTile}
-      onClick={onClick}
-      title={tooltip}
-      disabled={!onClick}
-      data-testid={rest["data-testid"]}
-    >
+    <MaybeLink to={to} className={styles.statTile} title={tooltip} data-testid={rest["data-testid"]}>
       <span className={[styles.statValue, className ?? ""].join(" ").trim()}>{value}</span>
       <span className={styles.statLabel}>{label}</span>
       {detail ? <span className={styles.statDetail}>{detail}</span> : null}
       {children}
-    </button>
+    </MaybeLink>
   );
 }
 

@@ -21,7 +21,7 @@ import {
 } from "../components/cluster-health";
 import { withErrorPage } from "../components/error-page";
 import { InstanceBricks } from "../components/instance-bricks";
-import { existingObjectRef, objectExists } from "../components/object-existence";
+import { objectExists } from "../components/object-existence";
 import { useReferenceStores } from "../components/reference-loader";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
@@ -37,10 +37,10 @@ const {
     DrawerItem,
     DrawerTitle,
     LinkToNode,
-    LinkToObject,
     LinkToPod,
     LinkToSecret,
     LocaleDate,
+    MaybeLink,
     MonacoEditor,
     Table,
     TableCell,
@@ -49,6 +49,7 @@ const {
     WithTooltip,
   },
   K8sApi: { nodesStore, podsStore, pvcStore, secretsStore, serviceStore },
+  Navigation: { getDetailsUrl },
 } = Renderer;
 
 const notAvailable = "N/A";
@@ -84,9 +85,11 @@ function SecretRef({ name, namespace }: { name: string | undefined; namespace: s
 /** A Service name rendered as a link when the Service is in the store, else as text. */
 function ServiceRef({ name, namespace }: { name: string | undefined; namespace: string }) {
   if (!name) return <>{notAvailable}</>;
-  const ref = existingObjectRef(serviceStore, "Service", name, namespace);
-  return ref ? (
-    <LinkToObject objectRef={ref} />
+  const service = serviceStore.getByName(name, namespace);
+  return service ? (
+    <MaybeLink to={getDetailsUrl(service.selfLink)} onClick={(event) => event.stopPropagation()}>
+      {name}
+    </MaybeLink>
   ) : (
     <WithTooltip tooltip="The Service is not in the cluster (yet)">{name}</WithTooltip>
   );
@@ -94,8 +97,14 @@ function ServiceRef({ name, namespace }: { name: string | undefined; namespace: 
 
 /** A PVC name rendered as a link when the claim is in the store, else as text. */
 function PvcRef({ name, namespace }: { name: string; namespace: string }) {
-  const ref = existingObjectRef(pvcStore, "PersistentVolumeClaim", name, namespace);
-  return ref ? <LinkToObject objectRef={ref} /> : <WithTooltip>{name}</WithTooltip>;
+  const claim = pvcStore.getByName(name, namespace);
+  return claim ? (
+    <MaybeLink to={getDetailsUrl(claim.selfLink)} onClick={(event) => event.stopPropagation()}>
+      {name}
+    </MaybeLink>
+  ) : (
+    <WithTooltip>{name}</WithTooltip>
+  );
 }
 
 function PvcList({ title, names, namespace }: { title: string; names: string[] | undefined; namespace: string }) {
@@ -115,7 +124,9 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
   withErrorPage(props, () => {
     const { object } = props;
 
-    if (!object || !(object instanceof Cluster)) {
+    // The host hands the drawer a plain copy of the object, never an instance
+    // of this class (AGENTS.md "CRD KubeObject Pattern"): guard on the kind.
+    if (!object || object.kind !== Cluster.kind) {
       return <></>;
     }
 

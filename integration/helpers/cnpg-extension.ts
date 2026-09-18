@@ -16,7 +16,7 @@
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
 
-import type { ConsoleMessage, ElectronApplication, Page } from "playwright";
+import type { ConsoleMessage, ElectronApplication, Page, Request } from "playwright";
 
 /** Name of this extension, as published and as shown by the extensions page. */
 export const EXTENSION_NAME = "@freelensapp/cnpg-extension";
@@ -106,6 +106,12 @@ export function createErrorCollector(): ErrorCollector {
     }
   };
 
+  // "Failed to load resource" console errors never say which resource: the
+  // request event does, so the URL and the reason are logged next to them.
+  const requestFailedLogger = (request: Request) => {
+    console.log(`[request failed] ${request.method()} ${request.url()}: ${request.failure()?.errorText ?? "unknown"}`);
+  };
+
   const logger = (message: ConsoleMessage) => {
     const text = message.text();
     const normalizedText = text.replace(ANSI_ESCAPE_PATTERN, "");
@@ -144,10 +150,12 @@ export function createErrorCollector(): ErrorCollector {
 
     watch: (window: Page) => {
       window.on("console", logger);
+      window.on("requestfailed", requestFailedLogger);
     },
 
     stop: (window: Page) => {
       window.off("console", logger);
+      window.off("requestfailed", requestFailedLogger);
       restoreOutputHooks?.();
       restoreOutputHooks = undefined;
     },

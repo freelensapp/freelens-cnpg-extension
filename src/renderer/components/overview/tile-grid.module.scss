@@ -78,6 +78,17 @@
   width: 44px;
   height: 44px;
   flex: none;
+  overflow: hidden;
+
+  // The host Chart sizes its canvas from the parent; pin both so the pie never
+  // grows past the tile.
+  :global(.Chart),
+  canvas {
+    width: 44px !important;
+    height: 44px !important;
+    max-width: 44px;
+    max-height: 44px;
+  }
 }
 
 .grid {
