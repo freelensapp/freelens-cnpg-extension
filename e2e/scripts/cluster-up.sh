@@ -48,9 +48,11 @@ install_cert_manager() {
 	wait_rollout "${CERT_MANAGER_NAMESPACE}" cert-manager cert-manager-cainjector cert-manager-webhook
 	# The webhook deployment being available does not mean the API server can
 	# already reach it: probe it with a server-side dry run until it answers.
+	# The probe targets the `default` namespace, which always exists; the
+	# fixture namespace is created later.
 	local deadline
 	deadline=$(($(date +%s) + 180))
-	until printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: e2e-probe\n  namespace: %s\nspec:\n  selfSigned: {}\n' "${E2E_NAMESPACE}" |
+	until printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: e2e-probe\n  namespace: default\nspec:\n  selfSigned: {}\n' |
 		kubectl_e2e apply --dry-run=server -f - >/dev/null 2>&1; do
 		[ "$(date +%s)" -ge "${deadline}" ] && die "the cert-manager webhook never answered"
 		sleep 5
