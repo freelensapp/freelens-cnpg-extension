@@ -57,6 +57,25 @@ content is being replaced milestone by milestone (see
 - No em dash anywhere: use commas, colons, parentheses or full stops.
 - No Conventional Commits prefixes in commit subjects or PR titles.
 
+## Development process (binding)
+
+This repository is developed spec-first. Before implementing anything, read:
+
+- `docs/development/PROCESS.md`: the spec-driven workflow (spec before
+  code, docs updated in the same PR, manual-testing escalation to the lead
+  maintainer, milestone review gate).
+- `docs/development/ROADMAP.md`: scope and progress toward v1.0.0.
+- `docs/development/ARCHITECTURE.md`: renderer and main process roles, the
+  data paths to the cluster, the licensing boundary, the upstream facts.
+- `docs/development/DESIGN.md`: binding UI/UX directives (native-first
+  components, status color semantics, theming, non-happy states, ad hoc
+  views, write actions); no UI work without reading it.
+- `docs/development/TESTING.md`: required test layers (unit, integration,
+  E2E against a kind cluster with the real operator, agent-driven live
+  verification and the pre-review pass).
+- `docs/specs/`: one spec per feature, from `TEMPLATE.md`; SPEC-0001 is the
+  recon digest every other spec builds on.
+
 ## Common Commands
 
 ```bash
@@ -227,9 +246,7 @@ Code in `src/common/` is shared between both processes.
 5. **For TypeScript/TSX, JS, JSON, CSS/SCSS, HTML files:** run `pnpm biome:fix` (or `biome check` directly if `biome` is installed locally)
 6. **For Markdown, YAML, and other formats:** run `pnpm trunk:fix` (or `trunk check` directly if `trunk` is installed locally)
 7. **Full build** when in doubt about cached state: `pnpm clean:all && pnpm build`
-8. **Do not use Anthropic Fable for coding tasks**, Fable may be used only for planning,
-   analysis, and thinking through problems. When writing or editing code,
-   use standard editing tools instead.
+
 
 ## GitHub Actions (Claude Code Action) Rules
 

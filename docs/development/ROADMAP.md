@@ -1,0 +1,116 @@
+# Roadmap to v1.0.0
+
+Goal for v1.0.0: the most complete and usable graphical interface for
+CloudNativePG, reimplemented from scratch as a Freelens extension that reads
+the Kubernetes API directly (see [ARCHITECTURE.md](ARCHITECTURE.md) for the
+architecture and licensing boundaries). Every existing CloudNativePG user
+interface and tool is a functional reference to be matched and then exceeded,
+never a source of code.
+
+This file is the single source of truth for scope and progress. Update it in
+every PR that starts, completes, or re-scopes a feature.
+
+## Releases
+
+- **0.1**: M1 and M2, read-only, plus the test infrastructure. A few things
+  done properly: cluster health at a glance, cluster detail, backups, the live
+  database view and the psql terminal.
+- **1.0.0**: M1 to M7.
+
+## Feature inventory and milestones
+
+Derived from the CloudNativePG v1.30.0 API (11 kinds in
+`postgresql.cnpg.io/v1`, plus `ObjectStore` in `barmancloud.cnpg.io/v1`),
+the `kubectl cnpg` plugin and the instance manager contracts recorded in
+[SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md).
+
+### M1 - Cluster views (read-only)
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Recon digest, data access architecture, health model | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md) | Draft |
+| Test environment and E2E infrastructure (kind, operator, fixtures) | SPEC-0002 | Planned |
+| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | SPEC-0003 | Planned |
+| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | SPEC-0004 | Planned |
+
+### M2 - Backups, live view, psql (read-only)
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Backup and ScheduledBackup lists + details, backup-derived health | SPEC-0005 | Planned |
+| Live database view (instance status and metrics through the API server pod proxy: sessions, replication lag, database sizes, WAL) | SPEC-0006 | Planned |
+| Open psql in a Freelens terminal tab (primary or replica) | SPEC-0007 | Planned |
+| Pre-review agent pass and local demo cluster | SPEC-0008 | Planned |
+
+### M3 - Pooling, images, quorum, object stores (read-only)
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Pooler list + detail (PgBouncer, referring cluster, pooler metrics) | | Planned |
+| ImageCatalog and ClusterImageCatalog list + detail | | Planned |
+| FailoverQuorum list + detail | | Planned |
+| ObjectStore (Barman Cloud plugin) list + detail with referring clusters | | Planned |
+
+### M4 - Declarative database management (read-only)
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Database list + detail with reconciliation status | | Planned |
+| DatabaseRole list + detail | | Planned |
+| Publication and Subscription list + detail | | Planned |
+
+### M5 - Operations views (ad hoc)
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Operator status page (deployment, version, CRDs, detected plugins, listening namespaces) | | Planned |
+| Cluster events timeline (Kubernetes events, backups, switchovers, phase changes) | | Planned |
+| Instance pod logs from the cluster drawer | | Planned |
+
+### M6 - Write actions (behind explicit confirmation)
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| On-demand backup | | Planned |
+| Switchover and promote | | Planned |
+| Restart and reload | | Planned |
+| Fencing and hibernation | | Planned |
+| ScheduledBackup suspend and trigger now | | Planned |
+
+The first write spec sets the ground rules for every action of this
+milestone: confirmation dialogs that name the CloudNativePG cluster and the
+Kubernetes context and enumerate the writes they perform, no optimistic UI,
+explicit patch types, failures reported rather than swallowed, no dead
+controls. Nothing in M6 ships without a test that reads the result back from
+the cluster.
+
+### M7 - Creation forms and metrics charts
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Create Cluster form with live YAML preview (plugin-based backups by default) | | Planned |
+| Create ScheduledBackup (cron editor), Pooler, ObjectStore | | Planned |
+| Metrics charts (host chart components over the live view data) | | Planned |
+
+### Cross-cutting
+
+| Item | Status |
+| --- | --- |
+| E2E test infrastructure (kind + operator + fixtures + Playwright) | SPEC-0002, Planned |
+| Local demo cluster and milestone review gate (`pnpm demo:up`) | SPEC-0008, Planned |
+
+## Out of scope for v1
+
+- Anything the deprecated in-tree `barmanObjectStore` backup method needs
+  as its default: the extension shows it where it exists and never
+  generates it.
+- Running user-supplied SQL from the extension's own code paths: the psql
+  terminal is the place for that, under the user's own credentials.
+- Replacing Freelens native views for Pods, PVCs, Services and Secrets:
+  the extension links to them.
+
+## Release criteria for v1.0.0
+
+- All milestones M1 to M7 implemented, each behind an approved spec.
+- Every feature covered by non-regression tests (unit + E2E) green in CI.
+- Docs (specs, architecture, roadmap) aligned with the shipped behavior.
