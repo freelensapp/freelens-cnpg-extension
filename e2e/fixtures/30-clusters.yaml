@@ -1,0 +1,77 @@
+# The PostgreSQL clusters the views distinguish (SPEC-0002):
+# - e2e-main: three instances, WAL archiving and backups through the plugin,
+#   plaintext metrics; the healthy, replicated reference.
+# - e2e-single: one instance, metrics over TLS, archiving to the broken store,
+#   so that WAL archiving fails and the failed backup has a home.
+# - e2e-hibernated: one instance, hibernated by cluster-up.sh after it is
+#   healthy (annotation cnpg.io/hibernation=on), so no pod remains.
+# - e2e-fenced: one instance, fenced by cluster-up.sh after it is healthy
+#   (annotation cnpg.io/fencedInstances), so the instance is down on purpose.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-main
+  namespace: cnpg-e2e
+spec:
+  instances: 3
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: e2e-store
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-single
+  namespace: cnpg-e2e
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  monitoring:
+    tls:
+      enabled: true
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: e2e-store-broken
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-hibernated
+  namespace: cnpg-e2e
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-fenced
+  namespace: cnpg-e2e
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi

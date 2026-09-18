@@ -1,0 +1,38 @@
+# Barman Cloud object stores. `e2e-store` works; `e2e-store-broken` carries
+# wrong credentials so that the cluster archiving to it shows a failing
+# ContinuousArchiving condition and its backup ends in phase `failed`.
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: e2e-store
+  namespace: cnpg-e2e
+spec:
+  configuration:
+    destinationPath: s3://backups/
+    endpointURL: http://minio.cnpg-e2e.svc:9000
+    s3Credentials:
+      accessKeyId:
+        name: e2e-store-creds
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: e2e-store-creds
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: e2e-store-broken
+  namespace: cnpg-e2e
+spec:
+  configuration:
+    destinationPath: s3://backups/
+    endpointURL: http://minio.cnpg-e2e.svc:9000
+    s3Credentials:
+      accessKeyId:
+        name: e2e-store-broken-creds
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: e2e-store-broken-creds
+        key: ACCESS_SECRET_KEY

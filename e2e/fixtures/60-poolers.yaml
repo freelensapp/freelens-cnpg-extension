@@ -1,0 +1,16 @@
+# One PgBouncer pooler in front of the primary of e2e-main.
+apiVersion: postgresql.cnpg.io/v1
+kind: Pooler
+metadata:
+  name: e2e-main-pooler
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  instances: 1
+  type: rw
+  pgbouncer:
+    poolMode: session
+    parameters:
+      max_client_conn: "100"
+      default_pool_size: "5"

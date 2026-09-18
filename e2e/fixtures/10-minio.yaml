@@ -1,0 +1,120 @@
+# In-cluster object store for the Barman Cloud plugin: one MinIO server, its
+# root credentials, a Job that creates the `backups` bucket, and the two
+# credential Secrets the ObjectStore fixtures reference (one valid, one wrong
+# on purpose, so that a backup and the WAL archiving of one cluster fail).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-root
+  namespace: cnpg-e2e
+type: Opaque
+stringData:
+  MINIO_ROOT_USER: e2e-minio
+  MINIO_ROOT_PASSWORD: e2e-minio-secret-1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-store-creds
+  namespace: cnpg-e2e
+type: Opaque
+stringData:
+  ACCESS_KEY_ID: e2e-minio
+  ACCESS_SECRET_KEY: e2e-minio-secret-1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-store-broken-creds
+  namespace: cnpg-e2e
+type: Opaque
+stringData:
+  ACCESS_KEY_ID: e2e-minio
+  ACCESS_SECRET_KEY: wrong-password-on-purpose
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: minio
+  namespace: cnpg-e2e
+  labels:
+    app: minio
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: minio
+  template:
+    metadata:
+      labels:
+        app: minio
+    spec:
+      containers:
+        - name: minio
+          image: __MINIO_IMAGE__
+          args:
+            - server
+            - /data
+            - --console-address
+            - :9001
+          envFrom:
+            - secretRef:
+                name: minio-root
+          ports:
+            - name: s3
+              containerPort: 9000
+          readinessProbe:
+            httpGet:
+              path: /minio/health/ready
+              port: 9000
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: minio
+  namespace: cnpg-e2e
+spec:
+  selector:
+    app: minio
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-bucket
+  namespace: cnpg-e2e
+spec:
+  backoffLimit: 20
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: mc
+          image: __MC_IMAGE__
+          envFrom:
+            - secretRef:
+                name: minio-root
+          command:
+            - /bin/sh
+            - -c
+            - |-
+              set -e
+              until mc alias set e2e http://minio.cnpg-e2e.svc:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD"; do
+                echo "waiting for minio"; sleep 3
+              done
+              mc mb --ignore-existing e2e/backups
+              mc ls e2e

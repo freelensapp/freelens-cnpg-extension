@@ -1,0 +1,27 @@
+# Applied by cluster-up.sh once the clusters are healthy: a backup that
+# completes (e2e-main, working store) and one that fails (e2e-single, broken
+# store). Both use the plugin method; the deprecated in-tree method is never
+# used by the fixtures.
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: e2e-backup-ok
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: e2e-backup-failed
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-single
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

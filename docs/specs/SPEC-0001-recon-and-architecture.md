@@ -329,4 +329,13 @@ CloudNativePG operator `v1.30.0` (release manifest
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- **Spike S1 passed (2026-09-18, SPEC-0002 suite, Freelens 1.10.3, operator
+  1.30.0):** from the cluster frame, `GET /api-kube/api/v1/namespaces/
+  cnpg-e2e/pods/https:<pod>:8000/proxy/pg/status` returned the instance
+  manager JSON of the primary (`isPrimary: true`, `systemID` equal to
+  `Cluster.status.systemID`, a valid `currentLsn`) and of a replica
+  (`isPrimary: false`); `/metrics` answered on the plaintext instance
+  (`http:` scheme, port 9187) and on the TLS-enabled one (`https:`
+  scheme). No credential, no exec, no main-process code. A1 stands:
+  renderer-first, with the pod proxy through the host's Kubernetes JSON
+  API client.
