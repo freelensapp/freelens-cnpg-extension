@@ -28,7 +28,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Recon digest, data access architecture, health model | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md) | Draft |
+| Recon digest, data access architecture, health model | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md) | Approved |
 | Test environment and E2E infrastructure (kind, operator, fixtures) | SPEC-0002 | Planned |
 | Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | SPEC-0003 | Planned |
 | Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | SPEC-0004 | Planned |

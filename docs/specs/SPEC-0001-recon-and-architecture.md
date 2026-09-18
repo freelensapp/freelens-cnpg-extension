@@ -1,6 +1,6 @@
 # SPEC-0001: CloudNativePG recon digest and data access architecture
 
-- **Status:** Draft
+- **Status:** Approved (2026-09-18, lead maintainer)
 - **Milestone:** `M1` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (operator), Barman Cloud
   plugin `v0.15.0`
