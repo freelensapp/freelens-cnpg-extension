@@ -188,4 +188,13 @@ by name through the host's own secret page.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- Observed on the E2E cluster (2026-09-18, operator 1.30.0): a hibernated
+  cluster and a cluster whose only instance is fenced both keep
+  `status.phase` at "Cluster in healthy state". Hibernation removes the
+  pods; fencing leaves the pod running with its Ready condition False,
+  `status.readyInstances` omitted (zero) and the instance listed under
+  `instancesStatus.replicating`. The classifier therefore reads the
+  hibernation and fencing annotations first, as H1 prescribes, and never
+  trusts the phase alone.
+- `status.readyInstances` is omitted from the JSON when zero: every reader
+  treats an absent value as 0.

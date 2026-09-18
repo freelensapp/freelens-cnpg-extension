@@ -139,7 +139,9 @@ hibernate_and_fence() {
 	log "fencing the instance of e2e-fenced"
 	kubectl_e2e annotate clusters.postgresql.cnpg.io e2e-fenced --namespace "${E2E_NAMESPACE}" \
 		--overwrite 'cnpg.io/fencedInstances=["e2e-fenced-1"]' >/dev/null
-	wait_for_jsonpath "${E2E_NAMESPACE}" clusters.postgresql.cnpg.io e2e-fenced '{.status.readyInstances}' 0 300
+	# `status.readyInstances` is omitted from the JSON when it drops to zero, so
+	# the wait reads the instance pod's own Ready condition instead.
+	wait_for_jsonpath "${E2E_NAMESPACE}" pod e2e-fenced-1 '{.status.conditions[?(@.type=="Ready")].status}' False 300
 }
 
 verify_fixtures() {
