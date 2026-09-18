@@ -6,7 +6,7 @@ metadata:
   name: e2e-nightly
   namespace: cnpg-e2e
 spec:
-  schedule: "0 0 3 * * *"
+  schedule: 0 0 3 * * *
   immediate: false
   backupOwnerReference: self
   cluster:

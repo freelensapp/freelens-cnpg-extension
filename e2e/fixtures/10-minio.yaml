@@ -52,7 +52,11 @@ spec:
       containers:
         - name: minio
           image: __MINIO_IMAGE__
-          args: ["server", "/data", "--console-address", ":9001"]
+          args:
+            - server
+            - /data
+            - --console-address
+            - :9001
           envFrom:
             - secretRef:
                 name: minio-root

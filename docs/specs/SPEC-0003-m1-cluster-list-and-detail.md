@@ -101,7 +101,7 @@ Columns, in the grammar of DESIGN.md section 1:
 | Name | name | name |
 | Namespace | `NamespaceSelectBadge` | namespace |
 | Instances | `readyInstances/instances` as text, plus one `StatusBrick` per instance (primary marked) | ready instances |
-| Primary | `status.currentPrimary`; when `targetPrimary` differs, an inline warning icon with tooltip "switching to <target>" | primary |
+| Primary | `status.currentPrimary`; when `targetPrimary` differs, an inline warning icon with tooltip "switching to the target primary" | primary |
 | PostgreSQL | major version from `status.pgDataImageInfo.majorVersion`, tooltip with the image | major |
 | Archiving | `BadgeBoolean` from `archivingState` (positive phrasing "Archiving") | archiving |
 | Last backup | `ReactiveDuration` of `backupFacts.lastSuccessful` from the cluster's backups, tooltip with the exact time and the source; "N/A" when none | time |

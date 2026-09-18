@@ -82,8 +82,8 @@ cluster). No live data: the overview must be instant and must work with
    instance, primary marked, fenced dimmed), primary name, archiving
    (`BadgeBoolean`), last successful backup as a relative time with the
    exact time in a tooltip; footer with the certificate horizon ("certs
-   ok until <date>" or "cert expires in N days" in warning, or "cert
-   expired" in error) and the next scheduled backup when a schedule exists.
+   ok until the earliest expiry date" or "cert expires in N days" in
+   warning, or "cert expired" in error) and the next scheduled backup when a schedule exists.
    A Degraded or Failed tile shows its reason sentence below the header.
    The whole tile opens the cluster drawer (through the list page with the
    object selected); the namespace badge sets the namespace filter.
