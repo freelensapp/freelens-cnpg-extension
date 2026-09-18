@@ -80,14 +80,12 @@
   flex: none;
   overflow: hidden;
 
-  // The host Chart sizes its canvas from the parent; pin both so the pie never
-  // grows past the tile.
-  :global(.Chart),
-  canvas {
-    width: 44px !important;
-    height: 44px !important;
-    max-width: 44px;
-    max-height: 44px;
+  // The host sizes a pie through its `.chart-container` (120px wide, 150px
+  // tall by default); shrink that box so the chart fits the tile.
+  :global(.PieChart .chart-container) {
+    width: 44px;
+    height: 44px;
+    min-height: 0;
   }
 }
 

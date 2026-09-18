@@ -12,7 +12,8 @@ declare const classNames: {
   readonly statLabel: "statLabel";
   readonly statDetail: "statDetail";
   readonly statChart: "statChart";
-  readonly chart: "chart";
+  readonly pieChart: "pieChart";
+  readonly chartContainer: "chartContainer";
   readonly grid: "grid";
   readonly attention: "attention";
   readonly tileHeader: "tileHeader";
