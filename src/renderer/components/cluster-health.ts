@@ -317,9 +317,12 @@ export function instanceFacts(cluster: Cluster): InstanceFact[] {
     else if (inGroup("replicating")) healthState = "replicating";
     else if (inGroup("failed")) healthState = "failed";
 
+    // Every named instance that is not the primary is a replica (or about to
+    // become one) as soon as a primary is known; without a primary, only an
+    // instance the operator reports on can be called a replica.
     let role: InstanceRole = "unknown";
     if (name === primary || state?.isPrimary === true) role = "primary";
-    else if (state !== undefined || healthState !== "unknown") role = "replica";
+    else if (primary !== undefined || state !== undefined || healthState !== "unknown") role = "replica";
 
     const topologyNode = status?.topology?.instances?.[name]?.node;
     return {

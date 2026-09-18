@@ -1,8 +1,11 @@
-import { Main } from "@freelensapp/extensions";
-import { ExamplePreferencesStore } from "../common/store";
+/**
+ * Copyright (c) Freelens Authors. All rights reserved.
+ * Licensed under MIT License. See LICENSE in root directory for more information.
+ */
 
-export default class ExampleMain extends Main.LensExtension {
-  async onActivate() {
-    await ExamplePreferencesStore.getInstanceOrCreate().loadExtension(this);
-  }
-}
+import { Main } from "@freelensapp/extensions";
+
+// Everything of M1 lives in the renderer (ARCHITECTURE.md "Process model");
+// the main process entry point stays for the lifecycle hooks later
+// milestones need (the psql terminal of SPEC-0007).
+export default class CnpgMain extends Main.LensExtension {}

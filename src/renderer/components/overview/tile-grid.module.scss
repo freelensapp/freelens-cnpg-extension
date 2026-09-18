@@ -1,0 +1,207 @@
+@use "../../vars" as *;
+
+.overview {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit * 2);
+  padding: calc($unit * 2);
+}
+
+.title {
+  margin: 0;
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: $unit;
+}
+
+.statTile,
+.clusterTile,
+.skeletonTile,
+.skeletonCard {
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+  color: var(--textColorPrimary);
+  font: inherit;
+  text-align: left;
+}
+
+.statTile {
+  display: flex;
+  align-items: center;
+  gap: $unit;
+  padding: $unit calc($unit * 1.5);
+  cursor: pointer;
+  position: relative;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  &:hover:not(:disabled),
+  &:focus-visible {
+    border-color: var(--textColorAccent);
+    outline: none;
+  }
+}
+
+.statValue {
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+
+  &:global(.warning) {
+    color: var(--colorWarning);
+  }
+
+  &:global(.error) {
+    color: var(--colorError);
+  }
+}
+
+.statLabel {
+  color: var(--textColorSecondary);
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.statDetail {
+  color: var(--textColorTertiary, var(--textColorSecondary));
+  font-size: 11px;
+}
+
+.statChart {
+  margin-left: auto;
+  width: 44px;
+  height: 44px;
+  flex: none;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $unit;
+
+  @media (max-width: 1100px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 720px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.clusterTile {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+  padding: $unit calc($unit * 1.5);
+  cursor: pointer;
+  min-width: 0;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--textColorAccent);
+    outline: none;
+  }
+
+  &.attention {
+    border-left: 3px solid var(--colorWarning);
+  }
+
+  &[data-state="Failed"] {
+    border-left-color: var(--colorError);
+  }
+}
+
+.tileHeader {
+  display: flex;
+  align-items: center;
+  gap: $unit;
+  min-width: 0;
+}
+
+.tileNamespace {
+  flex: none;
+}
+
+.tileName {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.tileReason {
+  color: var(--textColorSecondary);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tileFacts {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc($unit / 2) $unit;
+}
+
+.tileFact {
+  display: flex;
+  align-items: center;
+  gap: calc($unit / 2);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tileFactLabel {
+  color: var(--textColorSecondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+
+.tileFooter {
+  display: flex;
+  justify-content: space-between;
+  gap: $unit;
+  color: var(--textColorSecondary);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.warningText {
+  color: var(--colorWarning);
+}
+
+.errorText {
+  color: var(--colorError);
+}
+
+.empty {
+  padding: calc($unit * 2);
+  color: var(--textColorSecondary);
+
+  a {
+    color: var(--textColorAccent);
+  }
+}
+
+.skeletonTile {
+  height: 52px;
+  opacity: 0.5;
+}
+
+.skeletonCard {
+  height: 120px;
+  opacity: 0.5;
+}

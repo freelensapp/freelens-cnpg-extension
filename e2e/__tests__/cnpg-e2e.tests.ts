@@ -170,6 +170,87 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "lists the fixture clusters with their health on the PostgreSQL Clusters page (SPEC-0003)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+
+      await cluster.expectRow(frame, "e2e-main", "3/3", "e2e-main-1", "Healthy");
+      await cluster.expectRow(frame, "e2e-single", "1/1", "Degraded");
+      await cluster.expectRow(frame, "e2e-hibernated", "Hibernated");
+      await cluster.expectRow(frame, "e2e-fenced", "0/1", "Degraded", "Fenced instances: e2e-fenced-1");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "tells the whole story of e2e-main in its drawer (SPEC-0003)",
+    async () => {
+      await cluster.expectDetails(
+        frame,
+        "e2e-main",
+        "Health",
+        "Healthy",
+        "Instances",
+        "3/3",
+        "e2e-main-1",
+        "e2e-main-2",
+        "e2e-main-3",
+        "primary",
+        "Replication",
+        "Topology",
+        "PostgreSQL",
+        "Storage",
+        "Backups and archiving",
+        "Archiving",
+        "Backup objects",
+        "Certificates",
+        "server CA",
+        "replication TLS",
+        "Services and secrets",
+        "e2e-main-rw",
+        "e2e-main-app",
+        "Plugins",
+        "barman-cloud.cloudnative-pg.io",
+      );
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "shows the fleet on the Overview and opens a cluster from its tile (SPEC-0004)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+
+      const strip = frame.locator('[data-testid="cnpg-overview-strip"]');
+
+      await strip.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await frame.locator('[data-testid="cnpg-stat-clusters"]').innerText()).toContain("4");
+      expect(await frame.locator('[data-testid="cnpg-stat-instances"]').innerText()).toContain("4/6");
+      expect(await frame.locator('[data-testid="cnpg-stat-archiving"]').innerText()).toContain("1");
+
+      const tiles = frame.locator('[data-testid^="cnpg-overview-tile-"]');
+
+      await tiles.first().waitFor({ state: "visible", timeout: 60_000 });
+      expect(await tiles.count()).toBe(4);
+      expect(await tiles.first().getAttribute("data-state")).toBe("Degraded");
+
+      const single = frame.locator('[data-testid="cnpg-overview-tile-cnpg-e2e-e2e-single"]');
+
+      expect(await single.innerText()).toContain("barman-cloud");
+
+      await frame.locator('[data-testid="cnpg-overview-tile-cnpg-e2e-e2e-main"]').click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await drawer.innerText()).toContain("e2e-main");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);

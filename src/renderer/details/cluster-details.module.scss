@@ -1,0 +1,65 @@
+@use "../vars" as *;
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.topologyRow {
+  display: inline-flex;
+  gap: $unit;
+  align-items: baseline;
+}
+
+.topologyInstances {
+  color: var(--textColorSecondary);
+}
+
+.editor {
+  margin: $unit 0;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  overflow: hidden;
+}
+
+.conditions,
+.instances,
+.certificates,
+.plugins {
+  margin: $unit 0 calc($unit * 2);
+
+  :global(.TableCell) {
+    &.type,
+    &.role,
+    &.name {
+      flex-grow: 0.9;
+    }
+
+    &.status,
+    &.state,
+    &.health,
+    &.fenced,
+    &.timeline,
+    &.version {
+      flex-grow: 0.45;
+    }
+
+    &.reason,
+    &.secret,
+    &.node,
+    &.ip {
+      flex-grow: 0.9;
+    }
+
+    &.since,
+    &.expires {
+      flex-grow: 0.7;
+    }
+
+    &.message,
+    &.capabilities {
+      flex-grow: 1.8;
+    }
+  }
+}

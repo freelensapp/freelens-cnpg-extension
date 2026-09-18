@@ -1,0 +1,54 @@
+@use "../vars" as *;
+
+.page {
+  :global(.TableCell) {
+    &.instances {
+      flex-grow: 0.9;
+    }
+
+    &.primary {
+      flex-grow: 0.9;
+    }
+
+    &.postgres {
+      flex-grow: 0.4;
+    }
+
+    &.archiving {
+      flex-grow: 0.45;
+    }
+
+    &.backup {
+      flex-grow: 0.6;
+    }
+
+    &.condition {
+      flex-grow: 0.5;
+    }
+
+    &.status {
+      flex-grow: 1.4;
+    }
+
+    &.age {
+      flex-grow: 0.3;
+    }
+  }
+}
+
+.instancesCell {
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.primaryCell {
+  display: inline-flex;
+  align-items: center;
+  gap: calc($unit / 2);
+  min-width: 0;
+}
+
+.switching {
+  color: var(--colorWarning);
+}

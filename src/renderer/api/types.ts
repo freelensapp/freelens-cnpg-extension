@@ -1,14 +1,5 @@
 import { Renderer } from "@freelensapp/extensions";
 
-export interface NamespacedObjectReference {
-  name: string;
-  namespace?: string;
-}
-
-export interface ExampleKubeObjectCRD extends Renderer.K8sApi.LensExtensionKubeObjectCRD {
-  title: string;
-}
-
 /** CRD descriptor of the CloudNativePG kinds: the host shape plus the page title. */
 export interface CnpgKubeObjectCRD extends Renderer.K8sApi.LensExtensionKubeObjectCRD {
   title: string;
