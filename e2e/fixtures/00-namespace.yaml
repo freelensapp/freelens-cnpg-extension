@@ -1,0 +1,6 @@
+# Namespace of every namespaced fixture. Declared explicitly so that the
+# fixtures stay valid when applied by hand.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cnpg-e2e
