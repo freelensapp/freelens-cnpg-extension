@@ -157,8 +157,27 @@ The scripts only ever touch the `cnpg-e2e` kind cluster and the
 - E2E: cases 1 to 3 above; every later spec appends its cases to the same
   file.
 - Manual verification: first bring-up on macOS (Docker Desktop) and on the
-  CI runner, recorded here with the wall time observed.
+  CI runner, recorded here with the wall time observed. macOS: done on
+  2026-09-18, see the notes; the suite ran green (5 cases, 20 seconds)
+  against the reused Freelens 1.10.3 build.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- First bring-up on macOS (Docker Desktop, 12 CPUs and 7.8 GB for the VM,
+  2026-09-18): about 10 minutes end to end across the fixes below (the
+  kind node image pull, cert-manager, the operator, the plugin, MinIO,
+  four clusters healthy, two backups, the pooler, hibernation and
+  fencing); a re-run against the existing cluster takes 12 seconds.
+- The MinIO GitHub release tag is not always published as an image on
+  quay.io: the pin is the newest tag quay.io actually serves.
+- The cert-manager webhook probe targets the `default` namespace, because
+  the fixture namespace does not exist yet at that point.
+- `Cluster.status.readyInstances` is omitted when zero, so the fencing wait
+  reads the instance pod's Ready condition instead. A fenced or hibernated
+  cluster keeps `status.phase` at "Cluster in healthy state": the
+  annotations, not the phase, are what the health model reads (SPEC-0003,
+  notes).
+- On a headless macOS session Docker Desktop rewrites `credsStore:
+  desktop` into the Docker config and every image pull hangs on the
+  Keychain; the developer removes that key before running the scripts
+  (documented in TRY-IT.md when it lands).

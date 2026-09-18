@@ -79,8 +79,10 @@ describe("CloudNativePG extension against the fixture cluster", () => {
     await cnpg.navigateToCatalog(app);
 
     frame = await cluster.openClusterFromCatalog(window, kubeconfig);
-
-    await cluster.selectNamespace(frame);
+    // The namespace filter lives in the header of namespaced list pages; the
+    // cases of this file read through the API server from the cluster frame
+    // and need no page. The view specs open their page and then call
+    // `cluster.selectNamespace(frame)`.
   }, TIMEOUT);
 
   afterAll(async () => {
