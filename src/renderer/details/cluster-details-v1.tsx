@@ -39,6 +39,7 @@ import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
+import { ClusterLeaseRows } from "./cluster-lease-rows";
 
 import type { CertificateFact, InstanceFact } from "../components/cluster-health";
 
@@ -401,6 +402,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         ) : null}
 
         <DrawerTitle>Replication</DrawerTitle>
+        <ClusterLeaseRows cluster={object} />
         <DrawerItem name="Failover quorum" hidden={!failoverQuorum}>
           {failoverQuorum ? (
             <span className={styles.topologyRow}>

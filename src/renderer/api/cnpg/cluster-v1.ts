@@ -133,6 +133,13 @@ export interface ClusterSpec {
   certificates?: CertificatesConfiguration;
   externalClusters?: ExternalCluster[];
   managed?: Record<string, unknown>;
+  /** Timings of the lease an instance must hold before it promotes (SPEC-0019). */
+  primaryLease?: {
+    leaseDurationSeconds?: number;
+    renewDeadlineSeconds?: number;
+    retryPeriodSeconds?: number;
+    releasedLeaseDurationSeconds?: number;
+  };
   [key: string]: unknown;
 }
 
