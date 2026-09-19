@@ -13,6 +13,9 @@ import { CNPG_API_VERSION } from "./cluster-v1";
 import type { CnpgKubeObjectCRD } from "../types";
 import type { LocalObjectReference } from "./cluster-v1";
 
+/** Label the operator puts on a backup created by a `ScheduledBackup` (SPEC-0005). */
+export const PARENT_SCHEDULE_LABEL = "cnpg.io/scheduled-backup";
+
 /** `barmanObjectStore` is the CRD default and is deprecated since 1.26 (SPEC-0001 R3). */
 export type BackupMethod = "barmanObjectStore" | "volumeSnapshot" | "plugin";
 
@@ -94,6 +97,19 @@ export class Backup extends Renderer.K8sApi.LensExtensionKubeObject<
   /** The declared method; the CRD default (`barmanObjectStore`) is deprecated. */
   static getMethod(object: Backup): BackupMethod {
     return object.spec?.method ?? "barmanObjectStore";
+  }
+
+  /**
+   * The `ScheduledBackup` that created the backup. The label is the only
+   * reliable pointer: ownership depends on `spec.backupOwnerReference`.
+   */
+  static getParentSchedule(object: Backup): string | undefined {
+    return object.metadata?.labels?.[PARENT_SCHEDULE_LABEL] || undefined;
+  }
+
+  /** The instance pod that took the backup. */
+  static getInstancePod(object: Backup): string | undefined {
+    return object.status?.instanceID?.podName || undefined;
   }
 }
 

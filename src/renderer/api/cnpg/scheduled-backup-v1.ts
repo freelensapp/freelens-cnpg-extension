@@ -60,6 +60,11 @@ export class ScheduledBackup extends Renderer.K8sApi.LensExtensionKubeObject<
   static isSuspended(object: ScheduledBackup): boolean {
     return object.spec?.suspend ?? false;
   }
+
+  /** The declared method; the CRD default (`barmanObjectStore`) is deprecated. */
+  static getMethod(object: ScheduledBackup): BackupMethod {
+    return object.spec?.method ?? "barmanObjectStore";
+  }
 }
 
 export class ScheduledBackupApi extends Renderer.K8sApi.KubeApi<ScheduledBackup> {}

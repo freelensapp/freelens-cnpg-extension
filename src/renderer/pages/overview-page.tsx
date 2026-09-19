@@ -19,7 +19,7 @@ import styles from "../components/overview/tile-grid.module.scss";
 import stylesInline from "../components/overview/tile-grid.module.scss?inline";
 import { summarize } from "../components/overview-model";
 import { useReferenceStores } from "../components/reference-loader";
-import { CLUSTERS_PAGE_ID } from "../navigation";
+import { BACKUPS_PAGE_ID, CLUSTERS_PAGE_ID, extensionPageUrl } from "../navigation";
 
 import type { ClusterTile as ClusterTileModel } from "../components/overview-model";
 
@@ -29,13 +29,6 @@ const {
   Component: { TabLayout },
   Navigation: { getDetailsUrl },
 } = Renderer;
-
-/** The host mounts an extension's pages under `/extension/<name with @ dropped and / as -->/<pageId>`. */
-function extensionPageUrl(extensionName: string, pageId: string, search?: string): string {
-  const base = `/extension/${extensionName.replace(/^@/, "").replace(/\//g, "--")}/${pageId}`;
-  // The list layout keeps its search box in the global `search` query parameter.
-  return search ? `${base}?search=${encodeURIComponent(search)}` : base;
-}
 
 export interface OverviewPageProps {
   extension: Renderer.LensExtension;
@@ -69,6 +62,16 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
     const detailsUrlOf = (tile: ClusterTileModel): string | undefined => {
       const cluster = clusterStore.getByName(tile.name, tile.namespace);
       return cluster ? getDetailsUrl(cluster.selfLink) : undefined;
+    };
+
+    // The doors of SPEC-0005: the backups of a cluster and the schedule behind
+    // its next backup line.
+    const backupsUrl = (search?: string) => extensionPageUrl(extension.name, BACKUPS_PAGE_ID, search);
+    const scheduleUrlOf = (tile: ClusterTileModel): string | undefined => {
+      const schedule = tile.nextScheduleName
+        ? scheduleStore?.getByName(tile.nextScheduleName, tile.namespace)
+        : undefined;
+      return schedule ? getDetailsUrl(schedule.selfLink) : undefined;
     };
 
     return (
@@ -117,7 +120,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                 value={summary.backupsOverdue}
                 className={summary.backupsOverdue > 0 ? "warning" : ""}
                 tooltip="Clusters without a successful backup in the last 24 hours, hibernated ones excluded"
-                to={listUrl()}
+                to={backupsUrl()}
                 data-testid="cnpg-stat-backups"
               />
               <StatTile
@@ -150,7 +153,13 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
           ) : (
             <div className={styles.grid} data-testid="cnpg-overview-grid">
               {summary.tiles.map((tile) => (
-                <ClusterTile key={tile.id} tile={tile} detailsUrl={detailsUrlOf(tile)} />
+                <ClusterTile
+                  key={tile.id}
+                  tile={tile}
+                  detailsUrl={detailsUrlOf(tile)}
+                  backupsUrl={backupsUrl(tile.name)}
+                  scheduleUrl={scheduleUrlOf(tile)}
+                />
               ))}
             </div>
           )}

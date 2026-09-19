@@ -104,6 +104,7 @@
 }
 
 .clusterTile {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: calc($unit / 2);
@@ -112,7 +113,7 @@
   min-width: 0;
 
   &:hover,
-  &:focus-visible {
+  &:focus-within {
     border-color: var(--textColorAccent);
     outline: none;
   }
@@ -135,15 +136,42 @@
 
 .tileNamespace {
   flex: none;
+  // Above the stretched main link, so the namespace filter stays clickable.
+  position: relative;
+  z-index: 1;
 }
 
-.tileName {
+// The cluster name is the main link of the tile; its ::after stretches the
+// click target over the whole tile without nesting links inside a link.
+.tileMain {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+  color: inherit;
+  outline: none;
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+  }
+}
+
+// A line of the tile that leads somewhere of its own (the backups of the
+// cluster, the next schedule): above the stretched link, underlined on hover.
+.tileDoor {
+  position: relative;
+  z-index: 1;
+  color: inherit;
+
+  &:hover,
+  &:focus-visible {
+    text-decoration: underline;
+    outline: none;
+  }
 }
 
 .tileReason {

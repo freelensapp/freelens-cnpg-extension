@@ -14,3 +14,38 @@ spec:
   method: plugin
   pluginConfiguration:
     name: barman-cloud.cloudnative-pg.io
+---
+# An immediate schedule: the operator takes a first backup as soon as the
+# schedule exists, so the fixtures hold a backup that carries the
+# cnpg.io/scheduled-backup label and a schedule with a last run (SPEC-0005).
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: e2e-immediate
+  namespace: cnpg-e2e
+spec:
+  schedule: 0 30 4 * * *
+  immediate: true
+  backupOwnerReference: self
+  cluster:
+    name: e2e-main
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io
+---
+# A suspended schedule: the state that silently stops protecting a cluster.
+apiVersion: postgresql.cnpg.io/v1
+kind: ScheduledBackup
+metadata:
+  name: e2e-suspended
+  namespace: cnpg-e2e
+spec:
+  schedule: "@daily"
+  suspend: true
+  immediate: false
+  backupOwnerReference: self
+  cluster:
+    name: e2e-single
+  method: plugin
+  pluginConfiguration:
+    name: barman-cloud.cloudnative-pg.io

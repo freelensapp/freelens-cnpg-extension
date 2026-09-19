@@ -43,6 +43,11 @@ async function fetchFromClusterFrame(frame: Frame, path: string): Promise<{ stat
   }, path);
 }
 
+/** The name cell of a list row: clicking it opens the drawer without hitting a link in another cell. */
+function tableRowName(frame: Frame, name: string) {
+  return frame.locator(".TableRow", { hasText: name }).first().locator(".TableCell", { hasText: name }).first();
+}
+
 interface InstanceManagerStatus {
   isPrimary?: boolean;
   systemID?: string;
@@ -276,7 +281,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
-    "captures the M1 views on both themes for the review",
+    "captures the M1 and M2 views on both themes for the review",
     async () => {
       await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
       await cluster.expectRow(frame, "e2e-main", "Healthy");
@@ -301,9 +306,207 @@ describe("CloudNativePG extension against the fixture cluster", () => {
           .waitFor({ state: "visible", timeout: 60_000 });
         await cluster.captureScreenshot(frame, "drawer-light");
         await cluster.closeDetails(frame);
+
+        // The M2 backup views (SPEC-0005) on the light theme.
+        await cluster.openCnpgPage(frame, "cnpg-backups-backups", "Backups");
+        await cluster.expectRow(frame, "e2e-backup-ok", "Completed");
+        await cluster.captureScreenshot(frame, "backups-light");
+        await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+        await cluster.expectRow(frame, "e2e-suspended", "Suspended");
+        await cluster.captureScreenshot(frame, "scheduled-backups-light");
+        await tableRowName(frame, "e2e-immediate").click();
+
+        const history = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-backup-history"]');
+
+        await history.waitFor({ state: "visible", timeout: 60_000 });
+        await history.scrollIntoViewIfNeeded();
+        await cluster.captureScreenshot(frame, "scheduled-backup-history-light");
+        await cluster.closeDetails(frame);
       } finally {
         await cnpg.setColorTheme(app, window, "Dark");
       }
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "lists the backups with their outcome, their cluster and their schedule (SPEC-0005)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-backups-backups", "Backups");
+      await cluster.selectNamespace(frame);
+
+      await cluster.expectRow(frame, "e2e-backup-ok", "e2e-main", "plugin", "Completed", "Completed in");
+      await cluster.expectRow(frame, "e2e-backup-failed", "e2e-single", "Failed", "rpc error");
+      // The backup the immediate schedule generated carries its parent in the Schedule column.
+      await cluster.expectRow(frame, "e2e-immediate-", "e2e-main", "e2e-immediate", "Completed");
+      await cluster.captureScreenshot(frame, "backups-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "shows the restore coordinates of a completed backup in its drawer (SPEC-0005)",
+    async () => {
+      const backupId = cluster.kubectlField("backups.postgresql.cnpg.io", "e2e-backup-ok", "{.status.backupId}");
+      const beginWal = cluster.kubectlField("backups.postgresql.cnpg.io", "e2e-backup-ok", "{.status.beginWal}");
+      const endLsn = cluster.kubectlField("backups.postgresql.cnpg.io", "e2e-backup-ok", "{.status.endLSN}");
+      const pod = cluster.kubectlField("backups.postgresql.cnpg.io", "e2e-backup-ok", "{.status.instanceID.podName}");
+
+      expect(backupId).not.toBe("");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-backup-ok",
+        "Outcome",
+        "Completed",
+        "Source",
+        "e2e-main",
+        pod,
+        "On demand",
+        "Timing",
+        "Restore coordinates",
+        backupId,
+        beginWal,
+        endLsn,
+        "Timeline",
+        "WAL during backup",
+        "Destination",
+        "barman-cloud.cloudnative-pg.io",
+        "e2e-store",
+        "Plugin metadata",
+      );
+
+      // A failed backup never got coordinates: the section is not there at all.
+      await cluster.expectDetails(frame, "e2e-backup-failed", "Outcome", "Failed", "rpc error", "e2e-single");
+      await tableRowName(frame, "e2e-backup-failed").click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await drawer.innerText()).not.toContain("Restore coordinates");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "lists the schedules with their state and their next run (SPEC-0005)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+      await cluster.selectNamespace(frame);
+
+      await cluster.expectRow(frame, "e2e-nightly", "e2e-main", "0 0 3 * * *", "plugin", "Active");
+      await cluster.expectRow(frame, "e2e-immediate", "e2e-main", "0 30 4 * * *", "Active", "Next run in");
+      await cluster.expectRow(frame, "e2e-suspended", "e2e-single", "@daily", "Suspended", "no backup will be taken");
+      await cluster.captureScreenshot(frame, "scheduled-backups-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "links a schedule to the backups it generated, and back (SPEC-0005)",
+    async () => {
+      await cluster.expectDetails(
+        frame,
+        "e2e-immediate",
+        "Schedule",
+        "Active",
+        "At 04:30",
+        "Backup template",
+        "e2e-main",
+        "The schedule owns its backups",
+        "Generated backups",
+        "e2e-immediate-",
+        "All backups of this schedule",
+      );
+
+      // From the schedule drawer to the generated backup's drawer.
+      await tableRowName(frame, "e2e-immediate").click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      await drawer.locator('[data-testid="cnpg-backup-history"]').waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.captureScreenshot(frame, "scheduled-backup-drawer-dark");
+      await drawer.locator(".TableRow a", { hasText: "e2e-immediate-" }).first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Restore coordinates" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      // And back: the backup names its schedule.
+      expect(await frame.locator(".Drawer.KubeObjectDetails").innerText()).toContain("e2e-immediate");
+      await cluster.captureScreenshot(frame, "backup-drawer-dark");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "shows the backup history of e2e-main in its drawer and leads to its backups (SPEC-0005)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await tableRowName(frame, "e2e-main").click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const history = drawer.locator('[data-testid="cnpg-backup-history"]');
+
+      await history.waitFor({ state: "visible", timeout: 60_000 });
+      await history.locator('[data-state="Completed"]').first().waitFor({ state: "visible", timeout: 60_000 });
+      expect(await history.locator('[data-testid="cnpg-backup-history-next"]').count()).toBe(1);
+
+      const text = (await drawer.innerText()).replace(/\s+/g, " ");
+
+      expect(text).toContain("Last successful:");
+      expect(text).toContain("Next run: in");
+      expect(text).toContain("e2e-nightly");
+      expect(text).toContain("e2e-immediate");
+      await history.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "cluster-drawer-history-dark");
+
+      await drawer.getByText("All backups of this cluster", { exact: false }).click();
+      await frame.waitForSelector('h5 >> text="Backups"', { timeout: 60_000 });
+      await cluster.expectRow(frame, "e2e-backup-ok", "e2e-main");
+      await cluster.expectNoRow(frame, "e2e-backup-failed");
+
+      // Leave the list unfiltered for whoever comes next.
+      await frame.locator(".SearchInput input").first().fill("");
+      await cluster.expectRow(frame, "e2e-backup-failed", "Failed");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "leads from an Overview tile to the backups of the cluster and to its schedule (SPEC-0005)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+      await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
+
+      // The next backup line opens the drawer of the schedule behind it.
+      await frame.locator('[data-testid="cnpg-overview-door-schedule-cnpg-e2e-e2e-main"]').click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Backup template" });
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await drawer.innerText()).toContain("e2e-main");
+      await cluster.closeDetails(frame);
+
+      // The backup line opens the Backups list filtered to the cluster.
+      await frame.locator('[data-testid="cnpg-overview-door-backups-cnpg-e2e-e2e-main"]').click();
+      await frame.waitForSelector('h5 >> text="Backups"', { timeout: 60_000 });
+      await cluster.expectRow(frame, "e2e-backup-ok", "e2e-main");
+      await cluster.expectNoRow(frame, "e2e-backup-failed");
+      await frame.locator(".SearchInput input").first().fill("");
+      await cluster.expectRow(frame, "e2e-backup-failed", "Failed");
+
+      // The rest of the tile still opens the cluster drawer.
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+      await frame
+        .locator('[data-testid="cnpg-overview-tile-cnpg-e2e-e2e-single"]')
+        .click({ position: { x: 12, y: 60 } });
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Certificates" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
     },
     TIMEOUT,
   );

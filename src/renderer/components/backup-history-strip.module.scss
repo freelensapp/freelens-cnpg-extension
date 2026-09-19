@@ -1,0 +1,131 @@
+@use "../vars" as *;
+
+.history {
+  margin: $unit 0 calc($unit * 2);
+  color: var(--textColorPrimary);
+}
+
+.caption {
+  margin-bottom: calc($unit / 2);
+  color: var(--textColorSecondary);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: calc($unit / 2);
+  height: calc($unit * 3);
+}
+
+.track {
+  position: relative;
+  flex: 1 1 auto;
+  height: calc($unit / 2);
+  // Room for the half mark that sits on each end of the track.
+  margin: 0 calc($unit * 0.75);
+  border-radius: calc($unit / 4);
+  background: var(--borderFaintColor, rgba(127, 127, 127, 0.25));
+}
+
+.band {
+  position: absolute;
+  top: calc($unit * -0.5);
+  right: 0;
+  height: calc($unit * 1.5);
+  border-radius: calc($unit / 4);
+  background: color-mix(in srgb, var(--colorOk) 18%, transparent);
+}
+
+.mark {
+  position: absolute;
+  top: 50%;
+  width: calc($unit * 1.5);
+  height: calc($unit * 1.5);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  border: 2px solid var(--contentColor);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    outline: 2px solid var(--textColorAccent);
+    outline-offset: 1px;
+    z-index: 1;
+  }
+
+  &.completed {
+    background: var(--colorSuccess);
+  }
+
+  &.failed {
+    background: var(--colorError);
+  }
+
+  &.running {
+    background: var(--colorInfo);
+  }
+
+  &.pending {
+    background: var(--colorWarning);
+  }
+
+  &.unknown {
+    background: var(--colorVague);
+  }
+}
+
+.count {
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--contentColor);
+}
+
+.now {
+  flex: 0 0 2px;
+  align-self: stretch;
+  background: var(--textColorSecondary);
+}
+
+.next {
+  flex: 0 0 calc($unit * 3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nextMark {
+  width: calc($unit * 1.25);
+  height: calc($unit * 1.25);
+  border-radius: 50%;
+  border: 2px dashed var(--textColorSecondary);
+}
+
+.axis {
+  display: flex;
+  justify-content: space-between;
+  // The "now" label sits under the now line, left of the next run slot.
+  padding-right: calc($unit * 3.5);
+  font-size: var(--font-size-small, 12px);
+  color: var(--textColorTertiary);
+}
+
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc($unit / 2) calc($unit * 2);
+  margin-top: calc($unit / 2);
+  font-size: var(--font-size-small, 12px);
+  color: var(--textColorSecondary);
+}
+
+.empty {
+  color: var(--textColorSecondary);
+}
+
+.warning {
+  color: var(--colorWarning);
+}

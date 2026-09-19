@@ -1,0 +1,53 @@
+@use "../vars" as *;
+
+.page {
+  :global(.TableCell) {
+    &.cluster {
+      flex-grow: 0.9;
+    }
+
+    &.schedule {
+      flex-grow: 0.8;
+    }
+
+    &.method {
+      flex-grow: 0.7;
+    }
+
+    &.lastRun {
+      flex-grow: 0.5;
+    }
+
+    &.nextRun {
+      flex-grow: 0.5;
+    }
+
+    &.active {
+      flex-grow: 0.45;
+    }
+
+    &.condition {
+      flex-grow: 1;
+    }
+
+    &.status {
+      flex-grow: 1.4;
+    }
+
+    &.age {
+      flex-grow: 0.3;
+    }
+
+    // Long names inside the link columns end with an ellipsis, not a hard cut.
+    &.cluster a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.expression {
+  font-family: var(--font-monospace, monospace);
+}

@@ -1,0 +1,65 @@
+@use "../vars" as *;
+
+// The full error of a failed backup: the host editor only speaks YAML and
+// JSON, so plain text gets a preformatted block, selectable and wrapped.
+.errorText {
+  margin: $unit 0;
+  padding: $unit;
+  max-height: 240px;
+  overflow: auto;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--layoutBackground);
+  color: var(--textColorPrimary);
+  font-family: var(--font-monospace, monospace);
+  font-size: var(--font-size-small, 12px);
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+
+// Values an operator copies into a recovery manifest: selectable, monospaced.
+.coordinate {
+  font-family: var(--font-monospace, monospace);
+  user-select: text;
+}
+
+.snapshots,
+.metadata,
+.generated {
+  margin: $unit 0 calc($unit * 2);
+
+  :global(.TableCell) {
+    &.name,
+    &.key {
+      flex-grow: 1.6;
+    }
+
+    // A long backup name inside a link ends with an ellipsis, not a hard cut.
+    &.name a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    &.value {
+      flex-grow: 1.6;
+    }
+
+    &.type,
+    &.tablespace,
+    &.condition,
+    &.started,
+    &.duration {
+      flex-grow: 0.6;
+    }
+  }
+}
+
+.door {
+  display: inline-block;
+  margin: 0 0 calc($unit * 2);
+  // Outside a DrawerItem the host gives a link no color of its own.
+  color: var(--primary);
+}

@@ -1,6 +1,6 @@
 # SPEC-0005: Backups and Scheduled Backups, lists and details (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (drift watch of 2026-09-19:
   still the latest operator release; Barman Cloud plugin `v0.15.0` still the
@@ -301,3 +301,40 @@ anywhere (the row menus keep only the host's entries).
   `cronstrue` is a bundled dependency (MIT, zero dependencies, about 22 kB
   minified for the English locale) behind `describeSchedule`; a suspended
   schedule is classified `warning`.
+- Implementation notes: a five field `spec.schedule` is valid upstream (the
+  day of week is optional, the first field is still the seconds), so
+  `describeSchedule` reads it that way instead of refusing it: `0 0 3 * *` is
+  03:00 every day, not midnight on day 3 of the month as a crontab line
+  would say. `@every` intervals are described after truncation to whole
+  seconds, one at least, as the operator's parser does. On the E2E cluster a
+  schedule that has not run yet reports `lastCheckTime` only, with no
+  `nextScheduleTime`: the classifier says "Waiting for the first run" and
+  the Next run column shows "N/A" until the operator reports a time.
+- The strip's component is `backup-history-strip.tsx`, not
+  `backup-history.tsx`: two modules called `backup-history` with different
+  extensions would shadow each other on import.
+- The host's `MonacoEditor` only accepts `yaml` and `json`, so the full error
+  of a failed backup (when longer than one line) is a preformatted block,
+  selectable and wrapped, instead of an editor.
+- The words of a schedule always carry "in the operator's time zone, normally
+  UTC": the operator evaluates the expression with its own clock while every
+  date in the views is in the user's time zone (on the E2E cluster the
+  schedule `0 30 4 * * *` reports its next run at 04:30 UTC, shown as 06:30
+  at UTC+2).
+- Verified on the E2E cluster: the parent label is there on the generated
+  backups; `nextScheduleTime` appears only after the first run; a suspended
+  schedule created suspended has no status at all (the classifier checks the
+  suspension before the missing check time). On a long-lived local cluster
+  `e2e-nightly` does fire (and catches up after the machine slept), so the
+  E2E cases assert what holds in both situations and never that it has no
+  run.
+- The Instance column of the Backups list and the pod row of the drawer link
+  through the host details URL (`StoreLink`), the mechanism M1 found to work
+  for every kind, rather than through `LinkToPod`.
+- Found while verifying the new drawers: the nested tables of every drawer
+  passed literal class names to their cells while the module selectors are
+  hashed, so no declared column width ever applied (the Cluster drawer of
+  SPEC-0003 included). The cells now take the module classes; the fix to the
+  Cluster drawer is a commit of its own in the same pull request.
+- The E2E suite counts the Overview tiles by their test id prefix, so the
+  doors inside a tile use a prefix of their own (`cnpg-overview-door-`).

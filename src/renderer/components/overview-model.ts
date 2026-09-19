@@ -66,6 +66,8 @@ export interface ClusterTile {
   certificates: CertificateFact[];
   certificateHorizon: CertificateHorizon;
   nextScheduledBackup?: Date;
+  /** Name of the schedule behind `nextScheduledBackup`, so the tile can lead to its drawer. */
+  nextScheduleName?: string;
   scheduledBackupSuspended: boolean;
   postgresMajor?: number;
 }
@@ -163,6 +165,7 @@ export function buildTile(
     certificates,
     certificateHorizon: certificateHorizon(certificates, now),
     nextScheduledBackup: schedule ? parseGoTime(schedule.status?.nextScheduleTime) : undefined,
+    nextScheduleName: schedule?.metadata?.name,
     scheduledBackupSuspended: schedule ? ScheduledBackup.isSuspended(schedule) : false,
     postgresMajor: status?.pgDataImageInfo?.majorVersion,
   };
