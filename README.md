@@ -111,7 +111,7 @@ creation forms come with the later milestones of the
 
 | Kind | Views |
 | --- | --- |
-| `Cluster` | List with the health summary, drawer (instances, replication, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View |
+| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View |
 | `Backup` | List and drawer with the restore coordinates |
 | `ScheduledBackup` | List and drawer with the schedule in words and the backups it generated |
 | `Pooler` | List and drawer with the live PgBouncer figures |
