@@ -25,5 +25,6 @@ declare const classNames: {
   readonly expires: "expires";
   readonly message: "message";
   readonly capabilities: "capabilities";
+  readonly psql: "psql";
 };
 export = classNames;

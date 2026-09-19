@@ -28,6 +28,7 @@ import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
+import { PsqlButton } from "../menus/open-psql";
 import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
@@ -324,6 +325,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
               <TableCell className={styles.ip}>IP</TableCell>
               <TableCell className={styles.timeline}>Timeline</TableCell>
               <TableCell className={styles.fenced}>Fenced</TableCell>
+              <TableCell className={styles.psql}>psql</TableCell>
             </TableHead>
             {instances.map((instance) => {
               const node = nodeOf(instance);
@@ -357,6 +359,9 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                   </TableCell>
                   <TableCell className={styles.fenced}>
                     <BadgeBoolean value={instance.fenced} />
+                  </TableCell>
+                  <TableCell className={styles.psql}>
+                    <PsqlButton cluster={object} instanceName={instance.name} />
                   </TableCell>
                 </TableRow>
               );

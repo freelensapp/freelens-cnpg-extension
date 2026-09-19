@@ -30,6 +30,7 @@ declare const classNames: {
   readonly instanceCard: "instanceCard";
   readonly primaryCard: "primaryCard";
   readonly instanceHeader: "instanceHeader";
+  readonly instanceActions: "instanceActions";
   readonly instanceName: "instanceName";
   readonly instanceFacts: "instanceFacts";
   readonly flags: "flags";

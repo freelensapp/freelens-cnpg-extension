@@ -38,6 +38,7 @@ import {
 } from "../components/live/tiles";
 import { Topology } from "../components/live/topology";
 import { useReferenceStores } from "../components/reference-loader";
+import { PsqlButton } from "../menus/open-psql";
 import { CLUSTERS_PAGE_ID, extensionPageUrl, LIVE_CLUSTER_PARAM, liveViewUrl } from "../navigation";
 
 import type { InstanceReading, LiveInput } from "../components/live/live-model";
@@ -200,7 +201,11 @@ const LivePanel = observer(({ cluster }: LivePanelProps) => {
         </div>
       ) : (
         <>
-          <Topology view={view} namespace={namespace} />
+          <Topology
+            view={view}
+            namespace={namespace}
+            instanceAction={(instanceName) => <PsqlButton cluster={cluster} instanceName={instanceName} />}
+          />
           <div className={styles.tiles} data-testid="cnpg-live-tiles">
             <SessionsTile {...tileProps} />
             <LagTile {...tileProps} />

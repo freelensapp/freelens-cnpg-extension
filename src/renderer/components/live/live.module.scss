@@ -235,6 +235,13 @@
   min-width: 0;
 }
 
+.instanceActions {
+  display: inline-flex;
+  align-items: center;
+  gap: $unit;
+  flex: none;
+}
+
 .instanceName {
   min-width: 0;
   overflow: hidden;

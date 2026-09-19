@@ -124,7 +124,8 @@ src/
   common/utils.ts           # Common utilities
 integration/                # Playwright tests against a pinned Freelens build
 test/                       # Vitest stubs for the host-provided modules
-examples/                   # Example CRDs and objects from the scaffold (to be replaced)
+e2e/                        # kind cluster scripts, fixtures and the Playwright suite against a real operator
+docs/                       # Development docs and one spec per feature
 ```
 
 Build output goes to `out/`.
