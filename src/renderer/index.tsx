@@ -32,6 +32,7 @@ import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/sc
 import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscription-details-v1";
 import { CnpgIcon } from "./icons";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
+import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
 import {
   BACKUPS_GROUP_ID,
@@ -46,6 +47,7 @@ import {
   IMAGE_CATALOGS_PAGE_ID,
   IMAGES_GROUP_ID,
   LIVE_PAGE_ID,
+  LOGS_PAGE_ID,
   OBJECT_STORES_PAGE_ID,
   OVERVIEW_GROUP_ID,
   OVERVIEW_PAGE_ID,
@@ -66,6 +68,7 @@ import {
   ImageCatalogsPage as ImageCatalogsPageV1,
 } from "./pages/image-catalogs-page-v1";
 import { LivePage } from "./pages/live-page";
+import { LogsPage } from "./pages/logs-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
 import { OverviewPage } from "./pages/overview-page";
 import { PoolersPage as PoolersPageV1 } from "./pages/poolers-page-v1";
@@ -92,6 +95,9 @@ const AvailableClustersPage = createAvailableVersionPage(ClusterV1.crd.title, [
 ]);
 const AvailableLivePage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: LivePage, version: "v1" },
+]);
+const AvailableLogsPage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: LogsPage, version: "v1" },
 ]);
 const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
   { kubeObjectClass: BackupV1, PageComponent: BackupsPageV1, version: "v1" },
@@ -257,6 +263,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterLogsMenuItem {...props} extension={this} />,
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterPsqlMenuItem {...props} />,
       },
     },
@@ -281,6 +294,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: LIVE_PAGE_ID,
       components: {
         Page: () => <AvailableLivePage extension={this} />,
+      },
+    },
+    {
+      id: LOGS_PAGE_ID,
+      components: {
+        Page: () => <AvailableLogsPage extension={this} />,
       },
     },
     {
@@ -386,6 +405,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: "Live View",
       target: { pageId: LIVE_PAGE_ID },
+      components: {},
+    },
+    {
+      id: LOGS_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: "Logs",
+      target: { pageId: LOGS_PAGE_ID },
       components: {},
     },
     {

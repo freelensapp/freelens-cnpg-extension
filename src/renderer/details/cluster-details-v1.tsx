@@ -35,7 +35,7 @@ import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { PsqlButton } from "../menus/open-psql";
-import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
+import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
@@ -54,6 +54,7 @@ const {
     LinkToPod,
     LinkToSecret,
     LocaleDate,
+    Icon,
     MaybeLink,
     MonacoEditor,
     Table,
@@ -356,6 +357,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
               <TableCell className={styles.ip}>IP</TableCell>
               <TableCell className={styles.timeline}>Timeline</TableCell>
               <TableCell className={styles.psql}>psql</TableCell>
+              <TableCell className={styles.psql}>Logs</TableCell>
             </TableHead>
             {instances.map((instance) => {
               const node = nodeOf(instance);
@@ -399,6 +401,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                   </TableCell>
                   <TableCell className={styles.psql}>
                     <PsqlButton cluster={object} instanceName={instance.name} />
+                  </TableCell>
+                  <TableCell className={styles.psql}>
+                    <MaybeLink
+                      to={logsUrl(props.extension.name, namespace, name, instance.name)}
+                      onClick={(event) => event.stopPropagation()}
+                      data-testid={`cnpg-instance-logs-${instance.name}`}
+                    >
+                      <Icon small material="subject" tooltip={`The logs of ${instance.name}, made readable`} />
+                    </MaybeLink>
                   </TableCell>
                 </TableRow>
               );

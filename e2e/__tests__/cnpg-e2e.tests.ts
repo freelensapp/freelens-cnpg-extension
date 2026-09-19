@@ -1474,6 +1474,87 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "turns the JSON logs of the instances into rows on one time axis and filters them (SPEC-0018)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-logs", "Logs");
+
+      const door = frame.locator('[data-testid="cnpg-logs-door-cnpg-e2e-e2e-main"]');
+
+      if ((await door.count()) > 0) await door.click();
+
+      const viewport = frame.locator('[data-testid="cnpg-logs-viewport"]');
+
+      await viewport.waitFor({ state: "visible", timeout: 60_000 });
+
+      const rows = frame.locator('[data-testid="cnpg-log-row"]');
+
+      await rows.first().waitFor({ state: "visible", timeout: 90_000 });
+
+      // Rows, not JSON: who said it and how serious it is, from more than one instance.
+      const pods = await waitUntil(
+        async () => new Set(await rows.evaluateAll((items) => items.map((item) => item.getAttribute("data-pod")))),
+        (seen) => seen.size >= 2,
+        90_000,
+      );
+
+      expect(pods.size).toBeGreaterThanOrEqual(2);
+
+      const sources = new Set(await rows.evaluateAll((items) => items.map((item) => item.getAttribute("data-source"))));
+
+      expect(sources.has("PostgreSQL")).toBe(true);
+      expect(sources.has("Instance manager")).toBe(true);
+      expect(await rows.first().innerText()).not.toContain('{"level"');
+      expect(await frame.locator('[data-testid="cnpg-logs-status"]').innerText()).toContain("following every 3 s");
+      await cluster.captureScreenshot(frame, "logs-dark");
+
+      // A row opens on its raw JSON.
+      await rows.last().click();
+      await frame.locator('[data-testid="cnpg-log-row"] pre').first().waitFor({ state: "visible", timeout: 30_000 });
+      await rows.last().click();
+
+      // The instance chips narrow the axis to one instance.
+      const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-main", "{.status.currentPrimary}");
+
+      await frame.locator(`[data-testid="cnpg-logs-instance-${primary}"]`).click();
+      expect(
+        await waitUntil(
+          async () => new Set(await rows.evaluateAll((items) => items.map((item) => item.getAttribute("data-pod")))),
+          (seen) => seen.size === 1,
+        ),
+      ).toEqual(new Set([primary]));
+
+      // The broken store of e2e-single makes its WAL archiving fail: on Errors only error rows stay, and they say so.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-single").click();
+
+      const instanceDoor = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-instance-logs-e2e-single-1"]');
+
+      await instanceDoor.waitFor({ state: "visible", timeout: 60_000 });
+      await instanceDoor.click();
+      await viewport.waitFor({ state: "visible", timeout: 60_000 });
+      await rows.first().waitFor({ state: "visible", timeout: 90_000 });
+      await frame.locator("#cnpg-logs-level").click();
+      await frame
+        .locator(".Select__option", { hasText: /^Errors/ })
+        .first()
+        .click();
+
+      const levels = await waitUntil(
+        async () => new Set(await rows.evaluateAll((items) => items.map((item) => item.getAttribute("data-level")))),
+        (seen) => seen.size === 1 && seen.has("error"),
+        90_000,
+      );
+
+      expect(levels).toEqual(new Set(["error"]));
+      expect(
+        await rows.evaluateAll((items) => items.some((item) => item.getAttribute("data-source") === "WAL archiving")),
+      ).toBe(true);
+      await cluster.captureScreenshot(frame, "logs-errors-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.

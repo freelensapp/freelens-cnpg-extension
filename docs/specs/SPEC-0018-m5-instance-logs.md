@@ -1,6 +1,6 @@
 # SPEC-0018: Instance logs, readable (ad hoc, read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M5` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -109,3 +109,21 @@ shows what the cluster already writes to its standard output to whoever has
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M5 at the
   milestone review.
+- Implementation notes: the time of a row is the instance manager's own `ts`
+  (when it happened); the Kubernetes stamp (when it was written) is the
+  identity of the line and what the next read starts from, also after
+  "Clear". A line without a logger belongs to the instance manager. The
+  PostgreSQL tools the instance manager runs (`pg_controldata`,
+  `pg_basebackup`, `pg_rewind`, ...) are filed under PostgreSQL. The text
+  filter looks in the raw line, so a field or a query matches too. The DOM
+  keeps the newest 1000 rows that pass the filters, the buffer the newest
+  2000 lines, and the status line says both. With one instance the instance
+  column is dropped. The frame of the page (title, cluster picker fed by the
+  URL, doors, panels) is the shared `ClusterPickerPage`, which the Timeline
+  uses too.
+- Seen live on the E2E cluster (operator 1.30.0, PostgreSQL 18.4): rows of
+  three instances on one axis; a PostgreSQL ERROR with its user, database,
+  query and SQL state next to the instance manager error it caused; the WAL
+  archiving failures of `e2e-single` alone on the Errors level; the door of
+  an instance. Covered by unit tests only: a non-JSON line, a broken line, the
+  plugin sidecar container, the forbidden panel.

@@ -13,6 +13,7 @@ export const OVERVIEW_PAGE_ID = "cnpg-overview";
 export const CLUSTERS_GROUP_ID = "cnpg-clusters";
 export const CLUSTERS_PAGE_ID = "cnpg-clusters-clusters";
 export const LIVE_PAGE_ID = "cnpg-clusters-live";
+export const LOGS_PAGE_ID = "cnpg-clusters-logs";
 export const FAILOVER_QUORUMS_PAGE_ID = "cnpg-clusters-failoverquorums";
 export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
@@ -48,4 +49,15 @@ export const LIVE_CLUSTER_PARAM = "cluster";
 export function liveViewUrl(extensionName: string, namespace?: string, name?: string): string {
   const base = extensionPageUrl(extensionName, LIVE_PAGE_ID);
   return namespace && name ? `${base}?${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}` : base;
+}
+
+/** Name of the query parameter that narrows the Logs page to one instance (SPEC-0018). */
+export const LOGS_INSTANCE_PARAM = "instance";
+
+/** The Logs of a cluster, or of one of its instances: both travel in the URL. */
+export function logsUrl(extensionName: string, namespace?: string, name?: string, instance?: string): string {
+  const base = extensionPageUrl(extensionName, LOGS_PAGE_ID);
+  if (!namespace || !name) return base;
+  const query = `${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}`;
+  return instance ? `${base}?${query}&${LOGS_INSTANCE_PARAM}=${encodeURIComponent(instance)}` : `${base}?${query}`;
 }
