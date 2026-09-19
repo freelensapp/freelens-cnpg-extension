@@ -1,0 +1,33 @@
+@use "../vars" as *;
+
+.table {
+  margin: $unit 0 calc($unit * 2);
+
+  :global(.TableCell) {
+    &.major {
+      flex-grow: 0.4;
+    }
+
+    &.image {
+      flex-grow: 2.4;
+    }
+
+    &.extensions,
+    &.cluster {
+      flex-grow: 1;
+    }
+
+    &.tag {
+      flex-grow: 1.1;
+    }
+
+    &.state {
+      flex-grow: 0.8;
+    }
+  }
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+  user-select: text;
+}

@@ -795,6 +795,12 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       await typeInTerminal(frame, "\\q");
       await closeDockTabs(frame, "psql:");
       expect(await frame.locator(".Dock .Tab", { hasText: "psql:" }).count()).toBe(0);
+
+      // The dock falls back to its own Terminal tab, open: it is folded away so
+      // that it does not cover half of every view that follows.
+      const fold = frame.locator('.Dock .Icon:has([data-icon-name="keyboard_arrow_down"])').first();
+
+      if ((await fold.count()) > 0) await fold.click();
     },
     TIMEOUT,
   );
@@ -902,6 +908,61 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "lists the image catalogs and tells which clusters follow them (SPEC-0010)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-images-imagecatalogs", "Image Catalogs");
+      await cluster.selectNamespace(frame);
+      await cluster.expectRow(frame, "e2e-images", "18, 17", "18.4-system-trixie", "In use", "1 cluster");
+      await cluster.captureScreenshot(frame, "image-catalogs-dark");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-images",
+        "Catalog",
+        "In use",
+        "The namespace cnpg-e2e",
+        "Images",
+        "postgresql:17.6-system-trixie",
+        "postgresql:18.4-system-trixie",
+        "Clusters",
+        "e2e-hibernated",
+        "Aligned",
+      );
+      await tableRowName(frame, "e2e-images").click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Clusters" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.captureScreenshot(frame, "image-catalog-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      // The cluster scoped kind: no namespace, nobody follows it.
+      await cluster.openCnpgPage(frame, "cnpg-images-clusterimagecatalogs", "Cluster Image Catalogs");
+      await cluster.expectRow(frame, "e2e-cluster-images", "18", "Unused", "No cluster takes its image from here");
+      await checks.expectColumnGrammar(frame, "Cluster Image Catalogs", { namespaced: false });
+      await cluster.expectDetails(
+        frame,
+        "e2e-cluster-images",
+        "The whole Kubernetes cluster",
+        "No cluster takes its image",
+      );
+
+      // From the cluster that follows the catalog to the catalog.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-hibernated").click();
+
+      const clusterDrawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Image catalog" });
+
+      await clusterDrawer.waitFor({ state: "visible", timeout: 60_000 });
+      await clusterDrawer.locator("a", { hasText: "e2e-images" }).first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "The namespace cnpg-e2e" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
@@ -910,6 +971,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-backups-backups", "Backups"],
         ["cnpg-backups-scheduledbackups", "Scheduled Backups"],
         ["cnpg-backups-objectstores", "Object Stores"],
+        ["cnpg-images-imagecatalogs", "Image Catalogs"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

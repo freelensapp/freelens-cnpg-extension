@@ -1,6 +1,6 @@
 # SPEC-0010: Image Catalogs and Cluster Image Catalogs, lists and details (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M3` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -110,3 +110,16 @@ Reads only.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M3 at the
   milestone review.
+- Implementation notes: one factory builds both list pages and one component
+  is the drawer of both kinds. The images table shows the image without its
+  registry and path (`postgresql:18.4-system-trixie`), the part that tells two
+  lines of a catalog apart, with the full reference in the tooltip: the full
+  reference was cut exactly at the tag. The column grammar check of the E2E
+  suite learned that a cluster scoped kind has no Namespace column.
+- On a cluster that already exists, a `Cluster` cannot move from the image the
+  webhook defaulted into `spec.imageName` to an `imageCatalogRef` by applying
+  the fixture again (the two are mutually exclusive): locally the fixture
+  cluster was deleted and created again; a fresh E2E cluster creates it from
+  the catalog.
+- The poolers that take their PgBouncer image from a catalog are listed by
+  SPEC-0012, which brings the `Pooler` model.

@@ -13,6 +13,7 @@ import { maybe } from "../../common/utils";
 import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
 import { buildHistory, schedulesOfCluster } from "../components/backup-history";
 import { BackupHistoryStrip } from "../components/backup-history-strip";
@@ -176,6 +177,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       { label: Backup.crd.plural, store: backupStore, namespaces: [namespace] },
       { label: ScheduledBackup.crd.plural, store: scheduleStore, namespaces: [namespace] },
       { label: ObjectStore.crd.plural, store: objectStoreStore, namespaces: [namespace] },
+      {
+        label: ImageCatalog.crd.plural,
+        store: maybe(() => ImageCatalog.getStore<ImageCatalog>()),
+        namespaces: [namespace],
+      },
+      {
+        label: ClusterImageCatalog.crd.plural,
+        store: maybe(() => ClusterImageCatalog.getStore<ClusterImageCatalog>()),
+      },
     ]);
 
     const namespaceBackups = ((backupStore?.items ?? []) as Backup[]).filter((b) => b.getNs() === namespace);
@@ -409,6 +419,23 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerTitle>PostgreSQL</DrawerTitle>
         <DrawerItem name="Image" hidden={!image}>
           <WithTooltip>{image}</WithTooltip>
+        </DrawerItem>
+        <DrawerItem name="Image catalog" hidden={!spec?.imageCatalogRef}>
+          <span className={styles.topologyRow}>
+            <StoreLink
+              store={
+                spec?.imageCatalogRef?.kind === ClusterImageCatalog.kind
+                  ? maybe(() => ClusterImageCatalog.getStore<ClusterImageCatalog>())
+                  : maybe(() => ImageCatalog.getStore<ImageCatalog>())
+              }
+              name={spec?.imageCatalogRef?.name}
+              namespace={spec?.imageCatalogRef?.kind === ClusterImageCatalog.kind ? undefined : namespace}
+              missing="The catalog is not in the cluster (yet)"
+            />
+            <span className={styles.topologyInstances}>
+              {spec?.imageCatalogRef?.kind ?? "ImageCatalog"}, PostgreSQL {spec?.imageCatalogRef?.major}
+            </span>
+          </span>
         </DrawerItem>
         <DrawerItem name="Major version" hidden={status?.pgDataImageInfo?.majorVersion === undefined}>
           {status?.pgDataImageInfo?.majorVersion}

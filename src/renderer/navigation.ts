@@ -17,6 +17,9 @@ export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
 export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
 export const OBJECT_STORES_PAGE_ID = "cnpg-backups-objectstores";
+export const IMAGES_GROUP_ID = "cnpg-images";
+export const IMAGE_CATALOGS_PAGE_ID = "cnpg-images-imagecatalogs";
+export const CLUSTER_IMAGE_CATALOGS_PAGE_ID = "cnpg-images-clusterimagecatalogs";
 
 /**
  * The URL of one of the extension's pages. The host mounts them under

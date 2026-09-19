@@ -7,10 +7,15 @@ import { Renderer } from "@freelensapp/extensions";
 import { ObjectStore as ObjectStoreV1 } from "./api/barmancloud/object-store-v1";
 import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
+import {
+  ClusterImageCatalog as ClusterImageCatalogV1,
+  ImageCatalog as ImageCatalogV1,
+} from "./api/cnpg/image-catalog-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
+import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
@@ -19,8 +24,11 @@ import { ClusterPsqlMenuItem } from "./menus/open-psql";
 import {
   BACKUPS_GROUP_ID,
   BACKUPS_PAGE_ID,
+  CLUSTER_IMAGE_CATALOGS_PAGE_ID,
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
+  IMAGE_CATALOGS_PAGE_ID,
+  IMAGES_GROUP_ID,
   LIVE_PAGE_ID,
   OBJECT_STORES_PAGE_ID,
   OVERVIEW_GROUP_ID,
@@ -30,6 +38,10 @@ import {
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import {
+  ClusterImageCatalogsPage as ClusterImageCatalogsPageV1,
+  ImageCatalogsPage as ImageCatalogsPageV1,
+} from "./pages/image-catalogs-page-v1";
 import { LivePage } from "./pages/live-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
 import { OverviewPage } from "./pages/overview-page";
@@ -58,6 +70,12 @@ const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
 ]);
 const AvailableScheduledBackupsPage = createAvailableVersionPage(ScheduledBackupV1.crd.title, [
   { kubeObjectClass: ScheduledBackupV1, PageComponent: ScheduledBackupsPageV1, version: "v1" },
+]);
+const AvailableImageCatalogsPage = createAvailableVersionPage(ImageCatalogV1.crd.title, [
+  { kubeObjectClass: ImageCatalogV1, PageComponent: ImageCatalogsPageV1, version: "v1" },
+]);
+const AvailableClusterImageCatalogsPage = createAvailableVersionPage(ClusterImageCatalogV1.crd.title, [
+  { kubeObjectClass: ClusterImageCatalogV1, PageComponent: ClusterImageCatalogsPageV1, version: "v1" },
 ]);
 const AvailableObjectStoresPage = createAvailableVersionPage(
   ObjectStoreV1.crd.title,
@@ -97,6 +115,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         ),
       },
     },
+    ...[ImageCatalogV1, ClusterImageCatalogV1].map((catalog) => ({
+      kind: catalog.kind,
+      apiVersions: catalog.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <ImageCatalogDetailsV1 {...props} extension={this} />
+        ),
+      },
+    })),
     {
       kind: ObjectStoreV1.kind,
       apiVersions: ObjectStoreV1.crd.apiVersions,
@@ -167,6 +195,18 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         Page: () => <AvailableObjectStoresPage extension={this} />,
       },
     },
+    {
+      id: IMAGE_CATALOGS_PAGE_ID,
+      components: {
+        Page: () => <AvailableImageCatalogsPage extension={this} />,
+      },
+    },
+    {
+      id: CLUSTER_IMAGE_CATALOGS_PAGE_ID,
+      components: {
+        Page: () => <AvailableClusterImageCatalogsPage extension={this} />,
+      },
+    },
   ];
 
   clusterPageMenus = [
@@ -232,6 +272,27 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: BACKUPS_GROUP_ID,
       title: ObjectStoreV1.crd.title,
       target: { pageId: OBJECT_STORES_PAGE_ID },
+      components: {},
+    },
+    {
+      id: IMAGES_GROUP_ID,
+      parentId: ROOT_MENU_ID,
+      title: "Images",
+      target: { pageId: IMAGE_CATALOGS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: IMAGE_CATALOGS_PAGE_ID,
+      parentId: IMAGES_GROUP_ID,
+      title: ImageCatalogV1.crd.title,
+      target: { pageId: IMAGE_CATALOGS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: CLUSTER_IMAGE_CATALOGS_PAGE_ID,
+      parentId: IMAGES_GROUP_ID,
+      title: ClusterImageCatalogV1.crd.title,
+      target: { pageId: CLUSTER_IMAGE_CATALOGS_PAGE_ID },
       components: {},
     },
   ];
