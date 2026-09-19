@@ -63,6 +63,15 @@ async function notificationTexts(window: Page): Promise<string[]> {
 
 const ANSI_ESCAPE_PATTERN = /\u001b\[[0-9;]*m/g;
 const OUTPUT_ERROR_PATTERN = /\[out\]\s*error:/i;
+// The host's kubectl proxy logs at error level every request its client gave
+// up on before the API server answered. That is what closing a drawer does to
+// the reference loads it had just started: an abort on purpose, not a failure.
+// The record spans from its opening line to its closing one.
+const CANCELED_PROXY_RECORD_PATTERN =
+  /[^\n]*\[out\]\s*error:\s*┏[^\n]*Error while proxying request: context canceled[\s\S]*?\[out\]\s*error:\s*┗[^\n]*\n?/g;
+const CANCELED_PROXY_START_PATTERN = /\[out\]\s*error:\s*┏[^\n]*Error while proxying request: context canceled/;
+const HOST_ASSET_FAILURE_PATTERN = /^Failed to load resource: net::/;
+const HOST_ASSET_URL_PATTERN = /^https:\/\/renderer\.freelens\.app(:\d+)?\/build\//;
 
 /**
  * Collects everything that looks like an error while the app runs: renderer
@@ -98,7 +107,12 @@ export function createErrorCollector(): ErrorCollector {
       outputBuffer = outputBuffer.slice(-20_000);
     }
 
-    const normalizedOutput = outputBuffer.replace(ANSI_ESCAPE_PATTERN, "");
+    const normalizedOutput = outputBuffer.replace(ANSI_ESCAPE_PATTERN, "").replace(CANCELED_PROXY_RECORD_PATTERN, "");
+
+    // A canceled-request record that is still arriving: wait for its end.
+    if (CANCELED_PROXY_START_PATTERN.test(normalizedOutput)) {
+      return;
+    }
 
     if (OUTPUT_ERROR_PATTERN.test(normalizedOutput)) {
       outputErrors.push(normalizedOutput.trim());
@@ -117,6 +131,14 @@ export function createErrorCollector(): ErrorCollector {
     const normalizedText = text.replace(ANSI_ESCAPE_PATTERN, "");
 
     console.log(text);
+
+    // The host's own bundle (its fonts, its chunks) is served by the app to
+    // itself; on a loaded machine one of those requests was seen to fail at
+    // startup with a TLS error. It is logged with its URL above, and it is not
+    // something the extension did: it does not count as an extension error.
+    if (HOST_ASSET_FAILURE_PATTERN.test(normalizedText) && HOST_ASSET_URL_PATTERN.test(message.location().url)) {
+      return;
+    }
 
     // Some app logs are emitted as "log" messages, so inspect both the console
     // type and the message content.
