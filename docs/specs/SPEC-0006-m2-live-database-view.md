@@ -306,3 +306,7 @@ module cannot even express them). Polling stops when nobody is looking.
   without `pods/proxy` (the permission panel is covered by unit tests of the
   model and of the client only) and the lived experience against a busy
   database, which needs the demo cluster of SPEC-0008.
+- Merged with #20 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `9a3e8b5`. The manual verification above is part of the M2
+  milestone review: the status moves to Verified when its result is recorded
+  here.
