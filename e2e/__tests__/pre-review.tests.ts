@@ -40,6 +40,9 @@ const HUMAN_JUDGMENT = [
   'Object Stores: do the recovery windows answer "how far back can I go" at a glance, and is an orphan server clear?',
   "Failover Quorums: is the sentence about R, W and N right for somebody who knows the operator, and clear for somebody who does not?",
   "Poolers: do the live figures next to the parameters explain each other (pool size against clients waiting)?",
+  "Databases: does a failed database tell at once which part failed, without opening the YAML?",
+  "Database Roles: are the attributes that override every restriction (Superuser, Bypass RLS) visible enough, and is the inline conflict sentence clear about what to do?",
+  "Publications and Subscriptions: does the replication path read as one flow, and is the failover caveat worded for somebody who has never lost a slot?",
   "Every view, both themes: is this the best possible view for the task?",
 ];
 
@@ -159,6 +162,72 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     await shot(`${theme}-pooler-drawer`);
     await cluster.closeDetails(frame);
 
+    await cluster.openCnpgPage(frame, "cnpg-databases-databases", "Databases");
+    await cluster.expectRow(frame, "e2e-db-inventory", "Applied");
+    await shot(`${theme}-databases`);
+    await table(frame, "e2e-db-bad-extension").click();
+    await frame
+      .locator(".Drawer.KubeObjectDetails", { hasText: "Managed objects" })
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-database-live"]').waitFor({
+      state: "visible",
+      timeout: 90_000,
+    });
+    await frame.locator(".Drawer.KubeObjectDetails .Table").last().scrollIntoViewIfNeeded();
+    await shot(`${theme}-database-drawer`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-databases-databaseroles", "Database Roles");
+    await cluster.expectRow(frame, "e2e-role-reporting", "Applied");
+    await shot(`${theme}-database-roles`);
+    await table(frame, "e2e-role-reporting").click();
+    await frame
+      .locator(".Drawer.KubeObjectDetails", { hasText: "Authentication" })
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await frame
+      .locator(".Drawer.KubeObjectDetails .DrawerItem", { hasText: "Certificate expires" })
+      .scrollIntoViewIfNeeded();
+    await shot(`${theme}-database-role-drawer`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-databases-publications", "Publications");
+    await cluster.expectRow(frame, "e2e-pub-numbers", "Applied");
+    await shot(`${theme}-publications`);
+    await table(frame, "e2e-pub-numbers").click();
+
+    const publicationLive = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-publication-live"]');
+
+    await publicationLive.waitFor({ state: "visible", timeout: 90_000 });
+    await publicationLive.scrollIntoViewIfNeeded();
+    await shot(`${theme}-publication-drawer`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-databases-subscriptions", "Subscriptions");
+    await cluster.expectRow(frame, "e2e-sub-numbers", "Applied");
+    await shot(`${theme}-subscriptions`);
+    await table(frame, "e2e-sub-numbers").click();
+
+    const subscriptionLive = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-subscription-live"]');
+
+    await subscriptionLive.waitFor({ state: "visible", timeout: 90_000 });
+    await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-replication-path"]').scrollIntoViewIfNeeded();
+    await shot(`${theme}-subscription-drawer`);
+    await frame
+      .locator(".Drawer.KubeObjectDetails .DrawerItem", { hasText: "WAL kept for it" })
+      .scrollIntoViewIfNeeded();
+    await shot(`${theme}-subscription-drawer-right-now`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+    await table(frame, "e2e-single").click();
+
+    const inlineRoles = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-inline-roles"]');
+
+    await inlineRoles.waitFor({ state: "visible", timeout: 60_000 });
+    await inlineRoles.scrollIntoViewIfNeeded();
+    await shot(`${theme}-cluster-drawer-declarative`);
+    await cluster.closeDetails(frame);
+
     await cluster.openCnpgPage(frame, "cnpg-images-imagecatalogs", "Image Catalogs");
     await cluster.expectRow(frame, "e2e-images", "In use");
     await shot(`${theme}-image-catalogs`);
@@ -266,6 +335,10 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         ["cnpg-pooling-poolers", "Poolers"],
         ["cnpg-images-imagecatalogs", "Image Catalogs"],
         ["cnpg-clusters-failoverquorums", "Failover Quorums"],
+        ["cnpg-databases-databases", "Databases"],
+        ["cnpg-databases-databaseroles", "Database Roles"],
+        ["cnpg-databases-publications", "Publications"],
+        ["cnpg-databases-subscriptions", "Subscriptions"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });
@@ -371,6 +444,80 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           throw new Error(
             `the drawer shows ${new Date(shown).toISOString()}, the Backup objects say ${new Date(latest).toISOString()}`,
           );
+        }
+      });
+
+      await record("Databases: every condition agrees with what the operator wrote in the status", async () => {
+        const raw = cluster.kubectlE2E(
+          "get",
+          "databases.postgresql.cnpg.io",
+          "--namespace",
+          cluster.E2E_NAMESPACE,
+          "-o",
+          "json",
+        ).stdout;
+        const items = (JSON.parse(raw).items ?? []) as Array<{
+          metadata: { name: string };
+          spec?: { ensure?: string };
+          status?: { applied?: boolean };
+        }>;
+
+        const STATES = ["Applied", "Absent", "Updating", "Failed", "Waiting", "Pending", "Orphan", "Deleting"];
+
+        await cluster.openCnpgPage(frame, "cnpg-databases-databases", "Databases");
+        for (const item of items) {
+          const expected =
+            item.status?.applied === true
+              ? [item.spec?.ensure === "absent" ? "Absent" : "Applied", "Updating"]
+              : item.status?.applied === false
+                ? ["Failed"]
+                : ["Pending", "Waiting", "Orphan"];
+          // The condition is one of the cells of the row, read as text: a cell that says exactly one of the states.
+          const row = frame.locator(".TableRow", { hasText: item.metadata.name }).first();
+
+          await row.waitFor({ state: "visible", timeout: 60_000 });
+
+          const cells = (await row.locator(".TableCell").allInnerTexts()).map((text) => text.trim());
+          const shown =
+            cells.find((text) => STATES.includes(text)) ?? `none of the states (cells: ${cells.join(" | ")})`;
+
+          if (!expected.includes(shown)) {
+            throw new Error(
+              `${item.metadata.name}: the list says ${shown}, the status says one of ${expected.join(", ")}`,
+            );
+          }
+        }
+      });
+
+      await record("Subscription drawer: the slot it shows is the one the publisher's exporter reports", async () => {
+        const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-main", "{.status.currentPrimary}");
+        const metrics = await frame.evaluate(
+          async (url: string) => (await fetch(url)).text(),
+          `${API_KUBE_PREFIX}/api/v1/namespaces/${cluster.E2E_NAMESPACE}/pods/${primary}:9187/proxy/metrics`,
+        );
+        const line = metrics
+          .split("\n")
+          .find(
+            (entry) =>
+              entry.startsWith("cnpg_pg_replication_slots_active{") && entry.includes('slot_name="e2e_numbers_sub"'),
+          );
+
+        if (!line) throw new Error("the exporter of the publisher reports no slot named e2e_numbers_sub");
+
+        const active = line.trim().endsWith(" 1");
+
+        await cluster.openCnpgPage(frame, "cnpg-databases-subscriptions", "Subscriptions");
+        await table(frame, "e2e-sub-numbers").click();
+
+        const badge = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-subscription-slot-active"]');
+
+        await badge.waitFor({ state: "visible", timeout: 90_000 });
+
+        const shown = (await badge.innerText()).trim();
+
+        await cluster.closeDetails(frame);
+        if (shown !== (active ? "True" : "False")) {
+          throw new Error(`the drawer says ${shown}, the exporter says ${active ? "active" : "not active"}`);
         }
       });
     },

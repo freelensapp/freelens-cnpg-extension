@@ -12,7 +12,12 @@ import { maybe } from "../../common/utils";
 import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { DatabaseRole } from "../api/cnpg/database-role-v1";
+import { Database } from "../api/cnpg/database-v1";
+import { Publication } from "../api/cnpg/publication-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
+import { Subscription } from "../api/cnpg/subscription-v1";
+import { DECLARED_KINDS } from "../components/declarative-summary";
 import { withErrorPage } from "../components/error-page";
 import { ClusterTile } from "../components/overview/cluster-tile";
 import { HealthPie, StatTile } from "../components/overview/stat-tile";
@@ -20,8 +25,18 @@ import styles from "../components/overview/tile-grid.module.scss";
 import stylesInline from "../components/overview/tile-grid.module.scss?inline";
 import { summarize } from "../components/overview-model";
 import { useReferenceStores } from "../components/reference-loader";
-import { BACKUPS_PAGE_ID, CLUSTERS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
+import {
+  BACKUPS_PAGE_ID,
+  CLUSTERS_PAGE_ID,
+  DATABASE_ROLES_PAGE_ID,
+  DATABASES_PAGE_ID,
+  extensionPageUrl,
+  liveViewUrl,
+  PUBLICATIONS_PAGE_ID,
+  SUBSCRIPTIONS_PAGE_ID,
+} from "../navigation";
 
+import type { DeclaredKind } from "../components/declarative-summary";
 import type { ClusterTile as ClusterTileModel } from "../components/overview-model";
 
 const { observer } = MobxReact;
@@ -43,6 +58,11 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
     const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
     // Optional: the Barman Cloud plugin may not be installed.
     const objectStoreStore = maybe(() => ObjectStore.getStore<ObjectStore>());
+    // What is declared inside the clusters (SPEC-0013): a failed one needs a human.
+    const databaseStore = maybe(() => Database.getStore<Database>());
+    const roleStore = maybe(() => DatabaseRole.getStore<DatabaseRole>());
+    const publicationStore = maybe(() => Publication.getStore<Publication>());
+    const subscriptionStore = maybe(() => Subscription.getStore<Subscription>());
 
     // The three stores follow the namespace filter like every page; the loader
     // keeps them filled and watched while the Overview is open.
@@ -51,6 +71,10 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
       { label: Backup.crd.plural, store: backupStore },
       { label: ScheduledBackup.crd.plural, store: scheduleStore },
       { label: ObjectStore.crd.plural, store: objectStoreStore },
+      { label: Database.crd.plural, store: databaseStore },
+      { label: DatabaseRole.crd.plural, store: roleStore },
+      { label: Publication.crd.plural, store: publicationStore },
+      { label: Subscription.crd.plural, store: subscriptionStore },
     ]);
 
     const loading = !clusterStore.isLoaded && !clusterStore.failedLoading;
@@ -60,7 +84,21 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
       (scheduleStore?.items ?? []) as ScheduledBackup[],
       new Date(),
       (objectStoreStore?.items ?? []) as ObjectStore[],
+      {
+        databases: databaseStore?.items,
+        roles: roleStore?.items,
+        publications: publicationStore?.items,
+        subscriptions: subscriptionStore?.items,
+      },
     );
+    // The door of the declared objects tile: the list of the first kind that has a failure.
+    const declaredPages: Record<DeclaredKind, string> = {
+      Databases: DATABASES_PAGE_ID,
+      "Database roles": DATABASE_ROLES_PAGE_ID,
+      Publications: PUBLICATIONS_PAGE_ID,
+      Subscriptions: SUBSCRIPTIONS_PAGE_ID,
+    };
+    const failingKind = DECLARED_KINDS.find((kind) => summary.declaredFailedByKind[kind] > 0) ?? "Databases";
 
     const listUrl = (search?: string) => extensionPageUrl(extension.name, CLUSTERS_PAGE_ID, search);
     // The tile links to the host's own details URL of the cluster, the same
@@ -87,7 +125,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
           <h5 className={styles.title}>Overview</h5>
           {loading ? (
             <div className={styles.strip} data-testid="cnpg-overview-skeleton">
-              {[0, 1, 2, 3, 4].map((index) => (
+              {[0, 1, 2, 3, 4, 5].map((index) => (
                 <span key={index} className={styles.skeletonTile} />
               ))}
             </div>
@@ -136,6 +174,24 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                 tooltip="Clusters with a certificate expiring within 30 days or already expired"
                 to={listUrl()}
                 data-testid="cnpg-stat-certificates"
+              />
+              <StatTile
+                label="Declared objects failed"
+                value={summary.declaredFailed}
+                className={summary.declaredFailed > 0 ? "error" : ""}
+                tooltip={
+                  summary.declaredFailed > 0
+                    ? DECLARED_KINDS.filter((kind) => summary.declaredFailedByKind[kind] > 0)
+                        .map((kind) => `${kind}: ${summary.declaredFailedByKind[kind]}`)
+                        .join(", ")
+                    : "Databases, roles, publications and subscriptions PostgreSQL does not have as declared"
+                }
+                to={extensionPageUrl(
+                  extension.name,
+                  declaredPages[failingKind],
+                  summary.declaredFailed > 0 ? "Failed" : undefined,
+                )}
+                data-testid="cnpg-stat-declared"
               />
             </div>
           )}

@@ -98,8 +98,7 @@
 
 .endLine {
   display: flex;
-  // The host link clips its overflow, which moves its baseline: center instead.
-  align-items: center;
+  align-items: baseline;
   gap: 0.35em;
   min-width: 0;
   overflow: hidden;

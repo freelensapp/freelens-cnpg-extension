@@ -6,7 +6,10 @@
 import { describe, expect, it } from "vitest";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { DatabaseRole } from "../api/cnpg/database-role-v1";
+import { Database } from "../api/cnpg/database-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
+import { Subscription } from "../api/cnpg/subscription-v1";
 import { HEALTHY_PHASE } from "./cluster-health";
 import { certificateHorizon, compareTiles, isBackupOverdue, summarize } from "./overview-model";
 
@@ -196,8 +199,41 @@ describe("summarize", () => {
       archivingFailing: 0,
       backupsOverdue: 0,
       certificatesExpiring: 0,
+      declaredFailed: 0,
+      declaredFailedByKind: { Databases: 0, "Database roles": 0, Publications: 0, Subscriptions: 0 },
       tiles: [],
     });
+  });
+
+  it("counts the declared objects that failed, by cluster and by kind (SPEC-0013)", () => {
+    const declared = (kind: string, name: string, clusterName: string, applied: boolean, namespace = "db") =>
+      ({
+        apiVersion: "postgresql.cnpg.io/v1",
+        kind,
+        metadata: { name, namespace, generation: 1 },
+        spec: { cluster: { name: clusterName }, name, owner: "app", dbname: "app" },
+        status: applied ? { applied: true, observedGeneration: 1 } : { applied: false, message: "no" },
+      }) as never;
+    const summary = summarize([cluster("pg-a"), cluster("pg-b")], [], [], NOW, [], {
+      databases: [
+        new Database(declared("Database", "ok", "pg-a", true)),
+        new Database(declared("Database", "bad", "pg-a", false)),
+        new Database(declared("Database", "elsewhere", "pg-a", false, "other")),
+      ],
+      roles: [new DatabaseRole(declared("DatabaseRole", "bad-role", "pg-a", false))],
+      subscriptions: [new Subscription(declared("Subscription", "bad-sub", "pg-b", false))],
+    });
+    expect(summary.declaredFailed).toBe(3);
+    expect(summary.declaredFailedByKind).toEqual({
+      Databases: 1,
+      "Database roles": 1,
+      Publications: 0,
+      Subscriptions: 1,
+    });
+    expect(summary.tiles.map((tile) => [tile.name, tile.declaredFailed])).toEqual([
+      ["pg-a", 2],
+      ["pg-b", 1],
+    ]);
   });
 });
 

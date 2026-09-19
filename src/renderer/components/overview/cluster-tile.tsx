@@ -115,6 +115,15 @@ export function ClusterTile({ tile, detailsUrl, backupsUrl, scheduleUrl, liveUrl
       </span>
       <span className={styles.tileFooter}>
         <span className={certificate.className}>{certificate.text}</span>
+        {tile.declaredFailed > 0 ? (
+          <span
+            className={styles.errorText}
+            title="Declared databases, roles, publications or subscriptions PostgreSQL does not have as declared; the cluster drawer says which"
+            data-testid={`cnpg-overview-declared-${tile.namespace}-${tile.name}`}
+          >
+            {tile.declaredFailed} declared {tile.declaredFailed === 1 ? "object" : "objects"} failed
+          </span>
+        ) : null}
         {liveUrl ? (
           <MaybeLink
             to={liveUrl}

@@ -163,3 +163,6 @@ Reads only, from stores; no network call of its own.
 - M1 milestone review: 2026-09-19, lead maintainer, on the pre-review pass
   screenshots of the views on both themes. Verdict: approved, no blocking
   finding. Status moved to Verified.
+- M4 added a sixth counter to the strip and a line to the tiles: the declared
+  databases, roles, publications and subscriptions that failed (SPEC-0013,
+  notes).

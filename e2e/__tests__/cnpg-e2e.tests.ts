@@ -281,6 +281,21 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(await frame.locator('[data-testid="cnpg-stat-clusters"]').innerText()).toContain("4");
       expect(await frame.locator('[data-testid="cnpg-stat-instances"]').innerText()).toContain("4/6");
       expect(await frame.locator('[data-testid="cnpg-stat-archiving"]').innerText()).toContain("1");
+      // The declared objects PostgreSQL does not have as declared (SPEC-0013): three databases, one role and
+      // one publication on e2e-main, one role and one subscription on e2e-single.
+      // Their stores fill in after the clusters: the figure is read until it settles.
+      expect(
+        await waitUntil(
+          () => frame.locator('[data-testid="cnpg-stat-declared"]').innerText(),
+          (text) => text.includes("7"),
+        ),
+      ).toContain("7");
+      expect(await frame.locator('[data-testid="cnpg-overview-declared-cnpg-e2e-e2e-main"]').innerText()).toBe(
+        "5 declared objects failed",
+      );
+      expect(await frame.locator('[data-testid="cnpg-overview-declared-cnpg-e2e-e2e-single"]').innerText()).toBe(
+        "2 declared objects failed",
+      );
 
       const tiles = frame.locator('[data-testid^="cnpg-overview-tile-"]');
 

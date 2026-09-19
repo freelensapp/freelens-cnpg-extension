@@ -57,7 +57,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | --- | --- | --- |
 | Database list + detail with reconciliation status | [SPEC-0013](../specs/SPEC-0013-m4-databases.md) | Done |
 | DatabaseRole list + detail | [SPEC-0014](../specs/SPEC-0014-m4-database-roles.md) | Done |
-| Publication and Subscription list + detail | [SPEC-0015](../specs/SPEC-0015-m4-publications-and-subscriptions.md) | In PR |
+| Publication and Subscription list + detail | [SPEC-0015](../specs/SPEC-0015-m4-publications-and-subscriptions.md) | Done |
 
 ### M5 - Operations views (ad hoc)
 

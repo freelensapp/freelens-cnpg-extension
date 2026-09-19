@@ -56,7 +56,8 @@ extension follows that filter.
 
 1. **CloudNativePG, Overview**: four tiles ordered by urgency. Click a
    counter, a tile, the backup figure of a tile, its next backup line, its
-   live view door.
+   live view door. The last counter and a line on the tiles say how many
+   declared objects PostgreSQL does not have as declared.
 2. **Clusters, PostgreSQL Clusters**: open `e2e-main`; scroll to "Backups and
    archiving" for the backup history strip; try the psql button of a standby
    in the Instances table.
@@ -72,9 +73,18 @@ extension follows that filter.
    Quorums**: whether a failover could be decided safely; **Pooling,
    Poolers**: open `e2e-main-pooler` and watch "Right now" with the demo
    client going through it.
-6. Row menu of `e2e-main`: **Open psql**. It opens a session as the
+6. **Databases**: `e2e-db-bad-extension` says which managed object failed,
+   `e2e-db-inventory-again` links the object that already manages its
+   database, `e2e-db-inventory` shows its size right now. **Database Roles**:
+   `e2e-role-reporting` for the client certificate, `e2e-role-contractor` for
+   the expired password, `e2e-role-inline-rival` for the conflict with the
+   cluster spec (then open `e2e-single` and look at "Declarative objects").
+   **Publications** and **Subscriptions**: open `e2e-sub-numbers` for the
+   replication path from `e2e-main`, the slot on the publisher and the
+   failover caveat.
+7. Row menu of `e2e-main`: **Open psql**. It opens a session as the
    `postgres` superuser on the primary, under your own kubeconfig.
-7. Switch the theme in the Freelens preferences and look again.
+8. Switch the theme in the Freelens preferences and look again.
 
 For every view the question of the review is the same: is this the best
 possible view for the task?
