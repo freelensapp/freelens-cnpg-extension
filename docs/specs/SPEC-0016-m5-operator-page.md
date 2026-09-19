@@ -142,3 +142,7 @@ port; the client still has no generic request method.
   their views. Covered by unit tests only: several operators, a rollout, an
   operator that is down, a ConfigMap with a watch scope, the narrowed
   discovery, a plugin whose deployment is down.
+- Merged with #46 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request. The manual verification above is part of the M5
+  milestone review: the status moves to Verified when its result is recorded
+  here.
