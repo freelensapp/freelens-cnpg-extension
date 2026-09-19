@@ -1,0 +1,21 @@
+declare const classNames: {
+  readonly table: "table";
+  readonly tableCell: "tableCell";
+  readonly kind: "kind";
+  readonly name: "name";
+  readonly detail: "detail";
+  readonly ensure: "ensure";
+  readonly applied: "applied";
+  readonly message: "message";
+  readonly wide: "wide";
+  readonly mono: "mono";
+  readonly note: "note";
+  readonly list: "list";
+  readonly badges: "badges";
+  readonly path: "path";
+  readonly end: "end";
+  readonly endTitle: "endTitle";
+  readonly endLine: "endLine";
+  readonly arrow: "arrow";
+};
+export = classNames;

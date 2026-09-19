@@ -49,6 +49,10 @@ What is there today, all of it read-only:
 - **Poolers**: every PgBouncer pooler, what it fronts, and in its drawer what
   it is doing right now (clients, servers, clients waiting and for how long),
   read from its pods through the same pod proxy.
+- **Databases**: every database declared for a cluster and whether
+  PostgreSQL has it as declared; when it has not, which part failed and why,
+  down to the single extension or schema, and in its drawer the size and the
+  sessions of the database right now.
 - **Image Catalogs** and **Cluster Image Catalogs**: what each catalog offers
   per major version and which clusters follow it, with the image each cluster
   runs next to the image the catalog offers.

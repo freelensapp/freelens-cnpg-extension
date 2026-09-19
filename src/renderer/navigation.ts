@@ -4,7 +4,7 @@
  */
 
 // Page and menu identifiers of the extension (SPEC-0003 "Sidebar", SPEC-0004
-// "Placement", SPEC-0005 "Sidebar"), shared by the registrations in index.tsx,
+// "Placement", SPEC-0005 "Sidebar", SPEC-0013 "List"), shared by the registrations in index.tsx,
 // the pages that navigate between them and the E2E helpers.
 
 export const ROOT_MENU_ID = "cnpg";
@@ -20,6 +20,8 @@ export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
 export const OBJECT_STORES_PAGE_ID = "cnpg-backups-objectstores";
 export const POOLING_GROUP_ID = "cnpg-pooling";
 export const POOLERS_PAGE_ID = "cnpg-pooling-poolers";
+export const DATABASES_GROUP_ID = "cnpg-databases";
+export const DATABASES_PAGE_ID = "cnpg-databases-databases";
 export const IMAGES_GROUP_ID = "cnpg-images";
 export const IMAGE_CATALOGS_PAGE_ID = "cnpg-images-imagecatalogs";
 export const CLUSTER_IMAGE_CATALOGS_PAGE_ID = "cnpg-images-clusterimagecatalogs";

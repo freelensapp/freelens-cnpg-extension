@@ -102,6 +102,7 @@ export function fixturesReady(): boolean {
     ["scheduledbackups.postgresql.cnpg.io", "e2e-nightly"],
     ["poolers.postgresql.cnpg.io", "e2e-main-pooler"],
     ["objectstores.barmancloud.cnpg.io", "e2e-store"],
+    ["databases.postgresql.cnpg.io", "e2e-db-inventory"],
   ];
 
   return probes.every(([resource, name]) => {

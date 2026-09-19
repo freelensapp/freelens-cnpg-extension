@@ -1,0 +1,48 @@
+@use "../vars" as *;
+
+.page {
+  :global(.TableCell) {
+    &.cluster,
+    &.database,
+    &.owner {
+      flex-grow: 0.8;
+    }
+
+    &.objects {
+      flex-grow: 0.5;
+    }
+
+    &.reclaim {
+      flex-grow: 0.5;
+    }
+
+    &.condition {
+      flex-grow: 0.7;
+    }
+
+    &.status {
+      flex-grow: 1.8;
+    }
+
+    &.age {
+      flex-grow: 0.3;
+    }
+
+    &.cluster a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
+
+.objectsCell {
+  display: inline-flex;
+  align-items: center;
+  gap: calc($unit / 2);
+}
+
+.failed {
+  color: var(--colorError);
+}

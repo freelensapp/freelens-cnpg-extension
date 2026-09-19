@@ -1,6 +1,6 @@
 # SPEC-0013: Databases, list and detail (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M4` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -148,3 +148,18 @@ runs.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M4 at the
   milestone review.
+- Implementation notes: the conflict message of operator 1.30.0 reads
+  `"<name>" is already managed by object "<other>"`, shorter than the one in
+  the upstream documentation; both are recognised, and the drawer finds the
+  rival among the objects, not in the message. "Same target" is shown on both
+  sides of a conflict, the applied one included, so the owner of the database
+  sees that another object is being ignored. An extension without a version
+  reads "default version". The polling loop of the Pooler drawer became the
+  shared `SamplesPoller`; `PrimaryMetricsPoller` asks the current primary of a
+  cluster every 30 seconds and follows a switchover. The host adds its own
+  rows from the printer columns of the CRD above the sections of the drawer.
+- Seen live on the E2E cluster (operator 1.30.0): Applied, Absent, Failed on
+  the owner, Failed on one extension with the reason in its entry, Failed on
+  a conflict, Pending on the hibernated cluster, Orphan; the size of a
+  database from the exporter of the primary. Covered by unit tests only:
+  Updating, Waiting on a replica cluster, Deleting.

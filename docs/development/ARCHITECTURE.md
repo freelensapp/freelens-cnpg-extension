@@ -138,7 +138,8 @@ src/
                              # cron text), backup history, reference loading
   renderer/components/live/  # The live view: pure model, poller, sparkline series,
                              # topology layout and component, tiles; the pooler
-                             # model and poller of the Pooler drawer
+                             # model; the polling loop the drawers share and the
+                             # readings of a database and of a replication slot
   renderer/icons/            # Original SVG icons (never copied)
   common/                    # Code shared between main and renderer
 e2e/                         # kind cluster scripts, fixtures, Playwright suite
