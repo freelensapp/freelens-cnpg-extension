@@ -19,11 +19,6 @@ Kubernetes objects around it, with links to each of them.
   operator expects to read about a cluster) and `kubectl get clusters` (the
   printer columns: Age, Instances, Ready, Status, Primary).
 - `Cluster.status` as recorded in SPEC-0001, R2; labels and annotations, R4.
-- Other CloudNativePG user interfaces show a traffic-light health, the
-  instance roles and a synchronous replication warning; this spec matches
-  that and adds what they lack: backup facts derived from the `Backup`
-  objects, certificate expiry, replication slots and topology in the same
-  drawer. Functional reference only, no code copied.
 
 ## Scope
 

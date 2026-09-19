@@ -22,8 +22,6 @@ without the extension ever touching a credential.
 - Architecture decision A6 of SPEC-0001 and DESIGN.md section 13 (the psql
   terminal is not a write action of the extension: no API call, no
   confirmation dialog, a tooltip that states the superuser connection).
-- Other CloudNativePG user interfaces offer no database shell. Functional
-  reference only.
 
 ## Scope
 
