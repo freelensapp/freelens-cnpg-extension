@@ -1,5 +1,6 @@
 declare const classNames: {
   readonly history: "history";
+  readonly caption: "caption";
   readonly row: "row";
   readonly track: "track";
   readonly band: "band";

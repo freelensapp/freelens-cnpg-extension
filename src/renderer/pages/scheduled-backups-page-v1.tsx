@@ -14,7 +14,7 @@ import { maybe } from "../../common/utils";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { ScheduledBackup, type ScheduledBackupApi } from "../api/cnpg/scheduled-backup-v1";
 import { classifySchedule, humanizeRelative } from "../components/backup-health";
-import { describeSchedule } from "../components/cron-text";
+import { describeSchedule, SCHEDULE_TIME_ZONE_NOTE } from "../components/cron-text";
 import { withErrorPage } from "../components/error-page";
 import { parseGoTime } from "../components/go-time";
 import { MethodLabel } from "../components/method-label";
@@ -130,7 +130,7 @@ export const ScheduledBackupsPage = observer((props: ScheduledBackupsPageProps) 
                 key="schedule"
                 tooltip={
                   words
-                    ? `${words} (the first field is the seconds)`
+                    ? `${words}, ${SCHEDULE_TIME_ZONE_NOTE} (the first field is the seconds)`
                     : "Six fields, the first one is the seconds; descriptors such as @daily are accepted"
                 }
               >

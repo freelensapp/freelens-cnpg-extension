@@ -24,7 +24,7 @@ import {
 import { buildHistory } from "../components/backup-history";
 import { BackupHistoryStrip } from "../components/backup-history-strip";
 import { archivingState } from "../components/cluster-health";
-import { describeSchedule } from "../components/cron-text";
+import { describeSchedule, SCHEDULE_TIME_ZONE_NOTE } from "../components/cron-text";
 import { withErrorPage } from "../components/error-page";
 import { parseGoTime } from "../components/go-time";
 import { MethodLabel } from "../components/method-label";
@@ -136,7 +136,7 @@ export const ScheduledBackupDetails = observer((props: ScheduledBackupDetailsPro
           </WithTooltip>
         </DrawerItem>
         <DrawerItem name="In words" hidden={!words}>
-          {words}
+          {words} ({SCHEDULE_TIME_ZONE_NOTE})
         </DrawerItem>
         <DrawerItem name="Active" labelsOnly>
           <BadgeBoolean value={!suspended} />

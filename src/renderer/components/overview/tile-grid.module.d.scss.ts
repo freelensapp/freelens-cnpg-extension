@@ -18,7 +18,8 @@ declare const classNames: {
   readonly attention: "attention";
   readonly tileHeader: "tileHeader";
   readonly tileNamespace: "tileNamespace";
-  readonly tileName: "tileName";
+  readonly tileMain: "tileMain";
+  readonly tileDoor: "tileDoor";
   readonly tileReason: "tileReason";
   readonly tileFacts: "tileFacts";
   readonly tileFact: "tileFact";

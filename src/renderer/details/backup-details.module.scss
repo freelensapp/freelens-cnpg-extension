@@ -32,7 +32,15 @@
   :global(.TableCell) {
     &.name,
     &.key {
-      flex-grow: 1;
+      flex-grow: 1.6;
+    }
+
+    // A long backup name inside a link ends with an ellipsis, not a hard cut.
+    &.name a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     &.value {
@@ -52,4 +60,6 @@
 .door {
   display: inline-block;
   margin: 0 0 calc($unit * 2);
+  // Outside a DrawerItem the host gives a link no color of its own.
+  color: var(--primary);
 }

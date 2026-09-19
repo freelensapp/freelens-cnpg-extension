@@ -11,7 +11,7 @@
     }
 
     &.schedule {
-      flex-grow: 0.8;
+      flex-grow: 0.9;
     }
 
     &.instance {
@@ -27,15 +27,25 @@
     }
 
     &.condition {
-      flex-grow: 0.75;
+      flex-grow: 1;
     }
 
     &.status {
-      flex-grow: 1.5;
+      flex-grow: 1.3;
     }
 
     &.age {
       flex-grow: 0.3;
+    }
+
+    // Long names inside the link columns end with an ellipsis, not a hard cut.
+    &.cluster a,
+    &.schedule a,
+    &.instance a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }

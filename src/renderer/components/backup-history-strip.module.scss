@@ -5,6 +5,11 @@
   color: var(--textColorPrimary);
 }
 
+.caption {
+  margin-bottom: calc($unit / 2);
+  color: var(--textColorSecondary);
+}
+
 .row {
   display: flex;
   align-items: center;

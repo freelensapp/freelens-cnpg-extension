@@ -156,3 +156,10 @@ Reads only, from stores; no network call of its own.
   green on main at `cd337d3`. The manual verification above is part of the
   M1 milestone review: the status moves to Verified when its result (date,
   tester, verdict) is recorded here.
+- Amended by SPEC-0005 (2026-09-19): the "Backups overdue" stat tile opens the
+  Backups list; on a cluster tile the last backup figure opens the Backups
+  list filtered to that cluster and the next backup line opens the drawer of
+  the schedule behind it. The rest of the tile still opens the cluster
+  drawer: links cannot nest, so the cluster name is the tile's main link,
+  stretched over the tile through a pseudo-element, and the two lines sit
+  above it as links of their own.

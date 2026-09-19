@@ -27,7 +27,7 @@
     }
 
     &.condition {
-      flex-grow: 0.75;
+      flex-grow: 1;
     }
 
     &.status {
@@ -36,6 +36,14 @@
 
     &.age {
       flex-grow: 0.3;
+    }
+
+    // Long names inside the link columns end with an ellipsis, not a hard cut.
+    &.cluster a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   }
 }

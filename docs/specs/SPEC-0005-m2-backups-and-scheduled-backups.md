@@ -310,3 +310,24 @@ anywhere (the row menus keep only the host's entries).
   schedule that has not run yet reports `lastCheckTime` only, with no
   `nextScheduleTime`: the classifier says "Waiting for the first run" and
   the Next run column shows "N/A" until the operator reports a time.
+- The strip's component is `backup-history-strip.tsx`, not
+  `backup-history.tsx`: two modules called `backup-history` with different
+  extensions would shadow each other on import.
+- The host's `MonacoEditor` only accepts `yaml` and `json`, so the full error
+  of a failed backup (when longer than one line) is a preformatted block,
+  selectable and wrapped, instead of an editor.
+- The words of a schedule always carry "in the operator's time zone, normally
+  UTC": the operator evaluates the expression with its own clock while every
+  date in the views is in the user's time zone (on the E2E cluster the
+  schedule `0 30 4 * * *` reports its next run at 04:30 UTC, shown as 06:30
+  at UTC+2).
+- Verified on the E2E cluster: the parent label is there on the generated
+  backups; `nextScheduleTime` appears only after the first run; a suspended
+  schedule created suspended has no status at all (the classifier checks the
+  suspension before the missing check time). On a long-lived local cluster
+  `e2e-nightly` does fire (and catches up after the machine slept), so the
+  E2E cases assert what holds in both situations and never that it has no
+  run.
+- The Instance column of the Backups list and the pod row of the drawer link
+  through the host details URL (`StoreLink`), the mechanism M1 found to work
+  for every kind, rather than through `LinkToPod`.

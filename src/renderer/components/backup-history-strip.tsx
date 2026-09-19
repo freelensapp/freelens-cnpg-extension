@@ -48,6 +48,7 @@ export function BackupHistoryStrip({ history, now, backupUrl, listUrl }: BackupH
   return (
     <div className={styles.history} data-testid="cnpg-backup-history">
       <style>{stylesInline}</style>
+      <div className={styles.caption}>Backup history, last {windowDays} days</div>
       {marks.length === 0 ? (
         <div className={styles.empty}>
           No backups in the last {windowDays} days

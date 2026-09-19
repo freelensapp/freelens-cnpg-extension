@@ -13,6 +13,13 @@
 
 import cronstrue from "cronstrue";
 
+/**
+ * The operator evaluates the schedule with its own clock, which in a container
+ * is UTC unless somebody configured a time zone, while the views show dates in
+ * the user's time zone: the words always travel with this note.
+ */
+export const SCHEDULE_TIME_ZONE_NOTE = "in the operator's time zone, normally UTC";
+
 const DESCRIPTORS: Record<string, string> = {
   "@yearly": "Every year, on 1 January at 00:00",
   "@annually": "Every year, on 1 January at 00:00",
