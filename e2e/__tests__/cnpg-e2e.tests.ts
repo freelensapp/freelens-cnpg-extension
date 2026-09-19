@@ -69,10 +69,17 @@ async function terminalText(frame: Frame): Promise<string> {
   return ((await rows.innerText().catch(() => "")) ?? "").replace(/\s+/g, "");
 }
 
-/** Types a line into the dock terminal: xterm keeps the keyboard in a hidden textarea, so the screen is clicked first. */
+/**
+ * Types a line into the dock terminal: xterm keeps the keyboard in a hidden
+ * textarea, so the screen is clicked first. On a slow runner the first key
+ * after the click was seen to get lost ("elect" for "select"): the focus gets
+ * a moment to settle, the keys go one at a time, and the line starts with a
+ * space, which both psql and the shell ignore, so a lost first key costs nothing.
+ */
 async function typeInTerminal(frame: Frame, line: string): Promise<void> {
   await frame.locator(".xterm-screen:visible").last().click();
-  await frame.page().keyboard.type(line);
+  await frame.waitForTimeout(500);
+  await frame.page().keyboard.type(` ${line}`, { delay: 20 });
   await frame.page().keyboard.press("Enter");
 }
 
