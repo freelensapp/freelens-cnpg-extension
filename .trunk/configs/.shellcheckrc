@@ -1,0 +1,18 @@
+enable=all
+source-path=SCRIPTDIR
+disable=SC2154
+
+# Two of the optional checks that `enable=all` turns on argue with how the E2E
+# scripts are written on purpose, so they are off for the whole repository:
+# - SC2310: `wait_something || die "why"` is the scripts' idiom for a failure
+#   with a sentence; the functions it guards end in a command whose status is
+#   the answer, so nothing is lost with errexit suspended inside them.
+# - SC2312: command substitutions inside a test (`[[ "$(date +%s)" -ge ... ]]`,
+#   `$(kubectl ... jsonpath)` compared to a string) are read for their output;
+#   an empty output is already the failing branch of the comparison.
+disable=SC2310
+disable=SC2312
+
+# If you're having issues with shellcheck following source, disable the errors via:
+# disable=SC1090
+# disable=SC1091

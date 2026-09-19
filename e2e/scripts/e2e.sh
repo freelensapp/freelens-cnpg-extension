@@ -9,7 +9,7 @@ E2E_SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 
 cleanup() {
 	local status=$?
-	if [ "${E2E_KEEP_CLUSTER:-0}" = "1" ]; then
+	if [[ ${E2E_KEEP_CLUSTER:-0} == "1" ]]; then
 		printf '[e2e] E2E_KEEP_CLUSTER=1, leaving the cluster running\n' >&2
 	else
 		"${E2E_SCRIPT_DIR}/cluster-down.sh" || true

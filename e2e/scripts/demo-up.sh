@@ -25,7 +25,7 @@ source "${DEMO_SCRIPTS_DIR}/lib.sh"
 apply_load() {
 	local image
 	image="$(kubectl_e2e get clusters.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" -o 'jsonpath={.status.image}')"
-	[ -n "${image}" ] || die "e2e-main reports no image, so the pgbench load has nothing to run with"
+	[[ -n ${image} ]] || die "e2e-main reports no image, so the pgbench load has nothing to run with"
 
 	log "applying the pgbench load with ${image}"
 	# A finished init job cannot be re-applied with a different template:
