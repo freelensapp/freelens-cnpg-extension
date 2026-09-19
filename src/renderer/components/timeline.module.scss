@@ -1,0 +1,148 @@
+@use "../vars" as *;
+
+// The Timeline page (SPEC-0017). Colors come from the theme tokens and from
+// the host's Badge classes only.
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc($unit / 2) $unit;
+}
+
+.label {
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: calc($unit / 2);
+  padding: calc($unit / 4) $unit;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit * 2);
+  background: var(--contentColor);
+  color: var(--textColorSecondary);
+  font: inherit;
+  font-size: var(--font-size-small, 12px);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--textColorAccent);
+    outline: none;
+  }
+
+  &.chipOn {
+    border-color: var(--textColorAccent);
+    color: var(--textColorPrimary);
+  }
+}
+
+.count {
+  color: var(--textColorTertiary, var(--textColorSecondary));
+}
+
+.note {
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+}
+
+.day {
+  margin: $unit 0 calc($unit / 2);
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.now {
+  display: flex;
+  align-items: center;
+  gap: $unit;
+  margin: $unit 0;
+  color: var(--textColorAccent);
+  font-size: var(--font-size-small, 12px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+
+  &::after {
+    flex: 1;
+    height: 1px;
+    background: var(--textColorAccent);
+    content: "";
+  }
+}
+
+// The axis: a line on the left, one dot per entry in the class of its level.
+.entry {
+  position: relative;
+  display: grid;
+  grid-template-columns: 132px 96px minmax(0, 1fr);
+  align-items: baseline;
+  gap: $unit;
+  margin-left: calc($unit / 2);
+  padding: calc($unit * 0.75) 0 calc($unit * 0.75) calc($unit * 2);
+  border-left: 2px solid var(--borderColor);
+
+  &::before {
+    position: absolute;
+    top: calc($unit * 1.25);
+    left: -6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--colorVague, var(--borderColor));
+    content: "";
+  }
+
+  &.success::before {
+    background: var(--colorSuccess);
+  }
+
+  &.warning::before {
+    background: var(--colorWarning);
+  }
+
+  &.error::before {
+    background: var(--colorError);
+  }
+
+  &.info::before {
+    background: var(--colorInfo);
+  }
+}
+
+.time {
+  color: var(--textColorSecondary);
+  font-family: var(--font-monospace, monospace);
+  font-size: var(--font-size-small, 12px);
+  white-space: nowrap;
+}
+
+.body {
+  min-width: 0;
+  color: var(--textColorPrimary);
+
+  a {
+    color: var(--primary);
+  }
+}
+
+.title {
+  overflow-wrap: anywhere;
+}
+
+.detail {
+  display: block;
+  margin-top: calc($unit / 4);
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+  overflow-wrap: anywhere;
+}

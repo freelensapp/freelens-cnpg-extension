@@ -1555,6 +1555,87 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "puts the events, the backups, the primary and what is scheduled of a cluster on one time axis (SPEC-0017)",
+    async () => {
+      // The door of the Cluster drawer lands on the same cluster.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await tableRowName(frame, "e2e-main").click();
+
+      const door = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-timeline-link"]');
+
+      await door.waitFor({ state: "visible", timeout: 60_000 });
+      await door.click();
+
+      const axis = frame.locator('[data-testid="cnpg-timeline-axis"]');
+
+      await axis.waitFor({ state: "visible", timeout: 60_000 });
+
+      const entries = frame.locator('[data-testid="cnpg-timeline-entry"]');
+      const texts = async () => (await entries.allInnerTexts()).map((text) => text.replace(/\s+/g, " "));
+
+      // The durable facts: the backup with its outcome, the primary, the lease; what is to come above the now marker.
+      const seen = await waitUntil(texts, (all) => all.some((text) => text.includes("Backup e2e-backup-ok completed")));
+
+      expect(seen.some((text) => text.includes("Backup e2e-backup-ok completed"))).toBe(true);
+      expect(seen.some((text) => /e2e-main-\d became primary/.test(text))).toBe(true);
+      expect(seen.some((text) => /acquired the primary lease/.test(text))).toBe(true);
+      // The failed backup belongs to another cluster: it has no place here.
+      expect(seen.some((text) => text.includes("e2e-backup-failed"))).toBe(false);
+
+      const future = frame.locator('[data-testid="cnpg-timeline-entry"][data-future="true"]');
+
+      expect(await future.count()).toBeGreaterThan(0);
+      // The immediate schedule has run once, so it always knows its next time; a schedule that never ran may not yet.
+      expect((await future.allInnerTexts()).join(" ")).toContain("Next backup of e2e-immediate");
+      await frame.locator('[data-testid="cnpg-timeline-now"]').waitFor({ state: "visible", timeout: 30_000 });
+
+      // The event cluster-up.sh writes at every bring-up; the API server forgets events after an hour.
+      if (cluster.kubectlExists("events", "e2e-main-fixture")) {
+        expect(
+          (await waitUntil(texts, (all) => all.some((text) => text.includes("E2EFixture")))).some((text) =>
+            text.includes("E2EFixture: Cluster e2e-main (x3)"),
+          ),
+        ).toBe(true);
+      }
+      await cluster.captureScreenshot(frame, "timeline-dark");
+
+      // The filter on a category hides the rest; "needs attention" keeps warnings and errors only.
+      await frame.locator('[data-testid="cnpg-timeline-category-backup"]').click();
+      expect(
+        new Set(await entries.evaluateAll((items) => items.map((item) => item.getAttribute("data-category")))),
+      ).toEqual(new Set(["Backup"]));
+      await frame.locator('[data-testid="cnpg-timeline-category-backup"]').click();
+      await frame.locator('[data-testid="cnpg-timeline-attention"]').click();
+
+      const levels = new Set(
+        await entries.evaluateAll((items) => items.map((item) => item.getAttribute("data-level"))),
+      );
+
+      expect([...levels].every((level) => level === "warning" || level === "error")).toBe(true);
+
+      // e2e-single archives to a broken store: its failed backup and its archiving condition are errors on its axis.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-single").click();
+      await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-timeline-link"]').click();
+      await axis.waitFor({ state: "visible", timeout: 60_000 });
+
+      const errors = async () =>
+        entries.evaluateAll((items) =>
+          items
+            .filter((item) => item.getAttribute("data-level") === "error")
+            .map((item) => (item.textContent ?? "").replace(/\s+/g, " ")),
+        );
+      const failed = await waitUntil(errors, (all) => all.some((text) => text.includes("e2e-backup-failed")));
+
+      expect(failed.some((text) => text.includes("Backup e2e-backup-failed failed"))).toBe(true);
+      expect(failed.some((text) => text.includes("ContinuousArchiving became False"))).toBe(true);
+      await cluster.captureScreenshot(frame, "timeline-errors-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.

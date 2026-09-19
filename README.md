@@ -49,6 +49,10 @@ What is there today, all of it read-only:
   is, the message, and for PostgreSQL the user, the database and the query,
   with every instance of a cluster on one time axis, followed live. It needs
   the `get` verb on `pods/log`.
+- **Timeline**: what happened to a cluster and in which order: the Kubernetes
+  events of the cluster and of everything it owns next to the facts that
+  outlive them (backups, the change of primary, the conditions) and to what
+  is scheduled to come.
 - **Failover Quorums**: for clusters with quorum based failover, whether a
   failover could be decided safely right now, with the check told in words.
 - **Poolers**: every PgBouncer pooler, what it fronts, and in its drawer what
@@ -116,7 +120,7 @@ creation forms come with the later milestones of the
 
 | Kind | Views |
 | --- | --- |
-| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View |
+| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View, Logs, Timeline |
 | `Backup` | List and drawer with the restore coordinates |
 | `ScheduledBackup` | List and drawer with the schedule in words and the backups it generated |
 | `Pooler` | List and drawer with the live PgBouncer figures |

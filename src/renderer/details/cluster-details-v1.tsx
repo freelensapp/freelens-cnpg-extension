@@ -35,7 +35,7 @@ import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { PsqlButton } from "../menus/open-psql";
-import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl } from "../navigation";
+import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
@@ -268,6 +268,24 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             onClick={(event) => event.stopPropagation()}
           >
             Sessions, replication lag, WAL and databases right now
+          </MaybeLink>
+        </DrawerItem>
+        <DrawerItem name="Logs" hidden={hibernated}>
+          <MaybeLink
+            to={logsUrl(props.extension.name, namespace, name)}
+            data-testid="cnpg-cluster-logs-link"
+            onClick={(event) => event.stopPropagation()}
+          >
+            What PostgreSQL and the instance manager are saying, every instance on one time axis
+          </MaybeLink>
+        </DrawerItem>
+        <DrawerItem name="Timeline">
+          <MaybeLink
+            to={timelineUrl(props.extension.name, namespace, name)}
+            data-testid="cnpg-cluster-timeline-link"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Events, backups, changes of primary and what is scheduled, in order
           </MaybeLink>
         </DrawerItem>
         <DrawerItem name="Condition" labelsOnly>
