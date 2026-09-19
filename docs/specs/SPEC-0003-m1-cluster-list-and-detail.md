@@ -1,6 +1,6 @@
 # SPEC-0003: PostgreSQL Clusters list and detail (read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M1` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-18
@@ -218,3 +218,6 @@ by name through the host's own secret page.
   green on main at `cd337d3`. The manual verification above is part of the
   M1 milestone review: the status moves to Verified when its result (date,
   tester, verdict) is recorded here.
+- M1 milestone review: 2026-09-19, lead maintainer, on the pre-review pass
+  screenshots of the views on both themes. Verdict: approved, no blocking
+  finding. Status moved to Verified.

@@ -1,6 +1,6 @@
 # SPEC-0004: Overview page (ad hoc)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M1` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-18
@@ -163,3 +163,6 @@ Reads only, from stores; no network call of its own.
   drawer: links cannot nest, so the cluster name is the tile's main link,
   stretched over the tile through a pseudo-element, and the two lines sit
   above it as links of their own.
+- M1 milestone review: 2026-09-19, lead maintainer, on the pre-review pass
+  screenshots of the views on both themes. Verdict: approved, no blocking
+  finding. Status moved to Verified.
