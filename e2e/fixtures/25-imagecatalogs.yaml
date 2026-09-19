@@ -1,0 +1,24 @@
+# Image catalogs (SPEC-0010). `e2e-images` is namespaced and is what
+# e2e-hibernated takes its image from; `e2e-cluster-images` is cluster scoped
+# and nobody follows it. Major 18 is the image every fixture cluster already
+# runs, so nothing else is pulled; major 17 is only listed.
+apiVersion: postgresql.cnpg.io/v1
+kind: ImageCatalog
+metadata:
+  name: e2e-images
+  namespace: cnpg-e2e
+spec:
+  images:
+    - major: 17
+      image: ghcr.io/cloudnative-pg/postgresql:17.6-system-trixie
+    - major: 18
+      image: ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: ClusterImageCatalog
+metadata:
+  name: e2e-cluster-images
+spec:
+  images:
+    - major: 18
+      image: ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie

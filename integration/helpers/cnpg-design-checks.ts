@@ -31,18 +31,26 @@ export async function listHeaders(frame: Frame): Promise<string[]> {
   );
 }
 
-/** DESIGN.md section 1: `Name | Namespace | <domain columns> | Condition | Status | Age`. */
-export async function expectColumnGrammar(frame: Frame, page: string): Promise<void> {
+/**
+ * DESIGN.md section 1: `Name | Namespace | <domain columns> | Condition | Status | Age`.
+ * A cluster scoped kind has no Namespace column, as in the host's own lists.
+ */
+export async function expectColumnGrammar(
+  frame: Frame,
+  page: string,
+  { namespaced = true }: { namespaced?: boolean } = {},
+): Promise<void> {
   const headers = await listHeaders(frame);
   const tail = headers.slice(-3);
+  const headOk = headers[0] === "Name" && (namespaced ? headers[1] === "Namespace" : headers[1] !== "Namespace");
 
-  if (headers[0] !== "Name" || headers[1] !== "Namespace" || tail.join("|") !== "Condition|Status|Age") {
+  if (!headOk || tail.join("|") !== "Condition|Status|Age") {
     throw new Error(
-      `${page}: the columns should read Name, Namespace, ..., Condition, Status, Age; got ${headers.join(", ")}`,
+      `${page}: the columns should read Name, ${namespaced ? "Namespace, " : ""}..., Condition, Status, Age; got ${headers.join(", ")}`,
     );
   }
 
-  if (headers.length < 6) {
+  if (headers.length < (namespaced ? 6 : 5)) {
     throw new Error(`${page}: a list without domain columns is a kubectl get, got ${headers.join(", ")}`);
   }
 }

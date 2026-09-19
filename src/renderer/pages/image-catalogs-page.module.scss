@@ -1,0 +1,30 @@
+@use "../vars" as *;
+
+.page {
+  :global(.TableCell) {
+    &.majors {
+      flex-grow: 0.6;
+    }
+
+    &.latest {
+      flex-grow: 1.1;
+    }
+
+    &.images,
+    &.clusters {
+      flex-grow: 0.45;
+    }
+
+    &.condition {
+      flex-grow: 0.9;
+    }
+
+    &.status {
+      flex-grow: 1.6;
+    }
+
+    &.age {
+      flex-grow: 0.3;
+    }
+  }
+}

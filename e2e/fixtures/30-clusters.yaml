@@ -3,8 +3,9 @@
 #   plaintext metrics; the healthy, replicated reference.
 # - e2e-single: one instance, metrics over TLS, archiving to the broken store,
 #   so that WAL archiving fails and the failed backup has a home.
-# - e2e-hibernated: one instance, hibernated by cluster-up.sh after it is
-#   healthy (annotation cnpg.io/hibernation=on), so no pod remains.
+# - e2e-hibernated: one instance, its image taken from the e2e-images catalog
+#   (SPEC-0010), hibernated by cluster-up.sh after it is healthy (annotation
+#   cnpg.io/hibernation=on), so no pod remains.
 # - e2e-fenced: one instance, fenced by cluster-up.sh after it is healthy
 #   (annotation cnpg.io/fencedInstances), so the instance is down on purpose.
 apiVersion: postgresql.cnpg.io/v1
@@ -55,6 +56,11 @@ metadata:
   namespace: cnpg-e2e
 spec:
   instances: 1
+  imageCatalogRef:
+    apiGroup: postgresql.cnpg.io
+    kind: ImageCatalog
+    name: e2e-images
+    major: 18
   storage:
     size: 1Gi
   resources:
