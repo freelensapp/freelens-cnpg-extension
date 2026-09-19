@@ -54,7 +54,7 @@ install_cert_manager() {
 	deadline=$(($(date +%s) + 180))
 	until printf 'apiVersion: cert-manager.io/v1\nkind: Issuer\nmetadata:\n  name: e2e-probe\n  namespace: default\nspec:\n  selfSigned: {}\n' |
 		kubectl_e2e apply --dry-run=server -f - >/dev/null 2>&1; do
-		[ "$(date +%s)" -ge "${deadline}" ] && die "the cert-manager webhook never answered"
+		[[ "$(date +%s)" -ge ${deadline} ]] && die "the cert-manager webhook never answered"
 		sleep 5
 	done
 	log "cert-manager ready"
@@ -125,8 +125,10 @@ apply_second_phase() {
 	while :; do
 		phases="$(kubectl_e2e get backups.postgresql.cnpg.io --namespace "${E2E_NAMESPACE}" \
 			-l cnpg.io/scheduled-backup=e2e-immediate -o 'jsonpath={.items[*].status.phase}' 2>/dev/null)"
-		case " ${phases} " in *" completed "*) break ;; esac
-		[ "$(date +%s)" -ge "${deadline}" ] && die "no completed backup from e2e-immediate (phases: ${phases:-none})"
+		if [[ " ${phases} " == *" completed "* ]]; then
+			break
+		fi
+		[[ "$(date +%s)" -ge ${deadline} ]] && die "no completed backup from e2e-immediate (phases: ${phases:-none})"
 		sleep 5
 	done
 
@@ -144,8 +146,8 @@ hibernate_and_fence() {
 	deadline=$(($(date +%s) + 300))
 	while :; do
 		pods="$(kubectl_e2e get pods --namespace "${E2E_NAMESPACE}" -l cnpg.io/cluster=e2e-hibernated --no-headers 2>/dev/null | wc -l | tr -d ' ')"
-		[ "${pods}" = "0" ] && break
-		[ "$(date +%s)" -ge "${deadline}" ] && die "e2e-hibernated still has ${pods} pod(s) after hibernation"
+		[[ ${pods} == "0" ]] && break
+		[[ "$(date +%s)" -ge ${deadline} ]] && die "e2e-hibernated still has ${pods} pod(s) after hibernation"
 		sleep 5
 	done
 
@@ -171,13 +173,13 @@ wait_failover_quorum() {
 		while :; do
 			names="$(kubectl_e2e get failoverquorums.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" \
 				-o 'jsonpath={.status.standbyNames}' 2>/dev/null || true)"
-			if [ -n "${names}" ] && [ "${names}" != "[]" ]; then
+			if [[ -n ${names} ]] && [[ ${names} != "[]" ]]; then
 				return
 			fi
-			[ "$(date +%s)" -ge "${deadline}" ] && break
+			[[ "$(date +%s)" -ge ${deadline} ]] && break
 			sleep 5
 		done
-		[ "${attempt}" = "2" ] && die "the FailoverQuorum of e2e-main was never written"
+		[[ ${attempt} == "2" ]] && die "the FailoverQuorum of e2e-main was never written"
 		primary="$(kubectl_e2e get clusters.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" -o 'jsonpath={.status.currentPrimary}')"
 		log "the quorum is still empty: reloading the configuration of ${primary} once"
 		kubectl_e2e exec --namespace "${E2E_NAMESPACE}" "${primary}" -c postgres -- \
@@ -189,7 +191,7 @@ verify_fixtures() {
 	log "verifying the fixture states"
 	local phase
 	phase="$(kubectl_e2e get clusters.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" -o 'jsonpath={.status.phase}')"
-	[ "${phase}" = "${E2E_HEALTHY_PHASE}" ] || die "e2e-main is not healthy: ${phase}"
+	[[ ${phase} == "${E2E_HEALTHY_PHASE}" ]] || die "e2e-main is not healthy: ${phase}"
 	# The broken store must make the archiving of e2e-single fail, which is the
 	# state the WAL archiving views distinguish.
 	wait_for_jsonpath "${E2E_NAMESPACE}" clusters.postgresql.cnpg.io e2e-single \

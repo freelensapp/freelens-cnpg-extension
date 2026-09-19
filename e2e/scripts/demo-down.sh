@@ -21,7 +21,7 @@ esac
 source "${DEMO_SCRIPTS_DIR}/lib.sh"
 
 main() {
-	if [ "${E2E_CLUSTER_NAME}" = "cnpg-e2e" ]; then
+	if [[ ${E2E_CLUSTER_NAME} == "cnpg-e2e" ]]; then
 		log "the demo was pointed at the E2E cluster: removing the pgbench load only"
 		kubectl_e2e delete -f "${E2E_FIXTURES_DIR}/demo/70-pgbench.yaml" --ignore-not-found >/dev/null 2>&1 || true
 		return
