@@ -1,0 +1,204 @@
+# Declarative databases and roles (SPEC-0013, SPEC-0014), applied by
+# cluster-up.sh after the hibernation of e2e-hibernated, so that the object on
+# that cluster finds no primary to apply it. One object per state the views
+# tell apart:
+#
+# - e2e-db-inventory: applied, with one extension and one schema.
+# - e2e-db-absent: a database declared absent, applied.
+# - e2e-db-no-owner: fails, its owner is not a role of the cluster.
+# - e2e-db-bad-extension: fails on one managed object, which carries the reason.
+# - e2e-db-inventory-again: fails, e2e-db-inventory already manages the database.
+# - e2e-db-hibernated: on the hibernated cluster, nothing applies it.
+# - e2e-db-orphan: its cluster is not there.
+# - e2e-role-reporting: applied, password from a Secret, a membership, a client
+#   certificate.
+# - e2e-role-contractor: applied, with a password that expired.
+# - e2e-role-batch: fails, member of a role that does not exist.
+# - e2e-role-inline-rival: fails, e2e-single declares the same role inline.
+# - e2e-main-app: adopts the application role of e2e-main and lets it replicate,
+#   which the subscription of 75-logical-replication.yaml needs.
+#
+# The passwords below are fixtures of a disposable cluster, not secrets.
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-inventory
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: inventory
+  owner: app
+  connectionLimit: 20
+  extensions:
+    - name: pgcrypto
+  schemas:
+    - name: stock
+      owner: app
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-absent
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: legacy
+  owner: app
+  ensure: absent
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-no-owner
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: orders
+  owner: e2e_nobody
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-bad-extension
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: analytics
+  owner: app
+  databaseReclaimPolicy: delete
+  extensions:
+    - name: e2e_no_such_extension
+  schemas:
+    - name: reports
+      owner: app
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-inventory-again
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: inventory
+  owner: app
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-hibernated
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-hibernated
+  name: archive
+  owner: app
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Database
+metadata:
+  name: e2e-db-orphan
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-gone
+  name: lost
+  owner: app
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-role-reporting-password
+  namespace: cnpg-e2e
+  labels:
+    cnpg.io/reload: "true"
+type: kubernetes.io/basic-auth
+stringData:
+  username: reporting
+  password: e2e-fixture-not-a-secret
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-role-contractor-password
+  namespace: cnpg-e2e
+  labels:
+    cnpg.io/reload: "true"
+type: kubernetes.io/basic-auth
+stringData:
+  username: contractor
+  password: e2e-fixture-not-a-secret
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: e2e-role-reporting
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: reporting
+  comment: Read-only reporting
+  login: true
+  connectionLimit: 5
+  inRoles:
+    - pg_monitor
+  passwordSecret:
+    name: e2e-role-reporting-password
+  validUntil: "2035-01-01T00:00:00Z"
+  clientCertificate:
+    enabled: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: e2e-role-contractor
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: contractor
+  login: true
+  createdb: true
+  passwordSecret:
+    name: e2e-role-contractor-password
+  validUntil: "2025-01-01T00:00:00Z"
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: e2e-role-batch
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: batch
+  inRoles:
+    - e2e_no_such_group
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: e2e-role-inline-rival
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-single
+  name: e2e_inline
+  login: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: DatabaseRole
+metadata:
+  name: e2e-main-app
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  name: app
+  login: true
+  replication: true

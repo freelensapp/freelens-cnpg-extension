@@ -1,0 +1,83 @@
+# Logical replication from e2e-main to e2e-single (SPEC-0015). cluster-up.sh
+# creates the table e2e_numbers in the app database of both clusters first:
+# logical replication does not carry the schema.
+#
+# - e2e-pub-numbers: one table with its columns, applied; e2e-sub-numbers
+#   consumes it.
+# - e2e-pub-all: every table, applied, nobody subscribes to it.
+# - e2e-pub-missing-table: fails, the table is not there.
+# - e2e-sub-numbers: applied, its slot on e2e-main is active.
+# - e2e-sub-no-publisher: fails, e2e-single declares no such external cluster.
+apiVersion: postgresql.cnpg.io/v1
+kind: Publication
+metadata:
+  name: e2e-pub-numbers
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  dbname: app
+  name: e2e_numbers_pub
+  target:
+    objects:
+      - table:
+          schema: public
+          name: e2e_numbers
+          columns:
+            - i
+            - m
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Publication
+metadata:
+  name: e2e-pub-all
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  dbname: app
+  name: e2e_all_pub
+  target:
+    allTables: true
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Publication
+metadata:
+  name: e2e-pub-missing-table
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-main
+  dbname: app
+  name: e2e_missing_pub
+  publicationReclaimPolicy: delete
+  target:
+    objects:
+      - table:
+          name: e2e_no_such_table
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Subscription
+metadata:
+  name: e2e-sub-numbers
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-single
+  dbname: app
+  name: e2e_numbers_sub
+  externalClusterName: e2e-main
+  publicationName: e2e_numbers_pub
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Subscription
+metadata:
+  name: e2e-sub-no-publisher
+  namespace: cnpg-e2e
+spec:
+  cluster:
+    name: e2e-single
+  dbname: app
+  name: e2e_lost_sub
+  externalClusterName: e2e-nowhere
+  publicationName: e2e_numbers_pub

@@ -159,6 +159,56 @@ hibernate_and_fence() {
 	wait_for_jsonpath "${E2E_NAMESPACE}" pod e2e-fenced-1 '{.status.conditions[?(@.type=="Ready")].status}' False 300
 }
 
+apply_declarative() {
+	# The declarative databases, roles, publications and subscriptions
+	# (SPEC-0013 to SPEC-0015). They come after the hibernation on purpose: the
+	# database declared on e2e-hibernated must find no primary to apply it.
+	# Logical replication does not carry the schema, so the replicated table is
+	# created on both sides first, with fixed statements.
+	local name primary
+	for name in e2e-main e2e-single; do
+		primary="$(kubectl_e2e get clusters.postgresql.cnpg.io "${name}" --namespace "${E2E_NAMESPACE}" -o 'jsonpath={.status.currentPrimary}')"
+		log "creating the replicated table in the app database of ${name} (${primary})"
+		kubectl_e2e exec --namespace "${E2E_NAMESPACE}" "${primary}" -c postgres -- \
+			psql -U postgres -d app -v ON_ERROR_STOP=1 -Atc \
+			'SET client_min_messages = warning; CREATE TABLE IF NOT EXISTS e2e_numbers (i integer PRIMARY KEY, m integer); ALTER TABLE e2e_numbers OWNER TO app;' >/dev/null
+	done
+	primary="$(kubectl_e2e get clusters.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" -o 'jsonpath={.status.currentPrimary}')"
+	kubectl_e2e exec --namespace "${E2E_NAMESPACE}" "${primary}" -c postgres -- \
+		psql -U postgres -d app -v ON_ERROR_STOP=1 -Atc \
+		'INSERT INTO e2e_numbers (i, m) SELECT g, g * 2 FROM generate_series(1, 1000) g ON CONFLICT DO NOTHING;' >/dev/null
+
+	log "applying the databases, the roles, the publications and the subscriptions"
+	kubectl_e2e apply -f "${E2E_FIXTURES_DIR}"/70-databases.yaml \
+		-f "${E2E_FIXTURES_DIR}"/75-logical-replication.yaml >/dev/null
+
+	log "waiting for the declarative objects to be applied or to fail as the fixtures intend"
+	local kind object expected
+	while read -r kind object expected; do
+		wait_for_jsonpath "${E2E_NAMESPACE}" "${kind}.postgresql.cnpg.io" "${object}" '{.status.applied}' "${expected}" 300
+	done <<-'STATES'
+		databases e2e-db-inventory true
+		databases e2e-db-absent true
+		databases e2e-db-no-owner false
+		databases e2e-db-bad-extension false
+		databases e2e-db-inventory-again false
+		databaseroles e2e-main-app true
+		databaseroles e2e-role-reporting true
+		databaseroles e2e-role-contractor true
+		databaseroles e2e-role-batch false
+		databaseroles e2e-role-inline-rival false
+		publications e2e-pub-numbers true
+		publications e2e-pub-all true
+		publications e2e-pub-missing-table false
+		subscriptions e2e-sub-numbers true
+		subscriptions e2e-sub-no-publisher false
+	STATES
+	# The client certificate of the reporting role is issued by the operator a
+	# moment after the role is applied.
+	wait_for_nonempty_jsonpath "${E2E_NAMESPACE}" databaseroles.postgresql.cnpg.io e2e-role-reporting \
+		'{.status.clientCertificate.expiration}' 300
+}
+
 wait_failover_quorum() {
 	# e2e-main runs with the failover quorum on (SPEC-0011): its FailoverQuorum
 	# object is written by the primary once the synchronous configuration is
@@ -212,6 +262,7 @@ main() {
 	wait_failover_quorum
 	apply_second_phase
 	hibernate_and_fence
+	apply_declarative
 	verify_fixtures
 	log "cluster ready: kubeconfig=${E2E_KUBECONFIG} context=${E2E_KUBE_CONTEXT}"
 }

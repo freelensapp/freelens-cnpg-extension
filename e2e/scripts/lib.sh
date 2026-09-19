@@ -111,6 +111,20 @@ wait_for_jsonpath() {
 	done
 }
 
+wait_for_nonempty_jsonpath() {
+	local namespace="$1" resource="$2" name="$3" json_path="$4" timeout="$5"
+	local deadline actual
+	deadline=$(($(date +%s) + timeout))
+	while :; do
+		actual="$(kubectl_e2e get "${resource}" "${name}" --namespace "${namespace}" \
+			--output "jsonpath=${json_path}" 2>/dev/null || true)"
+		[[ -n ${actual} ]] && return 0
+		[[ "$(date +%s)" -ge ${deadline} ]] &&
+			die "timeout waiting for ${resource}/${name} ${json_path} to have a value"
+		sleep 5
+	done
+}
+
 wait_rollout() {
 	local namespace="$1"
 	shift

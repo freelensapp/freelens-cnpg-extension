@@ -3,7 +3,9 @@
 #   failover quorum on (SPEC-0011), WAL archiving and backups through the
 #   plugin, plaintext metrics; the healthy, replicated reference.
 # - e2e-single: one instance, metrics over TLS, archiving to the broken store,
-#   so that WAL archiving fails and the failed backup has a home.
+#   so that WAL archiving fails and the failed backup has a home. It declares
+#   two roles inline (SPEC-0014), one of which cannot be reconciled, and
+#   e2e-main as an external cluster for the subscription of SPEC-0015.
 # - e2e-hibernated: one instance, its image taken from the e2e-images catalog
 #   (SPEC-0010), hibernated by cluster-up.sh after it is healthy (annotation
 #   cnpg.io/hibernation=on), so no pod remains.
@@ -49,6 +51,24 @@ spec:
   monitoring:
     tls:
       enabled: true
+  managed:
+    roles:
+      - name: e2e_inline
+        ensure: present
+        comment: Declared in the cluster spec
+      - name: e2e_inline_stuck
+        ensure: present
+        inRoles:
+          - e2e_no_such_group
+  externalClusters:
+    - name: e2e-main
+      connectionParameters:
+        host: e2e-main-rw.cnpg-e2e.svc
+        user: app
+        dbname: app
+      password:
+        name: e2e-main-app
+        key: password
   plugins:
     - name: barman-cloud.cloudnative-pg.io
       isWALArchiver: true
