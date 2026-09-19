@@ -54,9 +54,10 @@ export function humanizeDuration(milliseconds: number): string {
   return `${seconds}s`;
 }
 
-/** "in 5h 3m" for a future time, "5m ago" for a past one. */
+/** "in 5h 3m" for a future time, "5m ago" for a past one, "just now" within a second. */
 export function humanizeRelative(target: Date, now: Date): string {
   const delta = target.getTime() - now.getTime();
+  if (Math.abs(delta) < 1000) return "just now";
   return delta >= 0 ? `in ${humanizeDuration(delta)}` : `${humanizeDuration(-delta)} ago`;
 }
 

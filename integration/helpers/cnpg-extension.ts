@@ -208,12 +208,37 @@ export async function setColorTheme(app: ElectronApplication, window: Page, them
   await window.waitForSelector("[data-preference-tab-link-test=app]", { timeout: ELEMENT_TIMEOUT });
   await window.click("[data-preference-tab-link-test=app]");
 
-  const themeInput = await window.waitForSelector("#theme-input", { timeout: ELEMENT_TIMEOUT });
+  // The options menu of the host select re-renders while the page settles, and
+  // under load a click can wait on an option that keeps being replaced. The
+  // pick is therefore retried with a short timeout, reopening the menu each
+  // time, and the preferences are closed whatever happens: a theme that could
+  // not be set must not leave the preferences open over every case that follows.
+  let lastError: unknown;
 
-  await themeInput.click();
-  await window.click(`.Select__option >> text="${theme}"`, { timeout: ELEMENT_TIMEOUT });
+  try {
+    for (let attempt = 1; attempt <= 4; attempt += 1) {
+      try {
+        const themeInput = await window.waitForSelector("#theme-input", { timeout: ELEMENT_TIMEOUT });
 
-  await window.click('[data-testid="close-preferences"]', { timeout: ELEMENT_TIMEOUT });
+        await themeInput.click();
+        await window.click(`.Select__option >> text="${theme}"`, { timeout: 10_000 });
+        lastError = undefined;
+        break;
+      } catch (error) {
+        lastError = error;
+        // Clicking the tab we are already on closes the menu by blur; Escape
+        // is not used because it closes the preferences themselves.
+        await window.click("[data-preference-tab-link-test=app]").catch(() => undefined);
+        await window.waitForTimeout(1000);
+      }
+    }
+  } finally {
+    await window.click('[data-testid="close-preferences"]', { timeout: ELEMENT_TIMEOUT });
+  }
+
+  if (lastError) {
+    throw lastError;
+  }
 }
 
 // Freelens's own install pipeline gives up waiting for the extension loader to

@@ -124,14 +124,19 @@ src/
   renderer/api/cnpg/         # One file per CRD: KubeObject + KubeApi +
                              # KubeObjectStore, typed Spec/Status interfaces
                              # written from the CRD schemas
-  renderer/api/instance/     # Instance manager and metrics contracts:
-                             # PostgresqlStatus type, metrics reader, pod proxy client
-  renderer/pages/            # List pages and the ad hoc pages (overview)
+  renderer/api/instance/     # Instance manager and metrics contracts: the
+                             # PostgresqlStatus type and guard, the Prometheus
+                             # text reader, the pod proxy client (GET on the two
+                             # read endpoints only, typed failures)
+  renderer/pages/            # List pages and the ad hoc pages (overview, live view)
   renderer/details/          # Detail panels (kubeObjectDetailItems)
-  renderer/menus/            # Actions (kubeObjectMenuItems): psql terminal first
+  renderer/menus/            # kubeObjectMenuItems: navigation (live view) and,
+                             # from M6, the actions; the psql terminal comes next
   renderer/components/       # Shared pure modules and components: health model,
-                             # status classifiers, parsers (Go time, LSN, intervals),
-                             # topology and timeline layouts, reference loading
+                             # status classifiers, parsers (Go time, LSN, intervals,
+                             # cron text), backup history, reference loading
+  renderer/components/live/  # The live view: pure model, poller, sparkline series,
+                             # topology layout and component, tiles
   renderer/icons/            # Original SVG icons (never copied)
   common/                    # Code shared between main and renderer
 e2e/                         # kind cluster scripts, fixtures, Playwright suite

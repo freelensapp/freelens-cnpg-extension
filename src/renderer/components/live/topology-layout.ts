@@ -25,6 +25,8 @@ export interface TopologyLine {
   /** Vertical start (the middle of the primary) and end (the middle of the row), in viewBox units. */
   y1: number;
   y2: number;
+  /** Where the line crosses the middle of the box: the label of the edge sits there. */
+  labelY: number;
   level: Level;
   streaming: boolean;
 }
@@ -67,6 +69,7 @@ export function layoutTopology(
                 standby: row.instance.name,
                 y1: height / 2,
                 y2: index * ROW_UNITS + ROW_UNITS / 2,
+                labelY: (height / 2 + index * ROW_UNITS + ROW_UNITS / 2) / 2,
                 level: row.edge.level,
                 streaming: row.edge.streaming,
               },

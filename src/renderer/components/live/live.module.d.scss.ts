@@ -19,10 +19,11 @@ declare const classNames: {
   readonly banner: "banner";
   readonly topologyGrid: "topologyGrid";
   readonly primaryColumn: "primaryColumn";
+  readonly linesCell: "linesCell";
   readonly lines: "lines";
   readonly line: "line";
   readonly lineBroken: "lineBroken";
-  readonly edgeCell: "edgeCell";
+  readonly edgeAnchor: "edgeAnchor";
   readonly rowCard: "rowCard";
   readonly edgeLabel: "edgeLabel";
   readonly edgeState: "edgeState";
@@ -51,6 +52,7 @@ declare const classNames: {
   readonly legendDot: "legendDot";
   readonly figures: "figures";
   readonly figure: "figure";
+  readonly figureWide: "figureWide";
   readonly figureLabel: "figureLabel";
   readonly figureValue: "figureValue";
   readonly topLists: "topLists";
@@ -60,6 +62,7 @@ declare const classNames: {
   readonly nested: "nested";
   readonly tableCell: "tableCell";
   readonly colName: "colName";
+  readonly colWide: "colWide";
   readonly colBar: "colBar";
   readonly colNumber: "colNumber";
   readonly colSmall: "colSmall";

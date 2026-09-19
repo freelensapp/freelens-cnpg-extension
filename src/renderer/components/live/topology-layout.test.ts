@@ -27,8 +27,8 @@ describe("layoutTopology", () => {
     expect(layout.rows.map((row) => row.instance.name)).toEqual(["pg-3", "pg-2"]);
     expect(layout.height).toBe(200);
     expect(layout.lines).toEqual([
-      { standby: "pg-3", y1: 100, y2: 50, level: "warning", streaming: true },
-      { standby: "pg-2", y1: 100, y2: 150, level: "ok", streaming: true },
+      { standby: "pg-3", y1: 100, y2: 50, labelY: 75, level: "warning", streaming: true },
+      { standby: "pg-2", y1: 100, y2: 150, labelY: 125, level: "ok", streaming: true },
     ]);
   });
 
@@ -48,7 +48,7 @@ describe("layoutTopology", () => {
       ["pg-3", false],
       ["pg-4", false],
     ]);
-    expect(layout.lines).toEqual([{ standby: "pg-2", y1: 150, y2: 50, level: "error", streaming: false }]);
+    expect(layout.lines).toEqual([{ standby: "pg-2", y1: 150, y2: 50, labelY: 100, level: "error", streaming: false }]);
   });
 
   it("draws no line without a primary, and a single instance alone", () => {

@@ -41,6 +41,8 @@ export interface ClusterTileProps {
   backupsUrl?: string;
   /** The host details URL of the schedule behind the next backup line. */
   scheduleUrl?: string;
+  /** The Live View of the cluster (SPEC-0006); absent for a hibernated cluster. */
+  liveUrl?: string;
 }
 
 const stop = (event: { stopPropagation(): void }) => event.stopPropagation();
@@ -49,7 +51,7 @@ const stop = (event: { stopPropagation(): void }) => event.stopPropagation();
 // doors of their own (the backups of the cluster, the next schedule). Links
 // cannot nest, so the main link stretches over the tile through its ::after
 // and the inner doors sit above it (tile-grid.module.scss, ".tileMain").
-export function ClusterTile({ tile, detailsUrl, backupsUrl, scheduleUrl }: ClusterTileProps) {
+export function ClusterTile({ tile, detailsUrl, backupsUrl, scheduleUrl, liveUrl }: ClusterTileProps) {
   const certificate = certificateSentence(tile);
   const lastBackup = tile.backups.lastSuccessful;
   const attention = tile.health.state === "Degraded" || tile.health.state === "Failed";
@@ -112,6 +114,17 @@ export function ClusterTile({ tile, detailsUrl, backupsUrl, scheduleUrl }: Clust
       </span>
       <span className={styles.tileFooter}>
         <span className={certificate.className}>{certificate.text}</span>
+        {liveUrl ? (
+          <MaybeLink
+            to={liveUrl}
+            className={styles.tileDoor}
+            title="Sessions, replication lag, WAL and databases right now"
+            data-testid={`cnpg-overview-door-live-${tile.namespace}-${tile.name}`}
+            onClick={stop}
+          >
+            live view
+          </MaybeLink>
+        ) : null}
         {tile.nextScheduledBackup ? (
           <MaybeLink
             to={scheduleUrl}

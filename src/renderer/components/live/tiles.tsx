@@ -57,14 +57,17 @@ function Figure({
   children,
   level = "ok",
   title,
+  wide = false,
 }: {
   label: string;
   children: ReactNode;
   level?: Level;
   title?: string;
+  /** Spans the two columns: for values that do not fit half a tile, such as a WAL file name. */
+  wide?: boolean;
 }) {
   return (
-    <div className={styles.figure} title={title}>
+    <div className={[styles.figure, wide ? styles.figureWide : ""].join(" ").trim()} title={title}>
       <span className={styles.figureLabel}>{label}</span>
       <span className={[styles.figureValue, LEVEL_CLASS[level]].join(" ").trim()}>{children}</span>
     </div>
@@ -95,7 +98,13 @@ export function SessionsTile({ view, series, metricsPending, metricsFailure }: L
       title="Sessions"
       testId="cnpg-live-sessions"
       loading={metricsPending}
-      placeholder={sessions ? undefined : (metricsFailure ?? "Waiting for the metrics of the instances")}
+      placeholder={
+        !sessions
+          ? (metricsFailure ?? "Waiting for the metrics of the instances")
+          : !view.primary && sessions.total === 0
+            ? "PostgreSQL does not answer on any instance, so there is no session to count"
+            : undefined
+      }
     >
       {sessions ? (
         <>
@@ -104,8 +113,8 @@ export function SessionsTile({ view, series, metricsPending, metricsFailure }: L
               {formatCount(sessions.total)}
             </span>
             <span className={styles.muted}>
-              {sessions.maxConnections ? `of ${formatCount(sessions.maxConnections)} per instance, ` : ""}
               {formatCount(sessions.user)} of users, {formatCount(sessions.system)} of the platform
+              {sessions.maxConnections ? `; limit ${formatCount(sessions.maxConnections)} per instance` : ""}
             </span>
             <Sparkline points={series.get("sessions")} label="Sessions" className={styles.sparkline} />
           </div>
@@ -206,13 +215,20 @@ export function DatabasesTile({ view, metricsPending, metricsFailure }: LiveTile
       title="Databases"
       testId="cnpg-live-databases"
       loading={metricsPending}
-      placeholder={view.databases.length > 0 ? undefined : (metricsFailure ?? "Waiting for the metrics of the primary")}
+      placeholder={
+        view.databases.length > 0
+          ? undefined
+          : (metricsFailure ??
+            (view.primary
+              ? "Waiting for the metrics of the primary"
+              : "No primary answers, so the databases cannot be read"))
+      }
     >
       <Table scrollable={false} sortSyncWithUrl={false} className={styles.nested}>
         <TableHead flat sticky={false}>
           <TableCell className={styles.colName}>Database</TableCell>
           <TableCell className={styles.colBar}>Size</TableCell>
-          <TableCell className={styles.colNumber}>Transaction ID age</TableCell>
+          <TableCell className={styles.colNumber}>XID age</TableCell>
         </TableHead>
         {view.databases.map((database) => (
           <TableRow key={database.name} nowrap>
@@ -233,7 +249,7 @@ export function DatabasesTile({ view, metricsPending, metricsFailure }: LiveTile
             <TableCell className={styles.colNumber}>
               <span
                 className={LEVEL_CLASS[database.level]}
-                title={`Warning above ${formatCount(XID_AGE_WARNING)}, error above ${formatCount(XID_AGE_ERROR)}; the wraparound limit is about 2,100,000,000`}
+                title={`Transaction ID age. Warning above ${formatCount(XID_AGE_WARNING)}, error above ${formatCount(XID_AGE_ERROR)}; the wraparound limit is about 2,100,000,000`}
               >
                 {formatCount(database.xidAge)}
               </span>
@@ -268,11 +284,12 @@ export function WalTile({ view, now }: LiveTileProps) {
             </span>
           </div>
           <div className={styles.figures}>
-            <Figure label="Last archived" title={wal.lastArchivedAt?.toISOString()}>
+            <Figure wide label="Last archived" title={wal.lastArchivedAt?.toISOString()}>
               <span className={styles.mono}>{wal.lastArchivedWal ?? "none"}</span>
               {wal.lastArchivedAt ? ` ${humanizeRelative(wal.lastArchivedAt, now)}` : ""}
             </Figure>
             <Figure
+              wide
               label="Last failed"
               title={wal.lastFailedAt?.toISOString()}
               level={wal.state === "Failing" ? "error" : "ok"}
@@ -319,18 +336,20 @@ export function SlotsTile({ view }: LiveTileProps) {
     >
       <Table scrollable={false} sortSyncWithUrl={false} className={styles.nested}>
         <TableHead flat sticky={false}>
-          <TableCell className={styles.colName}>Slot</TableCell>
-          <TableCell className={styles.colSmall}>Type</TableCell>
+          <TableCell className={styles.colWide}>Slot</TableCell>
           <TableCell className={styles.colSmall}>Active</TableCell>
-          <TableCell className={styles.colNumber}>Retained WAL</TableCell>
-          <TableCell className={styles.colSmall}>WAL status</TableCell>
+          <TableCell className={styles.colNumber}>Retained</TableCell>
+          <TableCell className={styles.colSmall}>Status</TableCell>
         </TableHead>
         {view.slots.map((slot) => (
           <TableRow key={slot.name} nowrap>
-            <TableCell className={styles.colName}>
-              <WithTooltip tooltip={`${slot.name}, restart LSN ${slot.restartLsn ?? "N/A"}`}>{slot.name}</WithTooltip>
+            <TableCell className={styles.colWide}>
+              <WithTooltip
+                tooltip={`${slot.name} (${slot.type ?? "unknown type"}), restart LSN ${slot.restartLsn ?? "N/A"}`}
+              >
+                {slot.name}
+              </WithTooltip>
             </TableCell>
-            <TableCell className={styles.colSmall}>{slot.type ?? "N/A"}</TableCell>
             <TableCell className={styles.colSmall}>
               <BadgeBoolean value={slot.active} />
             </TableCell>

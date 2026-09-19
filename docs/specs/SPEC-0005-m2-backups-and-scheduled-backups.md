@@ -338,3 +338,7 @@ anywhere (the row menus keep only the host's entries).
   Cluster drawer is a commit of its own in the same pull request.
 - The E2E suite counts the Overview tiles by their test id prefix, so the
   doors inside a tile use a prefix of their own (`cnpg-overview-door-`).
+- Merged with #19 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `fdfce7c`. The manual verification above is part of the M2
+  milestone review: the status moves to Verified when its result is recorded
+  here.

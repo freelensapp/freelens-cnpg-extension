@@ -143,35 +143,46 @@ export function Topology({ view, namespace }: TopologyProps) {
             <div className={styles.noPrimary}>No instance says it is the primary</div>
           )}
         </div>
-        <svg
-          className={styles.lines}
-          style={{ gridRow: `1 / span ${rows}` }}
-          viewBox={`0 0 ${LINE_BOX_WIDTH} ${layout.height}`}
-          preserveAspectRatio="none"
-          aria-hidden="true"
-        >
-          {layout.lines.map((line) => (
-            <line
-              key={line.standby}
-              x1={0}
-              y1={line.y1}
-              x2={LINE_BOX_WIDTH}
-              y2={line.y2}
-              className={[styles.line, LEVEL_CLASS[line.level], line.streaming ? "" : styles.lineBroken]
-                .join(" ")
-                .trim()}
-              vectorEffect="non-scaling-stroke"
-            />
-          ))}
-        </svg>
-        {layout.rows.map((row, index) => [
-          <div key={`edge-${row.instance.name}`} className={styles.edgeCell} style={{ gridRow: index + 1 }}>
-            {row.edge && layout.primary ? <EdgeLabel edge={row.edge} /> : null}
-          </div>,
-          <div key={`card-${row.instance.name}`} className={styles.rowCard} style={{ gridRow: index + 1 }}>
+        {/* The lines and their labels share one cell: the SVG is stretched over it and never sizes it. */}
+        <div className={styles.linesCell} style={{ gridRow: `1 / span ${rows}` }}>
+          <svg
+            className={styles.lines}
+            viewBox={`0 0 ${LINE_BOX_WIDTH} ${layout.height}`}
+            preserveAspectRatio="none"
+            aria-hidden="true"
+          >
+            {layout.lines.map((line) => (
+              <line
+                key={line.standby}
+                x1={0}
+                y1={line.y1}
+                x2={LINE_BOX_WIDTH}
+                y2={line.y2}
+                className={[styles.line, LEVEL_CLASS[line.level], line.streaming ? "" : styles.lineBroken]
+                  .join(" ")
+                  .trim()}
+                vectorEffect="non-scaling-stroke"
+              />
+            ))}
+          </svg>
+          {layout.lines.map((line) => {
+            const edge = view.edges.find((candidate) => candidate.standby === line.standby);
+            return edge ? (
+              <div
+                key={line.standby}
+                className={styles.edgeAnchor}
+                style={{ top: `${(line.labelY / layout.height) * 100}%` }}
+              >
+                <EdgeLabel edge={edge} />
+              </div>
+            ) : null;
+          })}
+        </div>
+        {layout.rows.map((row, index) => (
+          <div key={row.instance.name} className={styles.rowCard} style={{ gridRow: index + 1 }}>
             <InstanceCard instance={row.instance} namespace={namespace} />
-          </div>,
-        ])}
+          </div>
+        ))}
         {layout.rows.length === 0 && layout.primary ? (
           <div className={styles.rowCard} style={{ gridRow: 1 }}>
             <div className={styles.muted}>A single instance: no standby to replicate to</div>

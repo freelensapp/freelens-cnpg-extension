@@ -12,6 +12,7 @@ import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
+import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import {
   BACKUPS_GROUP_ID,
   BACKUPS_PAGE_ID,
@@ -83,6 +84,18 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <ScheduledBackupDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+  ];
+
+  kubeObjectMenuItems = [
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => (
+          <ClusterLiveViewMenuItem {...props} extension={this} />
         ),
       },
     },

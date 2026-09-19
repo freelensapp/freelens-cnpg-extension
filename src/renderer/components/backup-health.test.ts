@@ -77,6 +77,9 @@ describe("humanizeDuration and humanizeRelative", () => {
   it("phrases future and past times", () => {
     expect(humanizeRelative(new Date("2026-09-19T17:03:00Z"), NOW)).toBe("in 5h 3m");
     expect(humanizeRelative(new Date("2026-09-19T11:55:00Z"), NOW)).toBe("5m ago");
+    expect(humanizeRelative(NOW, NOW)).toBe("just now");
+    expect(humanizeRelative(new Date(NOW.getTime() - 999), NOW)).toBe("just now");
+    expect(humanizeRelative(new Date(NOW.getTime() - 1000), NOW)).toBe("1s ago");
   });
 });
 

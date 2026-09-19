@@ -159,11 +159,20 @@
   align-self: center;
 }
 
-.lines {
+.linesCell {
   grid-column: 2;
+  position: relative;
+  align-self: stretch;
+  min-height: calc($unit * 8);
+}
+
+// Stretched over its cell and out of the flow: with a viewBox an SVG in the
+// flow would bring its own height and blow the rows up.
+.lines {
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
-  align-self: stretch;
 }
 
 .line {
@@ -175,13 +184,11 @@
   stroke-dasharray: 6 5;
 }
 
-.edgeCell {
-  grid-column: 2;
-  display: flex;
-  justify-content: center;
-  // Above the lines that share the column.
-  position: relative;
-  z-index: 1;
+// The label sits on its line, where the line crosses the middle of the cell.
+.edgeAnchor {
+  position: absolute;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 .rowCard {
@@ -379,6 +386,10 @@
   min-width: 0;
 }
 
+.figureWide {
+  grid-column: 1 / -1;
+}
+
 .figureLabel {
   color: var(--textColorSecondary);
   font-size: 11px;
@@ -426,8 +437,12 @@
       flex-grow: 1.2;
     }
 
+    &.colWide {
+      flex-grow: 2.2;
+    }
+
     &.colBar {
-      flex-grow: 1.4;
+      flex-grow: 1.6;
     }
 
     &.colNumber {
@@ -444,11 +459,13 @@
   display: flex;
   align-items: center;
   gap: $unit;
+  width: 100%;
   min-width: 0;
 }
 
 .sizeBar {
-  flex: 1 1 40px;
+  flex: 1 1 auto;
+  min-width: calc($unit * 3);
   height: calc($unit / 2);
   border-radius: calc($unit / 4);
   background: var(--borderFaintColor, rgba(127, 127, 127, 0.25));
