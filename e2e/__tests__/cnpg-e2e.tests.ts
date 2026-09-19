@@ -515,8 +515,11 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
       await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
 
-      // The next backup line opens the drawer of the schedule behind it.
-      await frame.locator('[data-testid="cnpg-overview-door-schedule-cnpg-e2e-e2e-main"]').click();
+      // The next backup line tells a time to come, and opens the drawer of the schedule behind it.
+      const nextBackup = frame.locator('[data-testid="cnpg-overview-door-schedule-cnpg-e2e-e2e-main"]');
+
+      expect(await nextBackup.innerText()).toMatch(/next backup in \d+[smhd]/);
+      await nextBackup.click();
 
       const drawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Backup template" });
 

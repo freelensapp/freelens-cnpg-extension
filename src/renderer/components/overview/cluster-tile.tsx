@@ -9,6 +9,7 @@
 // component) and the namespace badge a door to the namespace filter.
 
 import { Renderer } from "@freelensapp/extensions";
+import { humanizeRelative } from "../backup-health";
 import { InstanceBricks } from "../instance-bricks";
 import styles from "./tile-grid.module.scss";
 
@@ -133,12 +134,10 @@ export function ClusterTile({ tile, detailsUrl, backupsUrl, scheduleUrl, liveUrl
             data-testid={`cnpg-overview-door-schedule-${tile.namespace}-${tile.name}`}
             onClick={stop}
           >
-            {tile.scheduledBackupSuspended ? "schedule suspended" : "next backup "}
-            {tile.scheduledBackupSuspended ? (
-              ""
-            ) : (
-              <ReactiveDuration timestamp={tile.nextScheduledBackup.toISOString()} />
-            )}
+            {/* A time to come, not a time gone by: the host's duration component only counts up from the past. */}
+            {tile.scheduledBackupSuspended
+              ? "schedule suspended"
+              : `next backup ${humanizeRelative(tile.nextScheduledBackup, new Date())}`}
           </MaybeLink>
         ) : null}
       </span>
