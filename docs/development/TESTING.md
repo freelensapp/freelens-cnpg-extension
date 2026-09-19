@@ -132,7 +132,12 @@ the same cluster:
 - The `/pg/status` JSON and the `/metrics` text of an instance versus the
   live view panels (same numbers, same units).
 
-These comparisons are E2E cases, not manual steps, from SPEC-0006 on.
+These comparisons are E2E cases, not manual steps, from SPEC-0006 on. The
+first ones (the primary the live view draws, the LSN of the primary between
+two answers of the instance manager, the last successful backup of the drawer
+against the `Backup` objects) came with SPEC-0006 and SPEC-0008; the
+comparison with the output of `kubectl cnpg status` follows when the plugin
+is part of the runner.
 
 ## Non-regression policy
 

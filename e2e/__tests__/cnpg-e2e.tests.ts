@@ -16,6 +16,7 @@
 // credential). Every view spec appends its own cases here.
 
 import * as cluster from "../helpers/cnpg-cluster";
+import * as checks from "../helpers/cnpg-design-checks";
 import * as cnpg from "../helpers/cnpg-extension";
 import * as utils from "../helpers/utils";
 
@@ -776,6 +777,62 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ),
       ).toContain("recovery:true");
       await typeInTerminal(frame, "\\q");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
+    async () => {
+      // Graduated from the pre-review pass: what it proved once stays proven.
+      for (const [menuId, title] of [
+        ["cnpg-clusters-clusters", "PostgreSQL Clusters"],
+        ["cnpg-backups-backups", "Backups"],
+        ["cnpg-backups-scheduledbackups", "Scheduled Backups"],
+      ] as const) {
+        await cluster.openCnpgPage(frame, menuId, title);
+        await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });
+        await checks.expectColumnGrammar(frame, title);
+        await checks.expectNoEmptyCells(frame, title);
+        await checks.expectNoNestedLinks(frame, title);
+        await checks.expectNoAuthoredColors(frame, title);
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+      await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
+      await checks.expectNoNestedLinks(frame, "Overview");
+      await checks.expectNoAuthoredColors(frame, "Overview");
+
+      // The write position only grows: what the live view shows for the primary
+      // lies between two answers of the instance manager taken around it.
+      const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-main", "{.status.currentPrimary}");
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+
+      const door = frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]');
+
+      if ((await door.count()) > 0) await door.click();
+
+      const card = frame.locator(`[data-testid="cnpg-live-instance-${primary}"][data-role="primary"]`);
+
+      await card.waitFor({ state: "visible", timeout: 60_000 });
+      await checks.expectNoNestedLinks(frame, "Live View");
+      await checks.expectNoAuthoredColors(frame, "Live View");
+
+      const read = async () =>
+        (
+          JSON.parse(
+            (await fetchFromClusterFrame(frame, podProxyPath(primary, "https", 8000, "/pg/status"))).body,
+          ) as InstanceManagerStatus
+        ).currentLsn as string;
+      const before = await read();
+
+      await frame.waitForTimeout(6000);
+
+      const shown = /LSN\s+([0-9A-F]+\/[0-9A-F]+)/.exec(await card.innerText())?.[1] ?? "";
+      const after = await read();
+
+      checks.expectLsnBetween(shown, before, after);
     },
     TIMEOUT,
   );
