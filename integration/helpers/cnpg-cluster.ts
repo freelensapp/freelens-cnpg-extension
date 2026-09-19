@@ -103,6 +103,7 @@ export function fixturesReady(): boolean {
     ["poolers.postgresql.cnpg.io", "e2e-main-pooler"],
     ["objectstores.barmancloud.cnpg.io", "e2e-store"],
     ["databases.postgresql.cnpg.io", "e2e-db-inventory"],
+    ["databaseroles.postgresql.cnpg.io", "e2e-role-reporting"],
   ];
 
   return probes.every(([resource, name]) => {

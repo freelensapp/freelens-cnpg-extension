@@ -9,8 +9,10 @@ declare const classNames: {
   readonly message: "message";
   readonly wide: "wide";
   readonly mono: "mono";
+  readonly warning: "warning";
   readonly note: "note";
   readonly list: "list";
+  readonly inlineRole: "inlineRole";
   readonly badges: "badges";
   readonly path: "path";
   readonly end: "end";

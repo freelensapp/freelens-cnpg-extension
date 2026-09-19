@@ -7,6 +7,7 @@ import { Renderer } from "@freelensapp/extensions";
 import { ObjectStore as ObjectStoreV1 } from "./api/barmancloud/object-store-v1";
 import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
+import { DatabaseRole as DatabaseRoleV1 } from "./api/cnpg/database-role-v1";
 import { Database as DatabaseV1 } from "./api/cnpg/database-v1";
 import { FailoverQuorum as FailoverQuorumV1 } from "./api/cnpg/failover-quorum-v1";
 import {
@@ -19,6 +20,7 @@ import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
 import { DatabaseDetails as DatabaseDetailsV1 } from "./details/database-details-v1";
+import { DatabaseRoleDetails as DatabaseRoleDetailsV1 } from "./details/database-role-details-v1";
 import { FailoverQuorumDetails as FailoverQuorumDetailsV1 } from "./details/failover-quorum-details-v1";
 import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
@@ -33,6 +35,7 @@ import {
   CLUSTER_IMAGE_CATALOGS_PAGE_ID,
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
+  DATABASE_ROLES_PAGE_ID,
   DATABASES_GROUP_ID,
   DATABASES_PAGE_ID,
   FAILOVER_QUORUMS_PAGE_ID,
@@ -49,6 +52,7 @@ import {
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import { DatabaseRolesPage as DatabaseRolesPageV1 } from "./pages/database-roles-page-v1";
 import { DatabasesPage as DatabasesPageV1 } from "./pages/databases-page-v1";
 import { FailoverQuorumsPage as FailoverQuorumsPageV1 } from "./pages/failover-quorums-page-v1";
 import {
@@ -95,6 +99,9 @@ const AvailablePoolersPage = createAvailableVersionPage(PoolerV1.crd.title, [
 ]);
 const AvailableDatabasesPage = createAvailableVersionPage(DatabaseV1.crd.title, [
   { kubeObjectClass: DatabaseV1, PageComponent: DatabasesPageV1, version: "v1" },
+]);
+const AvailableDatabaseRolesPage = createAvailableVersionPage(DatabaseRoleV1.crd.title, [
+  { kubeObjectClass: DatabaseRoleV1, PageComponent: DatabaseRolesPageV1, version: "v1" },
 ]);
 const AvailableImageCatalogsPage = createAvailableVersionPage(ImageCatalogV1.crd.title, [
   { kubeObjectClass: ImageCatalogV1, PageComponent: ImageCatalogsPageV1, version: "v1" },
@@ -177,6 +184,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <DatabaseDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: DatabaseRoleV1.kind,
+      apiVersions: DatabaseRoleV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <DatabaseRoleDetailsV1 {...props} extension={this} />
         ),
       },
     },
@@ -269,6 +286,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       },
     },
     {
+      id: DATABASE_ROLES_PAGE_ID,
+      components: {
+        Page: () => <AvailableDatabaseRolesPage extension={this} />,
+      },
+    },
+    {
       id: IMAGE_CATALOGS_PAGE_ID,
       components: {
         Page: () => <AvailableImageCatalogsPage extension={this} />,
@@ -338,6 +361,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: DATABASES_GROUP_ID,
       title: DatabaseV1.crd.title,
       target: { pageId: DATABASES_PAGE_ID },
+      components: {},
+    },
+    {
+      id: DATABASE_ROLES_PAGE_ID,
+      parentId: DATABASES_GROUP_ID,
+      title: DatabaseRoleV1.crd.title,
+      target: { pageId: DATABASE_ROLES_PAGE_ID },
       components: {},
     },
     {
