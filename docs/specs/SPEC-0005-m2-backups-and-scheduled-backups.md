@@ -301,3 +301,12 @@ anywhere (the row menus keep only the host's entries).
   `cronstrue` is a bundled dependency (MIT, zero dependencies, about 22 kB
   minified for the English locale) behind `describeSchedule`; a suspended
   schedule is classified `warning`.
+- Implementation notes: a five field `spec.schedule` is valid upstream (the
+  day of week is optional, the first field is still the seconds), so
+  `describeSchedule` reads it that way instead of refusing it: `0 0 3 * *` is
+  03:00 every day, not midnight on day 3 of the month as a crontab line
+  would say. `@every` intervals are described after truncation to whole
+  seconds, one at least, as the operator's parser does. On the E2E cluster a
+  schedule that has not run yet reports `lastCheckTime` only, with no
+  `nextScheduleTime`: the classifier says "Waiting for the first run" and
+  the Next run column shows "N/A" until the operator reports a time.
