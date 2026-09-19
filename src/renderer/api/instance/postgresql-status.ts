@@ -62,7 +62,12 @@ export interface PostgresqlStatus {
   pendingRestartForDecrease?: boolean;
   isWalReceiverActive?: boolean;
   isPgRewindRunning?: boolean;
+  /**
+   * True when the instance manager answers but PostgreSQL does not (a fenced
+   * instance, a PostgreSQL that is starting or stopped); the error says why.
+   */
   mightBeUnavailable?: boolean;
+  mightBeUnavailableMaskedError?: string;
   isArchivingWAL?: boolean;
   isPodReady?: boolean;
   node?: string;
