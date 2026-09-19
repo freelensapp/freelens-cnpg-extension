@@ -4,6 +4,7 @@
  */
 
 import { describe, expect, it } from "vitest";
+import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import {
@@ -319,6 +320,65 @@ describe("backupFacts", () => {
       source: "none",
       count: 0,
     });
+  });
+});
+
+describe("backupFacts with the recovery window of the object store (SPEC-0009)", () => {
+  const plugins = [
+    { name: "barman-cloud.cloudnative-pg.io", isWALArchiver: true, parameters: { barmanObjectName: "store" } },
+  ];
+  const withPlugin = (name = "pg", parameters: Record<string, string> = { barmanObjectName: "store" }) =>
+    new Cluster({
+      apiVersion: "postgresql.cnpg.io/v1",
+      kind: "Cluster",
+      metadata: { name, namespace: "db" },
+      spec: { instances: 1, plugins: [{ ...plugins[0], parameters }] },
+      status: {},
+    } as never);
+  const store = (windows: Record<string, Record<string, string>>, namespace = "db") =>
+    new ObjectStore({
+      apiVersion: "barmancloud.cnpg.io/v1",
+      kind: "ObjectStore",
+      metadata: { name: "store", namespace },
+      spec: {},
+      status: { serverRecoveryWindow: windows },
+    } as never);
+
+  it("prefers the plugin's first recoverability point over the earliest Backup object", () => {
+    const backups = [makeBackup("b1", "pg", { phase: "completed", stoppedAt: "2026-09-18T16:14:48Z" })];
+    const facts = backupFacts(withPlugin(), backups, [
+      store({ pg: { firstRecoverabilityPoint: "2026-09-01T00:00:00Z" } }),
+    ]);
+    expect(facts.firstRecoverabilityPoint?.toISOString()).toBe("2026-09-01T00:00:00.000Z");
+    expect(facts).toMatchObject({ source: "backups", recoverabilitySource: "object store", count: 1 });
+    // Without a window the earliest Backup object stays the approximation.
+    expect(backupFacts(withPlugin(), backups, [])).toMatchObject({ recoverabilitySource: "backups" });
+  });
+
+  it("falls back to the window when the Backup objects are gone", () => {
+    const facts = backupFacts(
+      withPlugin(),
+      [],
+      [
+        store({
+          pg: { firstRecoverabilityPoint: "2026-09-01T00:00:00Z", lastSuccessfulBackupTime: "2026-09-19T08:01:34Z" },
+        }),
+      ],
+    );
+    expect(facts).toMatchObject({ source: "object store", recoverabilitySource: "object store", count: 0 });
+    expect(facts.lastSuccessful?.toISOString()).toBe("2026-09-19T08:01:34.000Z");
+  });
+
+  it("reads the window of the server name the cluster writes under, in its own namespace", () => {
+    const renamed = withPlugin("pg", { barmanObjectName: "store", serverName: "legacy" });
+    const windows = {
+      legacy: { firstRecoverabilityPoint: "2026-08-01T00:00:00Z" },
+      pg: { firstRecoverabilityPoint: "2026-09-01T00:00:00Z" },
+    };
+    expect(backupFacts(renamed, [], [store(windows)]).firstRecoverabilityPoint?.toISOString()).toBe(
+      "2026-08-01T00:00:00.000Z",
+    );
+    expect(backupFacts(withPlugin(), [], [store(windows, "elsewhere")]).source).toBe("none");
   });
 });
 

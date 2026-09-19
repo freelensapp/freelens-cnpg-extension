@@ -12,7 +12,9 @@
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { parseGoTime } from "./go-time";
+import { storeOfCluster } from "./object-stores";
 
+import type { ObjectStore, ServerRecoveryWindow } from "../api/barmancloud/object-store-v1";
 import type { KubeCondition } from "../api/types";
 
 export type ClusterHealthState = "Healthy" | "Progressing" | "Degraded" | "Failed" | "Hibernated" | "Unknown";
@@ -170,13 +172,19 @@ export function archivingState(cluster: Cluster): ArchivingFacts {
   return { state: "Unknown", message, reason };
 }
 
-export type BackupFactsSource = "backups" | "status" | "none";
+export type BackupFactsSource = "backups" | "object store" | "status" | "none";
 
 export interface BackupFacts {
   lastSuccessful?: Date;
   lastFailed?: Date;
-  /** Earliest completed backup: an approximation of the retention window (H3). */
+  /**
+   * How far back the cluster can be recovered: what the Barman Cloud plugin
+   * reports for the cluster's server when its object store says so, else the
+   * earliest completed backup, an approximation of the retention window (H3).
+   */
   firstRecoverabilityPoint?: Date;
+  /** Where `firstRecoverabilityPoint` comes from. */
+  recoverabilitySource?: BackupFactsSource;
   source: BackupFactsSource;
   /** How many `Backup` objects of the cluster were considered. */
   count: number;
@@ -211,22 +219,59 @@ export function backupsOfCluster(cluster: Cluster, backups: readonly Backup[]): 
   return backups.filter((backup) => Backup.getClusterName(backup) === name && backup.metadata?.namespace === namespace);
 }
 
+/** What the plugin reports for the server the cluster writes under, in the store it names (SPEC-0009). */
+function storeWindowOf(cluster: Cluster, stores: readonly ObjectStore[]): ServerRecoveryWindow | undefined {
+  const target = storeOfCluster(cluster);
+  if (!target) return undefined;
+  const store = stores.find(
+    (candidate) =>
+      candidate.metadata?.name === target.storeName && candidate.metadata?.namespace === cluster.metadata?.namespace,
+  );
+  return store?.status?.serverRecoveryWindow?.[target.serverName];
+}
+
 /**
- * H3: backup facts derived from the `Backup` objects, falling back to the
- * deprecated status fields only when the cluster has no `Backup` object at all.
+ * H3: backup facts derived from the `Backup` objects; then from the recovery
+ * window the Barman Cloud plugin reports in the cluster's object store (the
+ * backups are in the bucket even when their objects were deleted); then from
+ * the deprecated status fields. The first recoverability point prefers the
+ * plugin's own figure over the earliest `Backup` object, which only
+ * approximates it.
  */
-export function backupFacts(cluster: Cluster, backups: readonly Backup[]): BackupFacts {
+export function backupFacts(
+  cluster: Cluster,
+  backups: readonly Backup[],
+  stores: readonly ObjectStore[] = [],
+): BackupFacts {
   const own = backupsOfCluster(cluster, backups);
+  const window = storeWindowOf(cluster, stores);
+  const windowPoint = parseGoTime(window?.firstRecoverabilityPoint);
+
   if (own.length > 0) {
     const completed = own.filter((backup) => Backup.getPhase(backup) === "completed");
     const failed = own.filter((backup) => Backup.getPhase(backup) === "failed");
     const completedTimes = completed.map((backup) => parseGoTime(backup.status?.stoppedAt) ?? backupTime(backup));
+    const approximated = earliest(completedTimes);
     return {
       lastSuccessful: latest(completedTimes),
       lastFailed: latest(failed.map(backupTime)),
-      firstRecoverabilityPoint: earliest(completedTimes),
+      firstRecoverabilityPoint: windowPoint ?? approximated,
+      recoverabilitySource: windowPoint ? "object store" : approximated ? "backups" : undefined,
       source: "backups",
       count: own.length,
+    };
+  }
+
+  const windowSuccess = parseGoTime(window?.lastSuccessfulBackupTime);
+  const windowFailure = parseGoTime(window?.lastFailedBackupTime);
+  if (windowSuccess || windowFailure || windowPoint) {
+    return {
+      lastSuccessful: windowSuccess,
+      lastFailed: windowFailure,
+      firstRecoverabilityPoint: windowPoint,
+      recoverabilitySource: windowPoint ? "object store" : undefined,
+      source: "object store",
+      count: 0,
     };
   }
 
@@ -239,6 +284,7 @@ export function backupFacts(cluster: Cluster, backups: readonly Backup[]): Backu
     lastSuccessful,
     lastFailed,
     firstRecoverabilityPoint,
+    recoverabilitySource: firstRecoverabilityPoint ? "status" : undefined,
     source: any ? "status" : "none",
     count: 0,
   };
