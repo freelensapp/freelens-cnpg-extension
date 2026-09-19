@@ -1,6 +1,6 @@
 # SPEC-0008: Pre-review agent pass and local demo cluster
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -133,3 +133,10 @@ a disposable cluster. The pass is read-only.
   green on main at `71f7bcd`. The manual verification above is part of the M2
   milestone review: the status moves to Verified when its result is recorded
   here.
+- M2 milestone review: 2026-09-19, lead maintainer, on the screenshots of the
+  pre-review pass and of the E2E suite on both themes (gallery on an ephemeral
+  branch, deleted after the review). Verdict: approved, no blocking finding.
+  Status moved to Verified. Still open for a later look, as the pre-review
+  report lists: the psql terminal on Windows and Linux desktops, the live view
+  with a kubeconfig without `pods/proxy`, the live view against a busy
+  database for ten minutes.

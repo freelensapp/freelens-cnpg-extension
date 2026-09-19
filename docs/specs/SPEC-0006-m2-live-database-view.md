@@ -1,6 +1,6 @@
 # SPEC-0006: Live database view (read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (drift watch of 2026-09-19)
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -310,3 +310,10 @@ module cannot even express them). Polling stops when nobody is looking.
   green on main at `9a3e8b5`. The manual verification above is part of the M2
   milestone review: the status moves to Verified when its result is recorded
   here.
+- M2 milestone review: 2026-09-19, lead maintainer, on the screenshots of the
+  pre-review pass and of the E2E suite on both themes (gallery on an ephemeral
+  branch, deleted after the review). Verdict: approved, no blocking finding.
+  Status moved to Verified. Still open for a later look, as the pre-review
+  report lists: the psql terminal on Windows and Linux desktops, the live view
+  with a kubeconfig without `pods/proxy`, the live view against a busy
+  database for ten minutes.
