@@ -40,7 +40,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | Backup and ScheduledBackup lists + details, backup history strip, backup-derived health | [SPEC-0005](../specs/SPEC-0005-m2-backups-and-scheduled-backups.md) | Done |
 | Live database view (instance status and metrics through the API server pod proxy: replication topology, sessions, replication lag, database sizes, WAL, slots) | [SPEC-0006](../specs/SPEC-0006-m2-live-database-view.md) | Done |
 | Open psql in a Freelens terminal tab (primary or replica) | [SPEC-0007](../specs/SPEC-0007-m2-open-psql.md) | In PR |
-| Pre-review agent pass and local demo cluster | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md) | Approved |
+| Pre-review agent pass and local demo cluster | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md) | In PR |
 
 ### M3 - Pooling, images, quorum, object stores (read-only)
 
@@ -97,7 +97,7 @@ the cluster.
 | Item | Status |
 | --- | --- |
 | E2E test infrastructure (kind + operator + fixtures + Playwright) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md), Done |
-| Local demo cluster and milestone review gate (`pnpm demo:up`) | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md), Approved |
+| Local demo cluster and milestone review gate (`pnpm demo:up`) | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md), In PR |
 
 ## Out of scope for v1
 

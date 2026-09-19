@@ -32,6 +32,7 @@
 
 # Kubeconfig and state of the disposable E2E cluster (e2e/scripts/lib.sh)
 /.e2e/
+/.demo/
 
 # Screenshots the E2E suite takes when an assertion fails
 /e2e-artifacts/

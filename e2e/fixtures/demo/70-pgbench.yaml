@@ -1,0 +1,100 @@
+# Demo only (SPEC-0008): a small, continuous pgbench load on e2e-main, so the
+# live view has something to show. Applied by `pnpm demo:up`, never by the E2E
+# cluster. The workload reads the application secret the operator generated,
+# through secretKeyRef, inside the cluster: the extension never sees it. The
+# image is the PostgreSQL image the fixture cluster already runs.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: demo-pgbench-init
+  namespace: cnpg-e2e
+  labels:
+    app.kubernetes.io/name: demo-pgbench
+spec:
+  backoffLimit: 6
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo-pgbench
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: pgbench
+          image: __POSTGRES_IMAGE__
+          command: [pgbench, --initialize, --scale=5, --quiet]
+          env:
+            - name: PGHOST
+              value: e2e-main-rw
+            - name: PGDATABASE
+              value: app
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-main-app
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-main-app
+                  key: password
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-pgbench
+  namespace: cnpg-e2e
+  labels:
+    app.kubernetes.io/name: demo-pgbench
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: demo-pgbench-load
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo-pgbench-load
+    spec:
+      containers:
+        - name: pgbench
+          image: __POSTGRES_IMAGE__
+          # Eight clients at twenty transactions per second, in one hour runs,
+          # forever: enough for sessions, WAL and lag to move, light enough for
+          # a laptop. While the tables are not there yet (the init job is still
+          # running) the loop waits instead of crash looping.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                pgbench --client=8 --jobs=2 --rate=20 --time=3600 --progress=60 --no-vacuum ||
+                  { echo "pgbench could not run, retrying in 10 s"; sleep 10; }
+              done
+          env:
+            - name: PGHOST
+              value: e2e-main-rw
+            - name: PGDATABASE
+              value: app
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-main-app
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-main-app
+                  key: password
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

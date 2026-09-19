@@ -1,6 +1,6 @@
 # SPEC-0008: Pre-review agent pass and local demo cluster
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -111,3 +111,21 @@ a disposable cluster. The pass is read-only.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M2 at the
   milestone review.
+- Implementation notes: `pre-review.sh` is the E2E runner with the demo
+  cluster, a suite pattern and an artifacts folder of its own, so the two
+  never drift. The checks live in `integration/helpers/cnpg-design-checks.ts`
+  and are shared by the pass and by the E2E suite, where the column grammar,
+  the empty cell, the nested link, the authored color and the LSN sandwich
+  checks now run on every pull request.
+- What the first runs of the pass taught: every view follows the namespace
+  filter, so the pass selects the fixtures' namespace before it walks; the
+  host draws the sort arrow of a list header as an icon font ligature, which
+  is text to the DOM, so the headers are read without their icons; the host
+  select styles its own input inline (`color: inherit`), so the authored
+  color check leaves host components alone and accepts the values that author
+  nothing.
+- The first attempt of the load may lose the race with the init job; the
+  loop retries after ten seconds instead of crash looping (observed once).
+- First pass on 2026-09-19 (E2E cluster with the demo load, operator 1.30.0):
+  22 checks passed, 20 screenshots on the two themes, the LSN sandwich held
+  under the `pgbench` load.
