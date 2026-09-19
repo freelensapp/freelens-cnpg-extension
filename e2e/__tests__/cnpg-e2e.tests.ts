@@ -963,6 +963,69 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "tells whether a failover could be decided safely, from the quorum of e2e-main (SPEC-0011)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-failoverquorums", "Failover Quorums");
+      await cluster.selectNamespace(frame);
+      await cluster.expectRow(frame, "e2e-main", "ANY", "2/2", "Safe", "A failover could be decided safely");
+      await cluster.captureScreenshot(frame, "failover-quorums-dark");
+
+      const writtenBy = cluster.kubectlField("failoverquorums.postgresql.cnpg.io", "e2e-main", "{.status.primary}");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-main",
+        "Quorum",
+        "Safe",
+        "ANY: any of the named standbys",
+        "Must confirm",
+        "Written by",
+        writtenBy,
+        "R + W is greater than N",
+        "Standbys",
+      );
+      await tableRowName(frame, "e2e-main").click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Standbys" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.captureScreenshot(frame, "failover-quorum-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      // The cluster leads to its quorum, and its live view labels the edges with the sync state.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-main").click();
+
+      const clusterDrawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Failover quorum" });
+
+      await clusterDrawer.waitFor({ state: "visible", timeout: 60_000 });
+      await clusterDrawer.locator(".DrawerItem", { hasText: "Failover quorum" }).locator("a").first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "How to read it" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+
+      const door = frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]');
+
+      if ((await door.count()) > 0) await door.click();
+
+      const edges = frame.locator('[data-testid^="cnpg-live-edge-"]');
+
+      expect(
+        await waitUntil(
+          () => edges.count(),
+          (count) => count === 2,
+        ),
+      ).toBe(2);
+      for (const text of await edges.allInnerTexts()) {
+        expect(text).toContain("quorum");
+      }
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
@@ -972,6 +1035,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-backups-scheduledbackups", "Scheduled Backups"],
         ["cnpg-backups-objectstores", "Object Stores"],
         ["cnpg-images-imagecatalogs", "Image Catalogs"],
+        ["cnpg-clusters-failoverquorums", "Failover Quorums"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

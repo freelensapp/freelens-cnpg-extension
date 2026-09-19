@@ -157,6 +157,34 @@ hibernate_and_fence() {
 	wait_for_jsonpath "${E2E_NAMESPACE}" pod e2e-fenced-1 '{.status.conditions[?(@.type=="Ready")].status}' False 300
 }
 
+wait_failover_quorum() {
+	# e2e-main runs with the failover quorum on (SPEC-0011): its FailoverQuorum
+	# object is written by the primary once the synchronous configuration is
+	# loaded. On a cluster created with that configuration this takes seconds.
+	# On a cluster that was already running when the configuration arrived,
+	# operator 1.30.0 was seen to write the new settings to disk and then fail
+	# its reconciliation before reloading them; one reload unblocks it.
+	log "waiting for the failover quorum of e2e-main"
+	local attempt names primary
+	for attempt in 1 2; do
+		local deadline=$(($(date +%s) + 120))
+		while :; do
+			names="$(kubectl_e2e get failoverquorums.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" \
+				-o 'jsonpath={.status.standbyNames}' 2>/dev/null || true)"
+			if [ -n "${names}" ] && [ "${names}" != "[]" ]; then
+				return
+			fi
+			[ "$(date +%s)" -ge "${deadline}" ] && break
+			sleep 5
+		done
+		[ "${attempt}" = "2" ] && die "the FailoverQuorum of e2e-main was never written"
+		primary="$(kubectl_e2e get clusters.postgresql.cnpg.io e2e-main --namespace "${E2E_NAMESPACE}" -o 'jsonpath={.status.currentPrimary}')"
+		log "the quorum is still empty: reloading the configuration of ${primary} once"
+		kubectl_e2e exec --namespace "${E2E_NAMESPACE}" "${primary}" -c postgres -- \
+			psql -U postgres -Atc 'select pg_reload_conf()' >/dev/null
+	done
+}
+
 verify_fixtures() {
 	log "verifying the fixture states"
 	local phase
@@ -179,6 +207,7 @@ main() {
 	install_barman_plugin
 	apply_fixtures
 	wait_clusters
+	wait_failover_quorum
 	apply_second_phase
 	hibernate_and_fence
 	verify_fixtures

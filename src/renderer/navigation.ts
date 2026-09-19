@@ -13,6 +13,7 @@ export const OVERVIEW_PAGE_ID = "cnpg-overview";
 export const CLUSTERS_GROUP_ID = "cnpg-clusters";
 export const CLUSTERS_PAGE_ID = "cnpg-clusters-clusters";
 export const LIVE_PAGE_ID = "cnpg-clusters-live";
+export const FAILOVER_QUORUMS_PAGE_ID = "cnpg-clusters-failoverquorums";
 export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
 export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";

@@ -7,6 +7,7 @@ import { Renderer } from "@freelensapp/extensions";
 import { ObjectStore as ObjectStoreV1 } from "./api/barmancloud/object-store-v1";
 import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
+import { FailoverQuorum as FailoverQuorumV1 } from "./api/cnpg/failover-quorum-v1";
 import {
   ClusterImageCatalog as ClusterImageCatalogV1,
   ImageCatalog as ImageCatalogV1,
@@ -15,6 +16,7 @@ import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backu
 import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
+import { FailoverQuorumDetails as FailoverQuorumDetailsV1 } from "./details/failover-quorum-details-v1";
 import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
@@ -27,6 +29,7 @@ import {
   CLUSTER_IMAGE_CATALOGS_PAGE_ID,
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
+  FAILOVER_QUORUMS_PAGE_ID,
   IMAGE_CATALOGS_PAGE_ID,
   IMAGES_GROUP_ID,
   LIVE_PAGE_ID,
@@ -38,6 +41,7 @@ import {
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import { FailoverQuorumsPage as FailoverQuorumsPageV1 } from "./pages/failover-quorums-page-v1";
 import {
   ClusterImageCatalogsPage as ClusterImageCatalogsPageV1,
   ImageCatalogsPage as ImageCatalogsPageV1,
@@ -70,6 +74,9 @@ const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
 ]);
 const AvailableScheduledBackupsPage = createAvailableVersionPage(ScheduledBackupV1.crd.title, [
   { kubeObjectClass: ScheduledBackupV1, PageComponent: ScheduledBackupsPageV1, version: "v1" },
+]);
+const AvailableFailoverQuorumsPage = createAvailableVersionPage(FailoverQuorumV1.crd.title, [
+  { kubeObjectClass: FailoverQuorumV1, PageComponent: FailoverQuorumsPageV1, version: "v1" },
 ]);
 const AvailableImageCatalogsPage = createAvailableVersionPage(ImageCatalogV1.crd.title, [
   { kubeObjectClass: ImageCatalogV1, PageComponent: ImageCatalogsPageV1, version: "v1" },
@@ -126,6 +133,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       },
     })),
     {
+      kind: FailoverQuorumV1.kind,
+      apiVersions: FailoverQuorumV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <FailoverQuorumDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
       kind: ObjectStoreV1.kind,
       apiVersions: ObjectStoreV1.crd.apiVersions,
       priority: 10,
@@ -175,6 +192,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: LIVE_PAGE_ID,
       components: {
         Page: () => <AvailableLivePage extension={this} />,
+      },
+    },
+    {
+      id: FAILOVER_QUORUMS_PAGE_ID,
+      components: {
+        Page: () => <AvailableFailoverQuorumsPage extension={this} />,
       },
     },
     {
@@ -244,6 +267,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: "Live View",
       target: { pageId: LIVE_PAGE_ID },
+      components: {},
+    },
+    {
+      id: FAILOVER_QUORUMS_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: FailoverQuorumV1.crd.title,
+      target: { pageId: FAILOVER_QUORUMS_PAGE_ID },
       components: {},
     },
     {
