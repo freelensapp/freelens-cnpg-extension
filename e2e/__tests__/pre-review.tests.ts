@@ -43,6 +43,10 @@ const HUMAN_JUDGMENT = [
   "Databases: does a failed database tell at once which part failed, without opening the YAML?",
   "Database Roles: are the attributes that override every restriction (Superuser, Bypass RLS) visible enough, and is the inline conflict sentence clear about what to do?",
   "Publications and Subscriptions: does the replication path read as one flow, and is the failover caveat worded for somebody who has never lost a slot?",
+  "Logs: can you follow an incident from these rows alone (a failing query, a WAL archiving failure), and are the fields on the second line the right ones?",
+  "Timeline: does the order of events, backups and changes of primary tell the story of the cluster, and is the block of what is to come worth its space?",
+  "Operator: is this what a platform engineer checks first, and does the reconcile table say something at a glance?",
+  "Cluster drawer, primary lease: is the sentence about the timings right for somebody who knows the operator, and clear for somebody who does not?",
   "Every view, both themes: is this the best possible view for the task?",
 ];
 
@@ -227,6 +231,38 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     await inlineRoles.scrollIntoViewIfNeeded();
     await shot(`${theme}-cluster-drawer-declarative`);
     await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+    await table(frame, "e2e-main").click();
+
+    const lease = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-primary-lease"]');
+
+    await lease.waitFor({ state: "visible", timeout: 60_000 });
+    await lease.scrollIntoViewIfNeeded();
+    await shot(`${theme}-cluster-drawer-lease`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-clusters-logs", "Logs");
+
+    const logsDoor = frame.locator('[data-testid="cnpg-logs-door-cnpg-e2e-e2e-main"]');
+
+    if ((await logsDoor.count()) > 0) await logsDoor.click();
+    await frame.locator('[data-testid="cnpg-log-row"]').first().waitFor({ state: "visible", timeout: 90_000 });
+    await shot(`${theme}-logs`);
+
+    await cluster.openCnpgPage(frame, "cnpg-clusters-timeline", "Timeline");
+
+    const timelineDoor = frame.locator('[data-testid="cnpg-timeline-door-cnpg-e2e-e2e-main"]');
+
+    if ((await timelineDoor.count()) > 0) await timelineDoor.click();
+    await frame.locator('[data-testid="cnpg-timeline-entry"]').first().waitFor({ state: "visible", timeout: 90_000 });
+    await shot(`${theme}-timeline`);
+
+    await cluster.openCnpgPage(frame, "cnpg-operator", "Operator");
+    await frame.locator('[data-testid="cnpg-operator-live"]').waitFor({ state: "visible", timeout: 90_000 });
+    await shot(`${theme}-operator`);
+    await frame.locator('[data-testid="cnpg-operator-kinds"]').scrollIntoViewIfNeeded();
+    await shot(`${theme}-operator-plugins-and-kinds`);
 
     await cluster.openCnpgPage(frame, "cnpg-images-imagecatalogs", "Image Catalogs");
     await cluster.expectRow(frame, "e2e-images", "In use");
@@ -445,6 +481,121 @@ describe("pre-review pass of the CloudNativePG extension", () => {
             `the drawer shows ${new Date(shown).toISOString()}, the Backup objects say ${new Date(latest).toISOString()}`,
           );
         }
+      });
+
+      for (const [menuId, title, door, ready] of [
+        ["cnpg-clusters-logs", "Logs", "cnpg-logs-door-cnpg-e2e-e2e-main", "cnpg-log-row"],
+        ["cnpg-clusters-timeline", "Timeline", "cnpg-timeline-door-cnpg-e2e-e2e-main", "cnpg-timeline-entry"],
+        ["cnpg-operator", "Operator", "", "cnpg-operator-card"],
+      ] as const) {
+        await cluster.openCnpgPage(frame, menuId, title);
+        if (door && (await frame.locator(`[data-testid="${door}"]`).count()) > 0) {
+          await frame.locator(`[data-testid="${door}"]`).click();
+        }
+        await frame.locator(`[data-testid="${ready}"]`).first().waitFor({ state: "visible", timeout: 90_000 });
+        await record(`${title}: no link nested in a link`, () => checks.expectNoNestedLinks(frame, title));
+        await record(`${title}: no authored color in inline styles`, () => checks.expectNoAuthoredColors(frame, title));
+      }
+
+      await record("Cluster drawer and Operator: the leaders shown are the holders of the leases", async () => {
+        const primaryHolder = cluster.kubectlField("leases.coordination.k8s.io", "e2e-main", "{.spec.holderIdentity}");
+        const operatorHolder = cluster
+          .kubectlE2E(
+            "get",
+            "lease",
+            "db9c8771.cnpg.io",
+            "--namespace",
+            "cnpg-system",
+            "-o",
+            "jsonpath={.spec.holderIdentity}",
+          )
+          .stdout.split("_")[0];
+
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await table(frame, "e2e-main").click();
+
+        const status = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-primary-lease-status"]');
+
+        await status.waitFor({ state: "visible", timeout: 60_000 });
+
+        const shownPrimary = (await status.innerText()).trim();
+
+        await cluster.closeDetails(frame);
+        if (!shownPrimary.endsWith(primaryHolder)) {
+          throw new Error(`the drawer says "${shownPrimary}", the lease is held by ${primaryHolder}`);
+        }
+
+        await cluster.openCnpgPage(frame, "cnpg-operator", "Operator");
+
+        const leader = frame.locator('[data-testid="cnpg-operator-leader"]');
+
+        await leader.waitFor({ state: "visible", timeout: 90_000 });
+
+        const shownLeader = (await leader.innerText()).trim();
+
+        if (!shownLeader.startsWith(operatorHolder)) {
+          throw new Error(`the page says "${shownLeader}", the lease is held by ${operatorHolder}`);
+        }
+      });
+
+      await record("Timeline: a completed backup sits at the time its Backup object stopped", async () => {
+        const stoppedAt = Date.parse(
+          cluster.kubectlField("backups.postgresql.cnpg.io", "e2e-backup-ok", "{.status.stoppedAt}"),
+        );
+
+        await cluster.openCnpgPage(frame, "cnpg-clusters-timeline", "Timeline");
+
+        const door = frame.locator('[data-testid="cnpg-timeline-door-cnpg-e2e-e2e-main"]');
+
+        if ((await door.count()) > 0) await door.click();
+
+        const entry = frame
+          .locator('[data-testid="cnpg-timeline-entry"]', { hasText: "Backup e2e-backup-ok completed" })
+          .first();
+
+        await entry.waitFor({ state: "visible", timeout: 90_000 });
+
+        const shown = Date.parse((await entry.locator("span").first().getAttribute("title")) ?? "");
+
+        if (Math.abs(shown - stoppedAt) >= 1000) {
+          throw new Error(
+            `the timeline says ${new Date(shown).toISOString()}, the Backup object says ${new Date(stoppedAt).toISOString()}`,
+          );
+        }
+      });
+
+      await record("Logs: the rows of an instance are the lines its pod wrote", async () => {
+        const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-single", "{.status.currentPrimary}");
+        const raw = await frame.evaluate(
+          async (url: string) => (await fetch(url)).text(),
+          `${API_KUBE_PREFIX}/api/v1/namespaces/${cluster.E2E_NAMESPACE}/pods/${primary}/log?container=postgres&tailLines=200`,
+        );
+        const written = raw
+          .split("\n")
+          .filter((line) => line.trim().startsWith("{"))
+          .map((line) => {
+            try {
+              const parsed = JSON.parse(line) as { msg?: string; record?: { message?: string } };
+
+              return parsed.record?.message ?? parsed.msg ?? "";
+            } catch {
+              return "";
+            }
+          })
+          .filter(Boolean);
+
+        await cluster.openCnpgPage(frame, "cnpg-clusters-logs", "Logs");
+        await frame.locator("#cnpg-logs-cluster").click();
+        await frame.locator(".Select__option", { hasText: "e2e-single" }).first().click();
+        await frame.locator('[data-testid="cnpg-log-row"]').first().waitFor({ state: "visible", timeout: 90_000 });
+
+        const shown = (await frame.locator('[data-testid="cnpg-log-row"]').allInnerTexts()).join("\n");
+        // The newest lines of the pod may not be on the page yet and the oldest may have left the buffer: the middle is there.
+        const sample = written.slice(Math.floor(written.length / 3), Math.floor((written.length * 2) / 3)).slice(0, 5);
+        const missing = sample.filter((message) => !shown.includes(message.split("\n")[0].slice(0, 60)));
+
+        if (sample.length === 0) throw new Error("the pod wrote no JSON line to compare with");
+        if (missing.length > 0) throw new Error(`lines the pod wrote are not on the page: ${missing.join(" | ")}`);
       });
 
       await record("Databases: every condition agrees with what the operator wrote in the status", async () => {

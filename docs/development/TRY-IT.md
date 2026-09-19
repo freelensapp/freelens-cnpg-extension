@@ -82,9 +82,18 @@ extension follows that filter.
    **Publications** and **Subscriptions**: open `e2e-sub-numbers` for the
    replication path from `e2e-main`, the slot on the publisher and the
    failover caveat.
-7. Row menu of `e2e-main`: **Open psql**. It opens a session as the
+7. **Clusters, Logs**: pick `e2e-main` and read the rows: a failed declared
+   database shows as a PostgreSQL error with its query, right above the
+   instance manager error it caused; narrow to the primary with its chip; set
+   the level to Errors on `e2e-single` for the WAL archiving failures; click
+   a row for its raw JSON. **Clusters, Timeline**: events, backups, the
+   primary and its lease in order, with what is scheduled above the "now"
+   line. In the drawer of a cluster, Replication section: the **primary
+   lease**. **Operator**: version, leader, what it watches, the reconciles
+   per controller right now, the plugin and the kinds.
+8. Row menu of `e2e-main`: **Open psql**. It opens a session as the
    `postgres` superuser on the primary, under your own kubeconfig.
-8. Switch the theme in the Freelens preferences and look again.
+9. Switch the theme in the Freelens preferences and look again.
 
 For every view the question of the review is the same: is this the best
 possible view for the task?
