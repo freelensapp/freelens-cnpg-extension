@@ -73,3 +73,12 @@
     }
   }
 }
+
+// The psql control of an instance: an icon, no wider than it needs.
+.instances {
+  :global(.TableCell) {
+    &.psql {
+      flex-grow: 0.35;
+    }
+  }
+}

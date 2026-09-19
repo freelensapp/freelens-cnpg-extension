@@ -1,6 +1,6 @@
 # SPEC-0007: Open psql in a Freelens terminal tab
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -127,3 +127,14 @@ is ever composed, sent or stored by the extension.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M2 at the
   milestone review.
+- Implementation notes: the entry and the buttons live in
+  `src/renderer/menus/open-psql.tsx` over the pure `components/psql.ts`. The
+  psql button of the live view is handed to the topology by the page, so the
+  topology stays a component of the model alone. The command quotes the
+  configured kubectl path as well. On the E2E cluster the primary answers
+  `pg_is_in_recovery()` with false and a standby with true, which is what the
+  case asserts; the drawer covers the dock, so the case closes it before
+  typing into the terminal.
+- The host numbers a new terminal tab when the dock already holds its own
+  "Terminal" tab (the title reads `psql: <pod> (2)` on a fresh dock): that is
+  the host's naming, left alone.

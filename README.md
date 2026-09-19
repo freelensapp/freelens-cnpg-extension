@@ -23,27 +23,47 @@ do, on PostgreSQL clusters managed by the operator, from the Kubernetes
 resources down to the live state of the databases, inside the Freelens desktop
 application and across every cluster it manages.
 
-Planned scope for the first releases, read-only first:
+What is there today, all of it read-only:
 
-- Cluster list with a health summary (phase, ready instances, primary, WAL
-  archiving state, last successful backup) and cluster detail (instances and
-  roles, replication topology, storage, certificate expiry, conditions,
-  related pods, PVCs, services and secrets).
-- Backup and ScheduledBackup lists and details.
-- Live database view: sessions, replication lag and database sizes, read from
-  the instances without storing any database credential.
-- Open psql in a Freelens terminal tab.
+- **Overview**: the health of every PostgreSQL cluster at a glance, with every
+  tile and counter leading to the list or the drawer behind it.
+- **PostgreSQL Clusters**: the list with a health summary (ready instances,
+  primary, WAL archiving, last successful backup) and a drawer that tells the
+  whole story of a cluster: instances and roles, replication, storage,
+  certificates with their expiry, conditions, backups and the related pods,
+  PVCs, services and secrets.
+- **Backups and Scheduled Backups**: lists and drawers with the outcome of
+  every backup and its reason, the coordinates needed to restore from it, the
+  schedule as written and in words, and a backup history strip that shows at
+  a glance how a cluster has been protected over time.
+- **Live View**: what happens inside a cluster right now (replication
+  topology and lag, sessions, database sizes, WAL and archiving, replication
+  slots), read from the instances through the API server pod proxy. It needs
+  the `get` verb on `pods/proxy` and nothing installed beyond the operator:
+  no database credential is ever read, stored or asked for.
+- **Open psql**: a `psql` session on the primary, or on the instance you pick,
+  in a Freelens terminal tab.
+
+### What the psql session is
+
+"Open psql" writes one command into a terminal tab of Freelens, the same one
+the `kubectl cnpg psql` plugin runs:
+`kubectl exec -i -t -n <namespace> <pod> -c postgres -- psql -U postgres`.
+It runs under your own kubeconfig and needs `pods/exec` on the instance pod.
+**The session connects as the `postgres` superuser** over the local socket of
+the instance, exactly as the upstream plugin does; on a standby it is a
+read-only session. The extension itself never runs SQL and never sees a
+credential: it composes the command from the namespace and the pod name,
+and everything after that happens in your terminal.
 
 Later milestones: Pooler, Database, DatabaseRole, Publication, Subscription,
 ImageCatalog, ClusterImageCatalog, FailoverQuorum, Barman Cloud ObjectStore,
-creation forms, write actions behind explicit confirmation, metrics charts.
-The roadmap and the specifications live under `docs/` and are the single
-source of truth for scope and progress.
+operator status and events timeline, write actions behind explicit
+confirmation, creation forms, metrics charts. The roadmap and the
+specifications live under `docs/` and are the single source of truth for
+scope and progress.
 
-> Status: early development. This repository was scaffolded from
-> [freelens-example-extension](https://github.com/freelensapp/freelens-example-extension);
-> parts of the example content are still present and will be replaced as the
-> CloudNativePG views are implemented.
+> Status: early development, not yet released.
 
 The extension is written from scratch under the MIT license and reads the
 resources directly from the Kubernetes API through the Freelens extension

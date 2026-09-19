@@ -61,6 +61,20 @@ async function waitUntil<T>(read: () => Promise<T>, accept: (value: T) => boolea
   return value;
 }
 
+/** The visible text of the dock terminal, whitespace dropped: xterm's DOM renderer splits and pads the rows. */
+async function terminalText(frame: Frame): Promise<string> {
+  const rows = frame.locator(".xterm-rows:visible").last();
+
+  return ((await rows.innerText().catch(() => "")) ?? "").replace(/\s+/g, "");
+}
+
+/** Types a line into the dock terminal: xterm keeps the keyboard in a hidden textarea, so the screen is clicked first. */
+async function typeInTerminal(frame: Frame, line: string): Promise<void> {
+  await frame.locator(".xterm-screen:visible").last().click();
+  await frame.page().keyboard.type(line);
+  await frame.page().keyboard.press("Enter");
+}
+
 interface InstanceManagerStatus {
   isPrimary?: boolean;
   systemID?: string;
@@ -684,6 +698,84 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
       await frame.locator('[data-testid="cnpg-overview-door-live-cnpg-e2e-e2e-main"]').click();
       await landedOnMain();
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "opens psql on the primary from the row menu and on a standby from the drawer (SPEC-0007)",
+    async () => {
+      const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-main", "{.status.currentPrimary}");
+      const standby = ["e2e-main-1", "e2e-main-2", "e2e-main-3"].find((name) => name !== primary) as string;
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+
+      // A hibernated cluster has no instance to connect to: the entry says so instead of vanishing.
+      await cluster.openRowMenu(frame, "e2e-hibernated");
+
+      const refused = frame.locator(".Menu .MenuItem", { hasText: "Open psql" }).first();
+
+      await refused.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await refused.getAttribute("class")).toContain("disabled");
+      expect(await refused.getAttribute("title")).toContain("The cluster is hibernated");
+      await cluster.closeRowMenu(frame);
+
+      // The primary, from the row menu.
+      await cluster.openRowMenu(frame, "e2e-main");
+      await frame.locator(".Menu .MenuItem", { hasText: "Open psql" }).first().click();
+      await frame
+        .locator(".Dock .Tab", { hasText: `psql: ${primary}` })
+        .first()
+        .waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await waitUntil(
+          () => terminalText(frame),
+          (text) => text.includes("postgres=#"),
+          90_000,
+        ),
+      ).toContain("postgres=#");
+      await typeInTerminal(frame, "select 'recovery:' || pg_is_in_recovery();");
+      expect(
+        await waitUntil(
+          () => terminalText(frame),
+          (text) => text.includes("recovery:false"),
+          60_000,
+        ),
+      ).toContain("recovery:false");
+      await cluster.captureScreenshot(frame, "psql-primary-dark");
+      await typeInTerminal(frame, "\\q");
+
+      // A standby, by name, from the Instances table of the drawer: a read-only session.
+      await tableRowName(frame, "e2e-main").click();
+
+      const button = frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-psql-${standby}"]`);
+
+      await button.waitFor({ state: "visible", timeout: 60_000 });
+      await button.scrollIntoViewIfNeeded();
+      await button.click();
+      await frame
+        .locator(".Dock .Tab", { hasText: `psql: ${standby}` })
+        .first()
+        .waitFor({ state: "visible", timeout: 60_000 });
+      // The drawer covers the dock: it goes away before the terminal is typed into.
+      await cluster.closeDetails(frame);
+      expect(
+        await waitUntil(
+          () => terminalText(frame),
+          (text) => text.includes("postgres=#"),
+          90_000,
+        ),
+      ).toContain("postgres=#");
+      await typeInTerminal(frame, "select 'recovery:' || pg_is_in_recovery();");
+      expect(
+        await waitUntil(
+          () => terminalText(frame),
+          (text) => text.includes("recovery:true"),
+          60_000,
+        ),
+      ).toContain("recovery:true");
+      await typeInTerminal(frame, "\\q");
     },
     TIMEOUT,
   );

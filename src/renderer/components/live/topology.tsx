@@ -16,6 +16,8 @@ import { formatLag } from "./format";
 import styles from "./live.module.scss";
 import { LINE_BOX_WIDTH, layoutTopology } from "./topology-layout";
 
+import type { ReactNode } from "react";
+
 import type { LiveEdge, LiveInstance, LiveView } from "./live-model";
 
 const {
@@ -29,7 +31,14 @@ const LEVEL_CLASS: Record<LiveEdge["level"], string> = {
   error: styles.levelError,
 };
 
-function InstanceCard({ instance, namespace }: { instance: LiveInstance; namespace: string }) {
+interface InstanceCardProps {
+  instance: LiveInstance;
+  namespace: string;
+  /** The psql control of the instance (SPEC-0007), rendered by the page that knows the cluster. */
+  action?: (instanceName: string) => ReactNode;
+}
+
+function InstanceCard({ instance, namespace, action }: InstanceCardProps) {
   const failure = instance.statusFailure
     ? failureSentence(instance.statusFailure, {
         namespace,
@@ -49,11 +58,14 @@ function InstanceCard({ instance, namespace }: { instance: LiveInstance; namespa
         <span className={styles.instanceName}>
           <StoreLink store={podsStore} name={instance.name} namespace={namespace} />
         </span>
-        <Badge
-          small
-          className={instance.role === "primary" ? "success" : "info"}
-          label={instance.role === "unknown" ? "role unknown" : instance.role}
-        />
+        <span className={styles.instanceActions}>
+          {action?.(instance.name)}
+          <Badge
+            small
+            className={instance.role === "primary" ? "success" : "info"}
+            label={instance.role === "unknown" ? "role unknown" : instance.role}
+          />
+        </span>
       </div>
       {instance.pending ? <div className={styles.muted}>Waiting for the instance manager</div> : null}
       {failure ? (
@@ -124,9 +136,11 @@ function EdgeLabel({ edge }: { edge: LiveEdge }) {
 export interface TopologyProps {
   view: LiveView;
   namespace: string;
+  /** Rendered in the header of every instance card. */
+  instanceAction?: (instanceName: string) => ReactNode;
 }
 
-export function Topology({ view, namespace }: TopologyProps) {
+export function Topology({ view, namespace, instanceAction }: TopologyProps) {
   const layout = layoutTopology(view.instances, view.edges, view.primary);
   const rows = Math.max(1, layout.rows.length);
 
@@ -138,7 +152,7 @@ export function Topology({ view, namespace }: TopologyProps) {
       <div className={styles.topologyGrid} style={{ gridTemplateRows: `repeat(${rows}, minmax(84px, 1fr))` }}>
         <div className={styles.primaryColumn} style={{ gridRow: `1 / span ${rows}` }}>
           {layout.primary ? (
-            <InstanceCard instance={layout.primary} namespace={namespace} />
+            <InstanceCard instance={layout.primary} namespace={namespace} action={instanceAction} />
           ) : (
             <div className={styles.noPrimary}>No instance says it is the primary</div>
           )}
@@ -180,7 +194,7 @@ export function Topology({ view, namespace }: TopologyProps) {
         </div>
         {layout.rows.map((row, index) => (
           <div key={row.instance.name} className={styles.rowCard} style={{ gridRow: index + 1 }}>
-            <InstanceCard instance={row.instance} namespace={namespace} />
+            <InstanceCard instance={row.instance} namespace={namespace} action={instanceAction} />
           </div>
         ))}
         {layout.rows.length === 0 && layout.primary ? (

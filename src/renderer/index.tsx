@@ -13,6 +13,7 @@ import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
+import { ClusterPsqlMenuItem } from "./menus/open-psql";
 import {
   BACKUPS_GROUP_ID,
   BACKUPS_PAGE_ID,
@@ -97,6 +98,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         MenuItem: (props: { object: any; toolbar?: boolean }) => (
           <ClusterLiveViewMenuItem {...props} extension={this} />
         ),
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterPsqlMenuItem {...props} />,
       },
     },
   ];
