@@ -33,6 +33,7 @@ import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscrip
 import { CnpgIcon } from "./icons";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
+import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
 import {
   BACKUPS_GROUP_ID,
@@ -57,6 +58,7 @@ import {
   ROOT_MENU_ID,
   SCHEDULED_BACKUPS_PAGE_ID,
   SUBSCRIPTIONS_PAGE_ID,
+  TIMELINE_PAGE_ID,
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
@@ -75,6 +77,7 @@ import { PoolersPage as PoolersPageV1 } from "./pages/poolers-page-v1";
 import { PublicationsPage as PublicationsPageV1 } from "./pages/publications-page-v1";
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 import { SubscriptionsPage as SubscriptionsPageV1 } from "./pages/subscriptions-page-v1";
+import { TimelinePage } from "./pages/timeline-page";
 
 // Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
 // target on their first leaf (DESIGN.md section 4). The Overview group comes
@@ -98,6 +101,9 @@ const AvailableLivePage = createAvailableVersionPage("PostgreSQL Clusters", [
 ]);
 const AvailableLogsPage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: LogsPage, version: "v1" },
+]);
+const AvailableTimelinePage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: TimelinePage, version: "v1" },
 ]);
 const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
   { kubeObjectClass: BackupV1, PageComponent: BackupsPageV1, version: "v1" },
@@ -270,6 +276,15 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => (
+          <ClusterTimelineMenuItem {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterPsqlMenuItem {...props} />,
       },
     },
@@ -300,6 +315,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: LOGS_PAGE_ID,
       components: {
         Page: () => <AvailableLogsPage extension={this} />,
+      },
+    },
+    {
+      id: TIMELINE_PAGE_ID,
+      components: {
+        Page: () => <AvailableTimelinePage extension={this} />,
       },
     },
     {
@@ -412,6 +433,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: "Logs",
       target: { pageId: LOGS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: TIMELINE_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: "Timeline",
+      target: { pageId: TIMELINE_PAGE_ID },
       components: {},
     },
     {

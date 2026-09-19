@@ -127,3 +127,7 @@ shows what the cluster already writes to its standard output to whoever has
   archiving failures of `e2e-single` alone on the Errors level; the door of
   an instance. Covered by unit tests only: a non-JSON line, a broken line, the
   plugin sidecar container, the forbidden panel.
+- Merged with #44 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request. The manual verification above is part of the M5
+  milestone review: the status moves to Verified when its result is recorded
+  here.

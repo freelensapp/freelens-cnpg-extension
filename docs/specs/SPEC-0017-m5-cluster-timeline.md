@@ -1,6 +1,6 @@
 # SPEC-0017: Cluster timeline (ad hoc, read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M5` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -91,3 +91,21 @@ Reads only.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M5 at the
   milestone review.
+- Implementation notes: an event belongs to the cluster when it is about the
+  cluster, one of its backups, schedules or poolers, an object that carries
+  the `cnpg.io/cluster` label, or one of the instance names of the status;
+  for an object that is already gone the name decides, unless another cluster
+  of the namespace has a longer matching name (`pg` against `pg-2`). The
+  creation of the cluster and the acquisition of the primary lease are entries
+  too. The certificates make one entry, the first to expire, not one each:
+  four entries three months away pushed what happened off the first screen.
+  The now marker sits above the day of the newest past entry. Nothing is
+  polled: every source is a store the host watches.
+- The E2E cluster gets one warning event about `e2e-main` at every bring-up
+  (`cluster-up.sh`), because the API server forgets events after an hour; the
+  case asserts it only when it is still there.
+- Seen live on the E2E cluster: events of pods and jobs, the completed backup,
+  the primary and its lease, the conditions, the next backups above the now
+  marker; on `e2e-single` the failed backup and the failing archiving
+  condition as errors. Covered by unit tests only: the name rule for objects
+  that are gone, a primary that is failing, certificates close to expiry.

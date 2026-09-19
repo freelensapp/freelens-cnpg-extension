@@ -209,6 +209,36 @@ apply_declarative() {
 		'{.status.clientCertificate.expiration}' 300
 }
 
+apply_fixture_event() {
+	# The timeline (SPEC-0017) shows the Kubernetes events of a cluster, which
+	# the API server forgets after an hour. One warning event about e2e-main is
+	# written again at every bring-up, so that the view always has one to show.
+	local now
+	now="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+	log "writing the fixture event of e2e-main"
+	kubectl_e2e delete event e2e-main-fixture --namespace "${E2E_NAMESPACE}" --ignore-not-found >/dev/null
+	kubectl_e2e create -f - >/dev/null <<-EVENT
+		apiVersion: v1
+		kind: Event
+		metadata:
+		  name: e2e-main-fixture
+		  namespace: ${E2E_NAMESPACE}
+		involvedObject:
+		  apiVersion: postgresql.cnpg.io/v1
+		  kind: Cluster
+		  name: e2e-main
+		  namespace: ${E2E_NAMESPACE}
+		reason: E2EFixture
+		message: A warning written by cluster-up.sh so that the timeline has an event to show
+		type: Warning
+		count: 3
+		firstTimestamp: "${now}"
+		lastTimestamp: "${now}"
+		source:
+		  component: e2e-fixtures
+	EVENT
+}
+
 wait_failover_quorum() {
 	# e2e-main runs with the failover quorum on (SPEC-0011): its FailoverQuorum
 	# object is written by the primary once the synchronous configuration is
@@ -263,6 +293,7 @@ main() {
 	apply_second_phase
 	hibernate_and_fence
 	apply_declarative
+	apply_fixture_event
 	verify_fixtures
 	log "cluster ready: kubeconfig=${E2E_KUBECONFIG} context=${E2E_KUBE_CONTEXT}"
 }

@@ -14,6 +14,7 @@ export const CLUSTERS_GROUP_ID = "cnpg-clusters";
 export const CLUSTERS_PAGE_ID = "cnpg-clusters-clusters";
 export const LIVE_PAGE_ID = "cnpg-clusters-live";
 export const LOGS_PAGE_ID = "cnpg-clusters-logs";
+export const TIMELINE_PAGE_ID = "cnpg-clusters-timeline";
 export const FAILOVER_QUORUMS_PAGE_ID = "cnpg-clusters-failoverquorums";
 export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
@@ -60,4 +61,10 @@ export function logsUrl(extensionName: string, namespace?: string, name?: string
   if (!namespace || !name) return base;
   const query = `${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}`;
   return instance ? `${base}?${query}&${LOGS_INSTANCE_PARAM}=${encodeURIComponent(instance)}` : `${base}?${query}`;
+}
+
+/** The Timeline of a cluster (SPEC-0017): the cluster travels in the URL. */
+export function timelineUrl(extensionName: string, namespace?: string, name?: string): string {
+  const base = extensionPageUrl(extensionName, TIMELINE_PAGE_ID);
+  return namespace && name ? `${base}?${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}` : base;
 }

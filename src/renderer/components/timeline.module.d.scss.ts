@@ -1,0 +1,21 @@
+declare const classNames: {
+  readonly toolbar: "toolbar";
+  readonly label: "label";
+  readonly chip: "chip";
+  readonly chipOn: "chipOn";
+  readonly count: "count";
+  readonly note: "note";
+  readonly group: "group";
+  readonly day: "day";
+  readonly now: "now";
+  readonly entry: "entry";
+  readonly success: "success";
+  readonly warning: "warning";
+  readonly error: "error";
+  readonly info: "info";
+  readonly time: "time";
+  readonly body: "body";
+  readonly title: "title";
+  readonly detail: "detail";
+};
+export = classNames;
