@@ -139,3 +139,7 @@ a Secret and its expiry from the status, nothing else.
   the `app` role with `replication`, the inline roles of `e2e-single` with
   one that cannot be reconciled. Covered by unit tests only: a certificate in
   its last week, expired or not issued yet, Deleting with the delete policy.
+- Merged with #37 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request. The manual verification above is part of the M4
+  milestone review: the status moves to Verified when its result is recorded
+  here.

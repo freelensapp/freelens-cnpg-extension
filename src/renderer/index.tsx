@@ -15,7 +15,9 @@ import {
   ImageCatalog as ImageCatalogV1,
 } from "./api/cnpg/image-catalog-v1";
 import { Pooler as PoolerV1 } from "./api/cnpg/pooler-v1";
+import { Publication as PublicationV1 } from "./api/cnpg/publication-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
+import { Subscription as SubscriptionV1 } from "./api/cnpg/subscription-v1";
 import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
@@ -25,7 +27,9 @@ import { FailoverQuorumDetails as FailoverQuorumDetailsV1 } from "./details/fail
 import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
 import { PoolerDetails as PoolerDetailsV1 } from "./details/pooler-details-v1";
+import { PublicationDetails as PublicationDetailsV1 } from "./details/publication-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
+import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscription-details-v1";
 import { CnpgIcon } from "./icons";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
@@ -47,8 +51,10 @@ import {
   OVERVIEW_PAGE_ID,
   POOLERS_PAGE_ID,
   POOLING_GROUP_ID,
+  PUBLICATIONS_PAGE_ID,
   ROOT_MENU_ID,
   SCHEDULED_BACKUPS_PAGE_ID,
+  SUBSCRIPTIONS_PAGE_ID,
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
@@ -63,7 +69,9 @@ import { LivePage } from "./pages/live-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
 import { OverviewPage } from "./pages/overview-page";
 import { PoolersPage as PoolersPageV1 } from "./pages/poolers-page-v1";
+import { PublicationsPage as PublicationsPageV1 } from "./pages/publications-page-v1";
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
+import { SubscriptionsPage as SubscriptionsPageV1 } from "./pages/subscriptions-page-v1";
 
 // Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
 // target on their first leaf (DESIGN.md section 4). The Overview group comes
@@ -102,6 +110,12 @@ const AvailableDatabasesPage = createAvailableVersionPage(DatabaseV1.crd.title, 
 ]);
 const AvailableDatabaseRolesPage = createAvailableVersionPage(DatabaseRoleV1.crd.title, [
   { kubeObjectClass: DatabaseRoleV1, PageComponent: DatabaseRolesPageV1, version: "v1" },
+]);
+const AvailablePublicationsPage = createAvailableVersionPage(PublicationV1.crd.title, [
+  { kubeObjectClass: PublicationV1, PageComponent: PublicationsPageV1, version: "v1" },
+]);
+const AvailableSubscriptionsPage = createAvailableVersionPage(SubscriptionV1.crd.title, [
+  { kubeObjectClass: SubscriptionV1, PageComponent: SubscriptionsPageV1, version: "v1" },
 ]);
 const AvailableImageCatalogsPage = createAvailableVersionPage(ImageCatalogV1.crd.title, [
   { kubeObjectClass: ImageCatalogV1, PageComponent: ImageCatalogsPageV1, version: "v1" },
@@ -194,6 +208,26 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <DatabaseRoleDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: PublicationV1.kind,
+      apiVersions: PublicationV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <PublicationDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: SubscriptionV1.kind,
+      apiVersions: SubscriptionV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <SubscriptionDetailsV1 {...props} extension={this} />
         ),
       },
     },
@@ -292,6 +326,18 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       },
     },
     {
+      id: PUBLICATIONS_PAGE_ID,
+      components: {
+        Page: () => <AvailablePublicationsPage extension={this} />,
+      },
+    },
+    {
+      id: SUBSCRIPTIONS_PAGE_ID,
+      components: {
+        Page: () => <AvailableSubscriptionsPage extension={this} />,
+      },
+    },
+    {
       id: IMAGE_CATALOGS_PAGE_ID,
       components: {
         Page: () => <AvailableImageCatalogsPage extension={this} />,
@@ -368,6 +414,20 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: DATABASES_GROUP_ID,
       title: DatabaseRoleV1.crd.title,
       target: { pageId: DATABASE_ROLES_PAGE_ID },
+      components: {},
+    },
+    {
+      id: PUBLICATIONS_PAGE_ID,
+      parentId: DATABASES_GROUP_ID,
+      title: PublicationV1.crd.title,
+      target: { pageId: PUBLICATIONS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: SUBSCRIPTIONS_PAGE_ID,
+      parentId: DATABASES_GROUP_ID,
+      title: SubscriptionV1.crd.title,
+      target: { pageId: SUBSCRIPTIONS_PAGE_ID },
       components: {},
     },
     {

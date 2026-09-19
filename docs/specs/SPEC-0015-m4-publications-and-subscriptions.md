@@ -1,6 +1,6 @@
 # SPEC-0015: Publications and Subscriptions, list and detail (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M4` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -125,3 +125,22 @@ entry; it shows the host, the user and the database.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M4 at the
   milestone review.
+- Implementation notes: the pairing functions return every match
+  (`publicationsOfSubscription`), the drawer links the first. A service host
+  is recognised as `<cluster>-rw|-ro|-r` with an optional namespace and an
+  optional `svc` suffix with any cluster domain; anything else is an external
+  publisher and is shown by its host. The Subscriptions column of the
+  Publications list links the subscription when there is exactly one and
+  counts them otherwise. The Publication drawer shows one replication path per
+  subscription found here, then every logical slot of its database on the
+  primary, so a subscriber outside this Kubernetes cluster still shows up as a
+  slot without an owner. The subscription notes also cover `copy_data`.
+  The drawers of a publisher or subscriber in another namespace read the
+  clusters wherever the user can see them.
+- Seen live on the E2E cluster (operator 1.30.0): both kinds Applied and
+  Failed (a table that is not there, an external cluster that is not
+  declared), the resolved pair both ways, the slot of the subscription active
+  with the WAL kept for it, the failover sentence for a three-instance
+  publisher without slot synchronization, 1000 rows counted on the
+  subscriber. Covered by unit tests only: an external publisher, a custom
+  `slot_name`, the notes, a publisher with synchronized slots, a missing slot.
