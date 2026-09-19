@@ -1586,7 +1586,8 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       const future = frame.locator('[data-testid="cnpg-timeline-entry"][data-future="true"]');
 
       expect(await future.count()).toBeGreaterThan(0);
-      expect((await future.allInnerTexts()).join(" ")).toContain("Next backup of e2e-nightly");
+      // The immediate schedule has run once, so it always knows its next time; a schedule that never ran may not yet.
+      expect((await future.allInnerTexts()).join(" ")).toContain("Next backup of e2e-immediate");
       await frame.locator('[data-testid="cnpg-timeline-now"]').waitFor({ state: "visible", timeout: 30_000 });
 
       // The event cluster-up.sh writes at every bring-up; the API server forgets events after an hour.
