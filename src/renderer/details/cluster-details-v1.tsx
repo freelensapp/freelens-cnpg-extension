@@ -10,6 +10,7 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
+import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
@@ -143,6 +144,8 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const status = object.status;
     const backupStore = maybe(() => Backup.getStore<Backup>());
     const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
+    // The Barman Cloud plugin is optional: without its CRD there is no store to read.
+    const objectStoreStore = maybe(() => ObjectStore.getStore<ObjectStore>());
     const health = classifyCluster(object);
     const archiving = archivingState(object);
     const instances = instanceFacts(object);
@@ -172,10 +175,12 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       { label: "secrets", store: secretsStore, namespaces: [namespace] },
       { label: Backup.crd.plural, store: backupStore, namespaces: [namespace] },
       { label: ScheduledBackup.crd.plural, store: scheduleStore, namespaces: [namespace] },
+      { label: ObjectStore.crd.plural, store: objectStoreStore, namespaces: [namespace] },
     ]);
 
     const namespaceBackups = ((backupStore?.items ?? []) as Backup[]).filter((b) => b.getNs() === namespace);
-    const backups = backupFacts(object, namespaceBackups);
+    const objectStores = ((objectStoreStore?.items ?? []) as ObjectStore[]).filter((s) => s.getNs() === namespace);
+    const backups = backupFacts(object, namespaceBackups, objectStores);
 
     // The backup history strip and its doors (SPEC-0005): the cluster's own
     // backups over time, its schedules, and the way to the filtered list.
@@ -464,12 +469,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
           <WithTooltip>{archiving.message}</WithTooltip>
         </DrawerItem>
         <DrawerItem name="Backup plugin" hidden={!walArchiver && plugins.length === 0}>
-          <WithTooltip>
-            {(walArchiver ?? plugins[0])?.name}
-            {(walArchiver ?? plugins[0])?.parameters?.barmanObjectName
-              ? ` (object store ${(walArchiver ?? plugins[0])?.parameters?.barmanObjectName})`
-              : ""}
-          </WithTooltip>
+          <WithTooltip>{(walArchiver ?? plugins[0])?.name}</WithTooltip>
+        </DrawerItem>
+        <DrawerItem name="Object store" hidden={!(walArchiver ?? plugins[0])?.parameters?.barmanObjectName}>
+          <StoreLink
+            store={objectStoreStore}
+            name={(walArchiver ?? plugins[0])?.parameters?.barmanObjectName}
+            namespace={namespace}
+            missing="The ObjectStore is not in the cluster (yet)"
+          />
         </DrawerItem>
         <DrawerItem name="Backup method" hidden={!inTreeBackup} labelsOnly>
           <Badge
@@ -508,22 +516,33 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         </DrawerItem>
         <DrawerItem name="First recoverability point" hidden={!backups.firstRecoverabilityPoint}>
           {backups.firstRecoverabilityPoint ? <LocaleDate date={backups.firstRecoverabilityPoint} /> : null}
+          <span className={styles.topologyInstances}>
+            {backups.recoverabilitySource === "object store"
+              ? " as the Barman Cloud plugin reports it"
+              : backups.recoverabilitySource === "backups"
+                ? " approximated by the earliest completed Backup object"
+                : ""}
+          </span>
         </DrawerItem>
         <DrawerItem name="Backup facts source">
           <WithTooltip
             tooltip={
               backups.source === "backups"
                 ? `${backups.count} Backup objects of this cluster`
-                : backups.source === "status"
-                  ? "Deprecated cluster status fields, no Backup object found"
-                  : "No Backup object and no status field"
+                : backups.source === "object store"
+                  ? "The recovery window the Barman Cloud plugin reports in the object store, no Backup object found"
+                  : backups.source === "status"
+                    ? "Deprecated cluster status fields, no Backup object found"
+                    : "No Backup object and no status field"
             }
           >
             {backups.source === "backups"
               ? "Backup objects"
-              : backups.source === "status"
-                ? "cluster status (deprecated)"
-                : "none"}
+              : backups.source === "object store"
+                ? "object store (no Backup object)"
+                : backups.source === "status"
+                  ? "cluster status (deprecated)"
+                  : "none"}
           </WithTooltip>
         </DrawerItem>
 

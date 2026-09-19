@@ -11,6 +11,7 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
+import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
@@ -72,6 +73,8 @@ export const BackupDetails = observer((props: BackupDetailsProps) =>
     const status = object.status;
     const clusterStore = maybe(() => Cluster.getStore<Cluster>());
     const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
+    // The plugin is optional: without its CRD there is no store to look into, and the name stays text.
+    const objectStoreStore = maybe(() => ObjectStore.getStore<ObjectStore>());
     const clusterName = Backup.getClusterName(object);
     const parentSchedule = Backup.getParentSchedule(object);
     const instancePod = Backup.getInstancePod(object);
@@ -80,6 +83,7 @@ export const BackupDetails = observer((props: BackupDetailsProps) =>
       { label: Cluster.crd.plural, store: clusterStore, namespaces: [namespace] },
       { label: ScheduledBackup.crd.plural, store: scheduleStore, namespaces: [namespace] },
       { label: "pods", store: podsStore, namespaces: [namespace] },
+      { label: ObjectStore.crd.plural, store: objectStoreStore, namespaces: [namespace] },
     ]);
 
     const health = classifyBackup(object);
@@ -213,9 +217,12 @@ export const BackupDetails = observer((props: BackupDetailsProps) =>
               {status?.pluginMetadata?.version}
             </DrawerItem>
             <DrawerItem name="Object store">
-              <WithTooltip tooltip={objectStore ? "ObjectStore of the Barman Cloud plugin, same namespace" : undefined}>
-                {objectStore ?? notAvailable}
-              </WithTooltip>
+              <StoreLink
+                store={objectStoreStore}
+                name={objectStore}
+                namespace={namespace}
+                missing="The ObjectStore is not in the cluster (anymore)"
+              />
             </DrawerItem>
           </>
         ) : null}

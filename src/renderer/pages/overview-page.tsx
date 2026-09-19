@@ -9,6 +9,7 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
+import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
@@ -40,6 +41,8 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
     const clusterStore = Cluster.getStore<Cluster>();
     const backupStore = maybe(() => Backup.getStore<Backup>());
     const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
+    // Optional: the Barman Cloud plugin may not be installed.
+    const objectStoreStore = maybe(() => ObjectStore.getStore<ObjectStore>());
 
     // The three stores follow the namespace filter like every page; the loader
     // keeps them filled and watched while the Overview is open.
@@ -47,6 +50,7 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
       { label: Cluster.crd.plural, store: clusterStore },
       { label: Backup.crd.plural, store: backupStore },
       { label: ScheduledBackup.crd.plural, store: scheduleStore },
+      { label: ObjectStore.crd.plural, store: objectStoreStore },
     ]);
 
     const loading = !clusterStore.isLoaded && !clusterStore.failedLoading;
@@ -54,6 +58,8 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
       clusterStore.items as Cluster[],
       (backupStore?.items ?? []) as Backup[],
       (scheduleStore?.items ?? []) as ScheduledBackup[],
+      new Date(),
+      (objectStoreStore?.items ?? []) as ObjectStore[],
     );
 
     const listUrl = (search?: string) => extensionPageUrl(extension.name, CLUSTERS_PAGE_ID, search);

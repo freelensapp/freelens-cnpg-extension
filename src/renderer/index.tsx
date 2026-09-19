@@ -4,12 +4,14 @@
  */
 
 import { Renderer } from "@freelensapp/extensions";
+import { ObjectStore as ObjectStoreV1 } from "./api/barmancloud/object-store-v1";
 import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
+import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
@@ -20,6 +22,7 @@ import {
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
   LIVE_PAGE_ID,
+  OBJECT_STORES_PAGE_ID,
   OVERVIEW_GROUP_ID,
   OVERVIEW_PAGE_ID,
   ROOT_MENU_ID,
@@ -28,6 +31,7 @@ import {
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
 import { LivePage } from "./pages/live-page";
+import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
 import { OverviewPage } from "./pages/overview-page";
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 
@@ -55,6 +59,11 @@ const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
 const AvailableScheduledBackupsPage = createAvailableVersionPage(ScheduledBackupV1.crd.title, [
   { kubeObjectClass: ScheduledBackupV1, PageComponent: ScheduledBackupsPageV1, version: "v1" },
 ]);
+const AvailableObjectStoresPage = createAvailableVersionPage(
+  ObjectStoreV1.crd.title,
+  [{ kubeObjectClass: ObjectStoreV1, PageComponent: ObjectStoresPageV1, version: "v1" }],
+  "Object stores belong to the Barman Cloud plugin of CloudNativePG, which is optional: it is the supported way to back up and archive WAL to object storage.",
+);
 
 export default class CnpgRenderer extends Renderer.LensExtension {
   kubeObjectDetailItems = [
@@ -85,6 +94,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <ScheduledBackupDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: ObjectStoreV1.kind,
+      apiVersions: ObjectStoreV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <ObjectStoreDetailsV1 {...props} extension={this} />
         ),
       },
     },
@@ -140,6 +159,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: SCHEDULED_BACKUPS_PAGE_ID,
       components: {
         Page: () => <AvailableScheduledBackupsPage extension={this} />,
+      },
+    },
+    {
+      id: OBJECT_STORES_PAGE_ID,
+      components: {
+        Page: () => <AvailableObjectStoresPage extension={this} />,
       },
     },
   ];
@@ -200,6 +225,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: BACKUPS_GROUP_ID,
       title: ScheduledBackupV1.crd.title,
       target: { pageId: SCHEDULED_BACKUPS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: OBJECT_STORES_PAGE_ID,
+      parentId: BACKUPS_GROUP_ID,
+      title: ObjectStoreV1.crd.title,
+      target: { pageId: OBJECT_STORES_PAGE_ID },
       components: {},
     },
   ];

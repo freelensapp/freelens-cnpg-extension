@@ -1,6 +1,6 @@
 # SPEC-0009: Object Stores (Barman Cloud plugin), list and detail (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M3` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`, Barman Cloud plugin `v0.15.0`
   (drift watch of 2026-09-19: both still the latest)
@@ -124,3 +124,18 @@ Reads only. Secrets are linked by name; no value is read.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M3 at the
   milestone review.
+- Implementation notes: the backup facts gained a source, "object store": when
+  a cluster has no `Backup` object left, the last successful and the last
+  failed backup come from the recovery window of its server (the backups are
+  in the bucket even when their objects were deleted), before the deprecated
+  status fields. The first recoverability point says where it comes from in
+  the Cluster drawer. The list, the drawer and the Overview all pass the
+  stores to the same function, so they cannot disagree.
+- The times of the recovery windows table are relative, with the exact time
+  in the tooltip: four dates do not fit one drawer row. The exact first
+  recoverability point is in the Cluster drawer, and the E2E suite compares it
+  with what the plugin wrote in the status of the store.
+- The CRD-absent panel takes a hint, so the Object Stores page says that the
+  Barman Cloud plugin is optional instead of naming the operator.
+- The E2E case of the psql terminal now closes its dock tabs: they covered
+  half of every view that followed.
