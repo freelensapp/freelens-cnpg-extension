@@ -67,9 +67,14 @@ extension follows that filter.
 4. **Backups**: open a completed backup for its restore coordinates and the
    failed one for its error; in **Scheduled Backups** open `e2e-immediate`
    for the backups it generated and `e2e-suspended` for the warning.
-5. Row menu of `e2e-main`: **Open psql**. It opens a session as the
+5. **Backups, Object Stores**: the recovery window the plugin reports for
+   every server; **Images**: who follows a catalog; **Clusters, Failover
+   Quorums**: whether a failover could be decided safely; **Pooling,
+   Poolers**: open `e2e-main-pooler` and watch "Right now" with the demo
+   client going through it.
+6. Row menu of `e2e-main`: **Open psql**. It opens a session as the
    `postgres` superuser on the primary, under your own kubeconfig.
-6. Switch the theme in the Freelens preferences and look again.
+7. Switch the theme in the Freelens preferences and look again.
 
 For every view the question of the review is the same: is this the best
 possible view for the task?

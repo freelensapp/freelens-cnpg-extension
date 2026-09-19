@@ -1026,6 +1026,78 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "lists the poolers and reads what PgBouncer is doing right now through the pod proxy (SPEC-0012)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-pooling-poolers", "Poolers");
+      await cluster.selectNamespace(frame);
+      await cluster.expectRow(frame, "e2e-main-pooler", "e2e-main", "rw (primary)", "session", "1/1", "Active");
+      await cluster.captureScreenshot(frame, "poolers-dark");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-main-pooler",
+        "Pooler",
+        "Active",
+        "rw (primary)",
+        "e2e-main-pooler.cnpg-e2e.svc",
+        "session: a server connection for the length of a client session",
+        "Right now",
+        "PgBouncer parameters",
+        "max_client_conn",
+        "default_pool_size",
+        "Pods, service and secrets",
+      );
+
+      // The live section: read from the exporter of the pooler pod, whoever is connected through it.
+      await tableRowName(frame, "e2e-main-pooler").click();
+
+      const live = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-pooler-live"]');
+
+      await live.waitFor({ state: "visible", timeout: 90_000 });
+      expect(await live.innerText()).toContain("every 15 s from 1 pod");
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const text = (await drawer.innerText()).replace(/\s+/g, " ");
+
+      expect(text).toMatch(/Clients \d+ active, \d+ waiting for a server connection, \d+ free/);
+      expect(text).toMatch(/Servers \d+ active, \d+ idle/);
+      await live.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "pooler-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      // The cluster and its live view lead to the pooler.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-main").click();
+
+      const clusterDrawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Poolers" });
+
+      await clusterDrawer.waitFor({ state: "visible", timeout: 60_000 });
+      await clusterDrawer.locator(".DrawerItem", { hasText: "Poolers" }).locator("a").first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Right now" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+
+      const door = frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]');
+
+      if ((await door.count()) > 0) await door.click();
+
+      const chips = frame.locator('[data-testid="cnpg-live-poolers"]');
+
+      await chips.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await chips.innerText()).toContain("e2e-main-pooler");
+      await chips.locator("a", { hasText: "e2e-main-pooler" }).first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Right now" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
@@ -1036,6 +1108,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-backups-objectstores", "Object Stores"],
         ["cnpg-images-imagecatalogs", "Image Catalogs"],
         ["cnpg-clusters-failoverquorums", "Failover Quorums"],
+        ["cnpg-pooling-poolers", "Poolers"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

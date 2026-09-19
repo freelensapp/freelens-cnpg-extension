@@ -15,6 +15,7 @@ import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { FailoverQuorum } from "../api/cnpg/failover-quorum-v1";
 import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
+import { Pooler } from "../api/cnpg/pooler-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
 import { buildHistory, schedulesOfCluster } from "../components/backup-history";
 import { BackupHistoryStrip } from "../components/backup-history-strip";
@@ -30,6 +31,7 @@ import { withErrorPage } from "../components/error-page";
 import { quorumFacts } from "../components/failover-quorum";
 import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
+import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { PsqlButton } from "../menus/open-psql";
@@ -149,6 +151,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
     // The Barman Cloud plugin is optional: without its CRD there is no store to read.
     const objectStoreStore = maybe(() => ObjectStore.getStore<ObjectStore>());
+    const poolerStore = maybe(() => Pooler.getStore<Pooler>());
     const failoverQuorumStore = maybe(() => FailoverQuorum.getStore<FailoverQuorum>());
     // One per cluster with the failover quorum on, named after the cluster (SPEC-0011).
     const failoverQuorum = failoverQuorumStore?.getByName(object.getName(), object.getNs()) as
@@ -185,6 +188,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       { label: ScheduledBackup.crd.plural, store: scheduleStore, namespaces: [namespace] },
       { label: ObjectStore.crd.plural, store: objectStoreStore, namespaces: [namespace] },
       { label: FailoverQuorum.crd.plural, store: failoverQuorumStore, namespaces: [namespace] },
+      { label: Pooler.crd.plural, store: poolerStore, namespaces: [namespace] },
       {
         label: ImageCatalog.crd.plural,
         store: maybe(() => ImageCatalog.getStore<ImageCatalog>()),
@@ -199,6 +203,9 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const namespaceBackups = ((backupStore?.items ?? []) as Backup[]).filter((b) => b.getNs() === namespace);
     const objectStores = ((objectStoreStore?.items ?? []) as ObjectStore[]).filter((s) => s.getNs() === namespace);
     const backups = backupFacts(object, namespaceBackups, objectStores);
+
+    // The PgBouncer poolers in front of the cluster (SPEC-0012).
+    const poolers = poolersOfCluster(object, (poolerStore?.items ?? []) as Pooler[]);
 
     // The backup history strip and its doors (SPEC-0005): the cluster's own
     // backups over time, its schedules, and the way to the filtered list.
@@ -621,6 +628,18 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         </Table>
 
         <DrawerTitle>Services and secrets</DrawerTitle>
+        <DrawerItem name="Poolers" hidden={poolers.length === 0}>
+          <div className={styles.list}>
+            {poolers.map((pooler) => (
+              <span key={pooler.getName()} className={styles.topologyRow}>
+                <StoreLink store={poolerStore} name={pooler.getName()} namespace={namespace} />
+                <span className={styles.topologyInstances}>
+                  {poolerTypeWords(pooler)}, {classifyPooler(pooler).state.toLowerCase()}
+                </span>
+              </span>
+            ))}
+          </div>
+        </DrawerItem>
         <DrawerItem name="Read-write service">
           <ServiceRef name={status?.writeService ?? `${name}-rw`} namespace={namespace} />
         </DrawerItem>

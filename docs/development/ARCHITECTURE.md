@@ -127,7 +127,7 @@ src/
   renderer/api/barmancloud/  # The ObjectStore kind of the optional Barman Cloud plugin
   renderer/api/instance/     # Instance manager and metrics contracts: the
                              # PostgresqlStatus type and guard, the Prometheus
-                             # text reader, the pod proxy client (GET on the two
+                             # text reader, the pod proxy client (GET on the three
                              # read endpoints only, typed failures)
   renderer/pages/            # List pages and the ad hoc pages (overview, live view)
   renderer/details/          # Detail panels (kubeObjectDetailItems)
@@ -137,7 +137,8 @@ src/
                              # status classifiers, parsers (Go time, LSN, intervals,
                              # cron text), backup history, reference loading
   renderer/components/live/  # The live view: pure model, poller, sparkline series,
-                             # topology layout and component, tiles
+                             # topology layout and component, tiles; the pooler
+                             # model and poller of the Pooler drawer
   renderer/icons/            # Original SVG icons (never copied)
   common/                    # Code shared between main and renderer
 e2e/                         # kind cluster scripts, fixtures, Playwright suite

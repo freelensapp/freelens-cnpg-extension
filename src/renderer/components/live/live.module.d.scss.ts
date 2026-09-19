@@ -36,6 +36,8 @@ declare const classNames: {
   readonly flags: "flags";
   readonly failure: "failure";
   readonly noPrimary: "noPrimary";
+  readonly poolers: "poolers";
+  readonly poolerChip: "poolerChip";
   readonly tiles: "tiles";
   readonly tile: "tile";
   readonly tileTitle: "tileTitle";

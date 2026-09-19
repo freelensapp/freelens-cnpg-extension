@@ -11,8 +11,10 @@ import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { Pooler } from "../api/cnpg/pooler-v1";
 import { withErrorPage } from "../components/error-page";
 import { catalogMajors, classifyCatalog, clustersOfCatalog, imageShort, imageTag } from "../components/image-catalogs";
+import { poolersOfCatalog } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./image-catalog-details.module.scss";
@@ -49,6 +51,7 @@ export const ImageCatalogDetails = observer((props: ImageCatalogDetailsProps) =>
     }
 
     const clusterStore = maybe(() => Cluster.getStore<Cluster>());
+    const poolerStore = maybe(() => Pooler.getStore<Pooler>());
     const clusterScoped = object.kind === "ClusterImageCatalog";
 
     // A cluster scoped catalog may be followed from any namespace.
@@ -58,8 +61,14 @@ export const ImageCatalogDetails = observer((props: ImageCatalogDetailsProps) =>
         store: clusterStore,
         namespaces: clusterScoped ? undefined : [object.getNs() ?? ""],
       },
+      {
+        label: Pooler.crd.plural,
+        store: poolerStore,
+        namespaces: clusterScoped ? undefined : [object.getNs() ?? ""],
+      },
     ]);
 
+    const poolers = poolersOfCatalog(object, (poolerStore?.items ?? []) as Pooler[]);
     const clusters = (clusterStore?.items ?? []) as Cluster[];
     const health = classifyCatalog(object, clusters);
     const majors = catalogMajors(object);
@@ -153,6 +162,21 @@ export const ImageCatalogDetails = observer((props: ImageCatalogDetailsProps) =>
             ))}
           </Table>
         )}
+
+        {poolers.length > 0 ? (
+          <>
+            <DrawerTitle>Poolers</DrawerTitle>
+            {poolers.map((entry) => (
+              <DrawerItem key={`${entry.namespace}/${entry.name}`} name={`Key ${entry.key || "N/A"}`}>
+                <StoreLink store={poolerStore} name={entry.name} namespace={entry.namespace} />
+                <span className={styles.mono}>
+                  {" "}
+                  {entry.offered ? imageShort(entry.offered) : "not offered under that key"}
+                </span>
+              </DrawerItem>
+            ))}
+          </>
+        ) : null}
       </>
     );
   }),

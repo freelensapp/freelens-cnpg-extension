@@ -276,6 +276,23 @@
   color: var(--colorError);
 }
 
+.poolers {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $unit calc($unit * 2);
+}
+
+.poolerChip {
+  display: inline-flex;
+  align-items: center;
+  gap: $unit;
+  padding: calc($unit / 2) $unit;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit * 1.5);
+  background: var(--contentColor);
+}
+
 // Tiles -----------------------------------------------------------------------
 
 .tiles {

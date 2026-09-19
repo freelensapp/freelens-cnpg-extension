@@ -1,0 +1,41 @@
+@use "../vars" as *;
+
+.page {
+  :global(.TableCell) {
+    &.cluster {
+      flex-grow: 0.9;
+    }
+
+    &.type {
+      flex-grow: 0.8;
+    }
+
+    &.poolMode,
+    &.instances {
+      flex-grow: 0.6;
+    }
+
+    &.image {
+      flex-grow: 1;
+    }
+
+    &.condition {
+      flex-grow: 0.8;
+    }
+
+    &.status {
+      flex-grow: 1.5;
+    }
+
+    &.age {
+      flex-grow: 0.3;
+    }
+
+    &.cluster a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}
