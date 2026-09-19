@@ -37,6 +37,9 @@ const HUMAN_JUDGMENT = [
   "Live View against a busy database for ten minutes: do the figures move without flicker, does the page stay responsive?",
   "Live View with a kubeconfig that lacks `pods/proxy`: is the permission panel clear about what to grant?",
   "Open psql on Windows and Linux desktops: does the tab open and reach the prompt (the suites run on macOS locally and on Linux in CI)?",
+  'Object Stores: do the recovery windows answer "how far back can I go" at a glance, and is an orphan server clear?',
+  "Failover Quorums: is the sentence about R, W and N right for somebody who knows the operator, and clear for somebody who does not?",
+  "Poolers: do the live figures next to the parameters explain each other (pool size against clients waiting)?",
   "Every view, both themes: is this the best possible view for the task?",
 ];
 
@@ -131,6 +134,56 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       .waitFor({ state: "visible", timeout: 60_000 });
     await shot(`${theme}-scheduled-backup-drawer`);
     await cluster.closeDetails(frame);
+
+    // M3: the kinds around a cluster.
+    await cluster.openCnpgPage(frame, "cnpg-backups-objectstores", "Object Stores");
+    await cluster.expectRow(frame, "e2e-store", "In use");
+    await shot(`${theme}-object-stores`);
+    await table(frame, "e2e-store").click();
+    await frame
+      .locator(".Drawer.KubeObjectDetails", { hasText: "Recovery windows" })
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await frame.locator(".Drawer.KubeObjectDetails").getByText("Recovery windows").scrollIntoViewIfNeeded();
+    await shot(`${theme}-object-store-drawer`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-pooling-poolers", "Poolers");
+    await cluster.expectRow(frame, "e2e-main-pooler", "Active");
+    await shot(`${theme}-poolers`);
+    await table(frame, "e2e-main-pooler").click();
+
+    const poolerLive = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-pooler-live"]');
+
+    await poolerLive.waitFor({ state: "visible", timeout: 90_000 });
+    await poolerLive.scrollIntoViewIfNeeded();
+    await shot(`${theme}-pooler-drawer`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-images-imagecatalogs", "Image Catalogs");
+    await cluster.expectRow(frame, "e2e-images", "In use");
+    await shot(`${theme}-image-catalogs`);
+    await table(frame, "e2e-images").click();
+    await frame
+      .locator(".Drawer.KubeObjectDetails", { hasText: "Aligned" })
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await frame.locator(".Drawer.KubeObjectDetails").getByText("Aligned").scrollIntoViewIfNeeded();
+    await shot(`${theme}-image-catalog-drawer`);
+    await cluster.closeDetails(frame);
+
+    await cluster.openCnpgPage(frame, "cnpg-images-clusterimagecatalogs", "Cluster Image Catalogs");
+    await cluster.expectRow(frame, "e2e-cluster-images", "Unused");
+    await shot(`${theme}-cluster-image-catalogs`);
+
+    await cluster.openCnpgPage(frame, "cnpg-clusters-failoverquorums", "Failover Quorums");
+    await cluster.expectRow(frame, "e2e-main", "Safe");
+    await shot(`${theme}-failover-quorums`);
+    await table(frame, "e2e-main").click();
+    await frame
+      .locator(".Drawer.KubeObjectDetails", { hasText: "How to read it" })
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await frame.locator(".Drawer.KubeObjectDetails").getByText("How to read it").scrollIntoViewIfNeeded();
+    await shot(`${theme}-failover-quorum-drawer`);
+    await cluster.closeDetails(frame);
   }
 
   beforeAll(async () => {
@@ -209,6 +262,10 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         ["cnpg-clusters-clusters", "PostgreSQL Clusters"],
         ["cnpg-backups-backups", "Backups"],
         ["cnpg-backups-scheduledbackups", "Scheduled Backups"],
+        ["cnpg-backups-objectstores", "Object Stores"],
+        ["cnpg-pooling-poolers", "Poolers"],
+        ["cnpg-images-imagecatalogs", "Image Catalogs"],
+        ["cnpg-clusters-failoverquorums", "Failover Quorums"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });
