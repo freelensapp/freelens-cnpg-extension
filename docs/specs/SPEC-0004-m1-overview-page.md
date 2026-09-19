@@ -152,3 +152,7 @@ Reads only, from stores; no network call of its own.
 - The Pod store cross-check of the plan is not needed: the operator's
   `status.readyInstances` already reflects pod readiness (verified on the
   fenced fixture).
+- Merged with #17 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `cd337d3`. The manual verification above is part of the
+  M1 milestone review: the status moves to Verified when its result (date,
+  tester, verdict) is recorded here.

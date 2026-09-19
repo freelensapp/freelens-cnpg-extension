@@ -30,15 +30,15 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | --- | --- | --- |
 | Recon digest, data access architecture, health model | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md) | Approved |
 | Test environment and E2E infrastructure (kind, operator, fixtures) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md) | Done |
-| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | [SPEC-0003](../specs/SPEC-0003-m1-cluster-list-and-detail.md) | In PR |
-| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | [SPEC-0004](../specs/SPEC-0004-m1-overview-page.md) | In PR |
+| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | [SPEC-0003](../specs/SPEC-0003-m1-cluster-list-and-detail.md) | Done |
+| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | [SPEC-0004](../specs/SPEC-0004-m1-overview-page.md) | Done |
 
 ### M2 - Backups, live view, psql (read-only)
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Backup and ScheduledBackup lists + details, backup-derived health | SPEC-0005 | Planned |
-| Live database view (instance status and metrics through the API server pod proxy: sessions, replication lag, database sizes, WAL) | SPEC-0006 | Planned |
+| Backup and ScheduledBackup lists + details, backup history strip, backup-derived health | [SPEC-0005](../specs/SPEC-0005-m2-backups-and-scheduled-backups.md) | Approved |
+| Live database view (instance status and metrics through the API server pod proxy: replication topology, sessions, replication lag, database sizes, WAL, slots) | [SPEC-0006](../specs/SPEC-0006-m2-live-database-view.md) | Approved |
 | Open psql in a Freelens terminal tab (primary or replica) | SPEC-0007 | Planned |
 | Pre-review agent pass and local demo cluster | SPEC-0008 | Planned |
 
