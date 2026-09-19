@@ -123,3 +123,7 @@ Reads only.
   the catalog.
 - The poolers that take their PgBouncer image from a catalog are listed by
   SPEC-0012, which brings the `Pooler` model.
+- Merged with #28 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `c4f2481`. The manual verification above is part of the M3
+  milestone review: the status moves to Verified when its result is recorded
+  here.

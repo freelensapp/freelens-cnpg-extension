@@ -131,3 +131,11 @@ value is read.
   whatever it holds.
 - The poolers that take their PgBouncer image from a catalog are now listed
   in the drawer of the catalog (SPEC-0010).
+- Merged with #30 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `fdcc986`. The manual verification above is part of the M3
+  milestone review: the status moves to Verified when its result is recorded
+  here.
+- After the first pre-review pass of the milestone: the pool of the operator's
+  `auth_query` user (`cnpg_pooler_pgbouncer`) showed among the user pools; it
+  is the platform's own, like PgBouncer's admin pool, and is left out of the
+  figures with it.

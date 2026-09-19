@@ -107,3 +107,7 @@ Reads only.
   created with the setting does not go through this. `cluster-up.sh` waits for
   the quorum and, only if it stays empty, reloads once and says so in its log.
   The views need nothing special: an empty quorum is the `Reset` state.
+- Merged with #29 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `700ba9e`. The manual verification above is part of the M3
+  milestone review: the status moves to Verified when its result is recorded
+  here.
