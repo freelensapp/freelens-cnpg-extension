@@ -214,3 +214,7 @@ by name through the host's own secret page.
 - The "Last backup" column reads the Backup objects of the row's namespace
   from the Backup store, registered by this spec; the store is filled by the
   reference loader while the list is mounted.
+- Merged with #17 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `cd337d3`. The manual verification above is part of the
+  M1 milestone review: the status moves to Verified when its result (date,
+  tester, verdict) is recorded here.
