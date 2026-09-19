@@ -1,0 +1,103 @@
+@use "../vars" as *;
+
+// Shared by the drawers of the declarative kinds (SPEC-0013 to SPEC-0015).
+
+.table {
+  margin: $unit 0 calc($unit * 2);
+
+  :global(.TableCell) {
+    &.kind {
+      flex-grow: 0.6;
+    }
+
+    &.name {
+      flex-grow: 1.1;
+    }
+
+    &.detail {
+      flex-grow: 1.3;
+    }
+
+    &.ensure,
+    &.applied {
+      flex-grow: 0.6;
+    }
+
+    &.message {
+      flex-grow: 2;
+    }
+
+    &.wide {
+      flex-grow: 1.6;
+    }
+  }
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+  user-select: text;
+}
+
+.note {
+  margin: $unit 0;
+  color: var(--textColorSecondary);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc($unit / 2);
+}
+
+// The replication path of SPEC-0015: publisher, direction, subscriber.
+.path {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: stretch;
+  gap: $unit;
+  margin: $unit 0 calc($unit * 2);
+}
+
+.end {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+  min-width: 0;
+  padding: $unit calc($unit * 1.5);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--layoutBackground);
+
+  a {
+    color: var(--primary);
+  }
+}
+
+.endTitle {
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.endLine {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--textColorPrimary);
+}
+
+.arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}

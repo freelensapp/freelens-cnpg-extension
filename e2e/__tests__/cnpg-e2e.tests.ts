@@ -1098,6 +1098,101 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "lists the declared databases with the reason of each condition and reads a database from the primary (SPEC-0013)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-databases-databases", "Databases");
+      await cluster.selectNamespace(frame);
+
+      // One fixture per state the list tells apart.
+      await cluster.expectRow(frame, "e2e-db-inventory", "e2e-main", "inventory", "app", "2", "retain", "Applied");
+      await cluster.expectRow(frame, "e2e-db-absent", "legacy", "Absent", "Absent as declared");
+      await cluster.expectRow(frame, "e2e-db-no-owner", "orders", "Failed", 'role "e2e_nobody" does not exist');
+      await cluster.expectRow(
+        frame,
+        "e2e-db-bad-extension",
+        "analytics",
+        "delete",
+        "Failed",
+        'Extension "e2e_no_such_extension" failed',
+      );
+      await cluster.expectRow(
+        frame,
+        "e2e-db-inventory-again",
+        "Failed",
+        'the object "e2e-db-inventory" already manages the same database',
+      );
+      await cluster.expectRow(frame, "e2e-db-hibernated", "e2e-hibernated", "Pending", "the cluster is hibernated");
+      await cluster.expectRow(frame, "e2e-db-orphan", "e2e-gone", "Orphan", "The Cluster e2e-gone is not there");
+      await cluster.captureScreenshot(frame, "databases-dark");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-db-inventory",
+        "Reconciliation",
+        "Applied to PostgreSQL",
+        "1, applied",
+        "Database",
+        "inventory",
+        "retain: deleting this object leaves the database in PostgreSQL",
+        "Right now",
+        "Managed objects",
+        "pgcrypto",
+        "stock",
+        "owner app",
+      );
+
+      // The live block: the size of the database, read from the exporter of the primary.
+      await tableRowName(frame, "e2e-db-inventory").click();
+
+      const live = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-database-live"]');
+
+      await live.waitFor({ state: "visible", timeout: 90_000 });
+      expect(await live.innerText()).toContain("every 30 s from the primary, e2e-main-");
+      expect(await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-database-size"]').innerText()).toMatch(
+        /^\d+(\.\d+)? (KiB|MiB|GiB)$/,
+      );
+      await frame.locator(".Drawer.KubeObjectDetails .Table").last().scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "database-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      // The failed object says which part failed; the conflict links its rival.
+      await cluster.expectDetails(
+        frame,
+        "e2e-db-bad-extension",
+        'Extension "e2e_no_such_extension" failed',
+        "delete: deleting this object drops the database from PostgreSQL",
+        "Managed objects",
+        "is not available",
+        "reports",
+      );
+      await tableRowName(frame, "e2e-db-inventory-again").click();
+
+      const rivals = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-declarative-rivals"]');
+
+      await rivals.waitFor({ state: "visible", timeout: 60_000 });
+      await rivals.locator("a", { hasText: "e2e-db-inventory" }).first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Managed objects" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
+
+      // The cluster counts what is declared inside it and leads to the filtered list.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-main").click();
+
+      const counts = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-databases"]');
+
+      await counts.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await counts.innerText()).toBe("2 applied, 3 failed");
+      await counts.click();
+      await cluster.expectRow(frame, "e2e-db-inventory", "Applied");
+      await cluster.expectNoRow(frame, "e2e-db-hibernated");
+      await frame.locator(".SearchInput input").first().fill("");
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
@@ -1109,6 +1204,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-images-imagecatalogs", "Image Catalogs"],
         ["cnpg-clusters-failoverquorums", "Failover Quorums"],
         ["cnpg-pooling-poolers", "Poolers"],
+        ["cnpg-databases-databases", "Databases"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

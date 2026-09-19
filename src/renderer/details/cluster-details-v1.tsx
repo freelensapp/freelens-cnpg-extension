@@ -36,6 +36,7 @@ import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { PsqlButton } from "../menus/open-psql";
 import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
+import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
 
@@ -489,6 +490,8 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             />
           </div>
         ) : null}
+
+        <ClusterDeclarativeSection cluster={object} extension={props.extension} />
 
         <DrawerTitle>Storage</DrawerTitle>
         <DrawerItem name="Data volume" hidden={!spec?.storage}>
