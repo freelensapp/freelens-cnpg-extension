@@ -13,6 +13,7 @@ import { maybe } from "../../common/utils";
 import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { FailoverQuorum } from "../api/cnpg/failover-quorum-v1";
 import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
 import { buildHistory, schedulesOfCluster } from "../components/backup-history";
@@ -26,6 +27,7 @@ import {
   instanceFacts,
 } from "../components/cluster-health";
 import { withErrorPage } from "../components/error-page";
+import { quorumFacts } from "../components/failover-quorum";
 import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
 import { useReferenceStores } from "../components/reference-loader";
@@ -147,6 +149,11 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
     // The Barman Cloud plugin is optional: without its CRD there is no store to read.
     const objectStoreStore = maybe(() => ObjectStore.getStore<ObjectStore>());
+    const failoverQuorumStore = maybe(() => FailoverQuorum.getStore<FailoverQuorum>());
+    // One per cluster with the failover quorum on, named after the cluster (SPEC-0011).
+    const failoverQuorum = failoverQuorumStore?.getByName(object.getName(), object.getNs()) as
+      | FailoverQuorum
+      | undefined;
     const health = classifyCluster(object);
     const archiving = archivingState(object);
     const instances = instanceFacts(object);
@@ -177,6 +184,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       { label: Backup.crd.plural, store: backupStore, namespaces: [namespace] },
       { label: ScheduledBackup.crd.plural, store: scheduleStore, namespaces: [namespace] },
       { label: ObjectStore.crd.plural, store: objectStoreStore, namespaces: [namespace] },
+      { label: FailoverQuorum.crd.plural, store: failoverQuorumStore, namespaces: [namespace] },
       {
         label: ImageCatalog.crd.plural,
         store: maybe(() => ImageCatalog.getStore<ImageCatalog>()),
@@ -385,6 +393,19 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         ) : null}
 
         <DrawerTitle>Replication</DrawerTitle>
+        <DrawerItem name="Failover quorum" hidden={!failoverQuorum}>
+          {failoverQuorum ? (
+            <span className={styles.topologyRow}>
+              <Badge
+                small
+                className={quorumFacts(failoverQuorum, object).className}
+                label={quorumFacts(failoverQuorum, object).label}
+                tooltip={quorumFacts(failoverQuorum, object).reason}
+              />
+              <StoreLink store={failoverQuorumStore} name={name} namespace={namespace} />
+            </span>
+          ) : null}
+        </DrawerItem>
         <DrawerItem name="Synchronous replicas">
           <WithTooltip
             tooltip={synchronous ? "spec.postgresql.synchronous" : "spec.minSyncReplicas to spec.maxSyncReplicas"}

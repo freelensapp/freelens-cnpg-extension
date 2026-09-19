@@ -1,6 +1,7 @@
 # The PostgreSQL clusters the views distinguish (SPEC-0002):
-# - e2e-main: three instances, WAL archiving and backups through the plugin,
-#   plaintext metrics; the healthy, replicated reference.
+# - e2e-main: three instances, quorum based synchronous replication with the
+#   failover quorum on (SPEC-0011), WAL archiving and backups through the
+#   plugin, plaintext metrics; the healthy, replicated reference.
 # - e2e-single: one instance, metrics over TLS, archiving to the broken store,
 #   so that WAL archiving fails and the failed backup has a home.
 # - e2e-hibernated: one instance, its image taken from the e2e-images catalog
@@ -15,6 +16,11 @@ metadata:
   namespace: cnpg-e2e
 spec:
   instances: 3
+  postgresql:
+    synchronous:
+      method: any
+      number: 1
+      failoverQuorum: true
   storage:
     size: 1Gi
   resources:

@@ -1,6 +1,6 @@
 # SPEC-0011: Failover Quorums, list and detail (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M3` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -92,3 +92,18 @@ Reads only.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M3 at the
   milestone review.
+- Implementation notes: on 1.30.0 `status.method` is written in upper case
+  (`ANY`), so the views compare it case insensitively and show it as written.
+  The drawer has a "How to read it" row that states the check and says that
+  the operator's own check is the authority. A fenced standby does not count
+  as healthy.
+- Observed on the local E2E cluster (operator 1.30.0): when the failover
+  quorum was turned on for a cluster that was already running, the instance
+  manager wrote the synchronous settings to `custom.conf` and then failed
+  every reconciliation on `SHOW cnpg.synchronous_standby_names_metadata`
+  (unrecognized configuration parameter), before ever reloading the
+  configuration, so the `FailoverQuorum` stayed empty and replication stayed
+  asynchronous. One `pg_reload_conf()` on the primary unblocked it. A cluster
+  created with the setting does not go through this. `cluster-up.sh` waits for
+  the quorum and, only if it stays empty, reloads once and says so in its log.
+  The views need nothing special: an empty quorum is the `Reset` state.
