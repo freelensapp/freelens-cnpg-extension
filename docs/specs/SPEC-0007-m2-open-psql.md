@@ -138,3 +138,7 @@ is ever composed, sent or stored by the extension.
 - The host numbers a new terminal tab when the dock already holds its own
   "Terminal" tab (the title reads `psql: <pod> (2)` on a fresh dock): that is
   the host's naming, left alone.
+- Merged with #21 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `42d7b7d`. The manual verification above is part of the M2
+  milestone review: the status moves to Verified when its result is recorded
+  here.

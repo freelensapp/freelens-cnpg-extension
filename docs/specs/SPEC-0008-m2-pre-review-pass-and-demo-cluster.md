@@ -129,3 +129,7 @@ a disposable cluster. The pass is read-only.
 - First pass on 2026-09-19 (E2E cluster with the demo load, operator 1.30.0):
   22 checks passed, 20 screenshots on the two themes, the LSN sandwich held
   under the `pgbench` load.
+- Merged with #22 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `71f7bcd`. The manual verification above is part of the M2
+  milestone review: the status moves to Verified when its result is recorded
+  here.
