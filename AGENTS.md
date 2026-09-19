@@ -23,10 +23,10 @@ content is being replaced milestone by milestone (see
 ## Licensing and provenance constraints (critical)
 
 - This extension is MIT and written from scratch.
-- Other CloudNativePG user interfaces and tools (for example the CloudNativePG
-  Headlamp plugin and the `kubectl cnpg` plugin, both Apache-2.0) are
-  functional and domain references only. Never copy code, styles, UI strings,
-  status mapping logic or generated clients from them. Reading their
+- Other CloudNativePG user interfaces and tools, graphical or command line
+  (the `kubectl cnpg` plugin is Apache-2.0, others carry their own license),
+  are functional and domain references only. Never copy code, styles, UI
+  strings, status mapping logic or generated clients from them. Reading their
   documentation, CRD schemas and permission lists to understand fields and
   semantics is fine, but do not reproduce texts verbatim.
 - TypeScript types for the CRDs are written in this repository from the CRD
