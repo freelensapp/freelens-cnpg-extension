@@ -71,6 +71,10 @@ What is there today, all of it read-only:
   with the replication slot on the publisher right now (being consumed or
   not, the WAL kept for it) and whether the pair survives a failover of the
   publisher.
+- **Operator**: the thing that runs the databases, on one screen: version,
+  replicas, who leads, what it watches, its configuration, the reconciles per
+  controller right now from its own metrics, the CNPG-I plugins it found with
+  the clusters that loaded them, and the kinds the cluster serves.
 - **Image Catalogs** and **Cluster Image Catalogs**: what each catalog offers
   per major version and which clusters follow it, with the image each cluster
   runs next to the image the catalog offers.

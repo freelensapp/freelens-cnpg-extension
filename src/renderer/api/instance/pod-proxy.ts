@@ -5,10 +5,10 @@
 
 // The only way the extension talks to a pod (SPEC-0006 "Data access",
 // SPEC-0012): `GET` on the instance manager status and on the metrics exporter
-// of an instance, and on the PgBouncer exporter of a pooler, through the API
-// server's pod proxy behind the host's cluster proxy, with the user's own
+// of an instance, on the PgBouncer exporter of a pooler and on the metrics of
+// the operator (SPEC-0016), through the API server's pod proxy behind the host's cluster proxy, with the user's own
 // credentials (spike S1 of SPEC-0001). The module exposes no generic request:
-// these three read endpoints are all it can express, so the action endpoints
+// these four read endpoints are all it can express, so the action endpoints
 // of the instance manager are out of reach by construction.
 
 import { isPostgresqlStatus } from "./postgresql-status";
@@ -22,6 +22,8 @@ export const STATUS_PORT = 8000;
 export const METRICS_PORT = 9187;
 /** The PgBouncer exporter of a pooler pod. */
 export const POOLER_METRICS_PORT = 9127;
+/** The metrics port of the operator, when its container does not name one. */
+export const OPERATOR_METRICS_PORT = 8080;
 export const REQUEST_TIMEOUT_MS = 5000;
 
 export type ProxyScheme = "http" | "https";
@@ -116,6 +118,8 @@ export interface PodProxyClient {
   getMetrics(namespace: string, pod: string, preferred: ProxyScheme): Promise<ProxyResult<string>>;
   /** The PgBouncer exporter of a pooler pod (SPEC-0012). */
   getPoolerMetrics(namespace: string, pod: string, preferred: ProxyScheme): Promise<ProxyResult<string>>;
+  /** The controller-runtime metrics of an operator pod (SPEC-0016), on the port its container declares. */
+  getOperatorMetrics(namespace: string, pod: string, port: number): Promise<ProxyResult<string>>;
 }
 
 export interface PodProxyClientOptions {
@@ -199,6 +203,10 @@ export function createPodProxyClient({
     },
     getPoolerMetrics(namespace, pod, preferred) {
       return get(namespace, pod, POOLER_METRICS_PORT, "/metrics", preferred);
+    },
+    getOperatorMetrics(namespace, pod, port) {
+      // Plain HTTP by default; the other scheme is tried on a scheme failure, as for every endpoint.
+      return get(namespace, pod, port, "/metrics", "http");
     },
   };
 }

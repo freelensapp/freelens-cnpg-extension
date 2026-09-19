@@ -1,0 +1,98 @@
+@use "../vars" as *;
+
+// The Operator page (SPEC-0016). Colors come from the theme tokens and from
+// the host's Badge classes only.
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc($unit * 2);
+
+  @media (max-width: 1100px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.card {
+  min-width: 0;
+  padding: calc($unit * 2);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+  color: var(--textColorPrimary);
+}
+
+.wide {
+  grid-column: 1 / -1;
+}
+
+.cardTitle {
+  margin: 0 0 $unit;
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.facts {
+  display: grid;
+  grid-template-columns: minmax(120px, 190px) minmax(0, 1fr);
+  gap: calc($unit * 0.75) calc($unit * 2);
+  align-items: baseline;
+  margin: 0;
+
+  dt {
+    color: var(--textColorSecondary);
+  }
+
+  dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+
+    a {
+      color: var(--primary);
+    }
+  }
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+  user-select: text;
+}
+
+.muted {
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.table {
+  :global(.TableCell) {
+    &.name {
+      flex-grow: 1.4;
+    }
+
+    &.number {
+      flex-grow: 0.7;
+    }
+
+    &.wide {
+      flex-grow: 2;
+    }
+  }
+
+  a {
+    color: var(--primary);
+  }
+}
+
+.error {
+  color: var(--colorError);
+}

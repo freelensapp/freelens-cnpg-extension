@@ -81,7 +81,7 @@ describe("classifyAnswer and failureSentence", () => {
 });
 
 describe("createPodProxyClient", () => {
-  it("only ever issues GET on the three read endpoints", async () => {
+  it("only ever issues GET on the four read endpoints", async () => {
     const seen: Array<{ url: string; method: string }> = [];
     const client = createPodProxyClient({
       fetch: async (url, init) => {
@@ -92,12 +92,17 @@ describe("createPodProxyClient", () => {
     await client.getStatus("db", "pg-1", "https");
     await client.getMetrics("db", "pg-1", "http");
     await client.getPoolerMetrics("db", "pg-pooler-abc", "http");
+    await client.getOperatorMetrics("cnpg-system", "cnpg-controller-manager-abc", 8080);
     expect(seen).toEqual([
       { url: "/api-kube/api/v1/namespaces/db/pods/https:pg-1:8000/proxy/pg/status", method: "GET" },
       { url: "/api-kube/api/v1/namespaces/db/pods/http:pg-1:9187/proxy/metrics", method: "GET" },
       { url: "/api-kube/api/v1/namespaces/db/pods/http:pg-pooler-abc:9127/proxy/metrics", method: "GET" },
+      {
+        url: "/api-kube/api/v1/namespaces/cnpg-system/pods/http:cnpg-controller-manager-abc:8080/proxy/metrics",
+        method: "GET",
+      },
     ]);
-    expect(Object.keys(client).sort()).toEqual(["getMetrics", "getPoolerMetrics", "getStatus"]);
+    expect(Object.keys(client).sort()).toEqual(["getMetrics", "getOperatorMetrics", "getPoolerMetrics", "getStatus"]);
   });
 
   it("returns the parsed status with the scheme that worked", async () => {

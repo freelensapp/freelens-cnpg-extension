@@ -91,6 +91,7 @@ client above, exposed to the renderer through the extension's IPC.
 | Instance pods, PVCs, services, secrets metadata, events | core stores | host stores (`podsStore`, `pvcStore`, ...) | user's kubeconfig (host) |
 | Instance status (LSN, WAL, replication, slots, basebackups) | instance manager `GET /pg/status` | pod proxy, port 8000 | RBAC `pods/proxy` |
 | Sessions, lag, sizes, archiver counters | metrics exporter `GET /metrics` | pod proxy, port 9187 | RBAC `pods/proxy` |
+| Operator reconciles, workers, queues | operator `GET /metrics` | pod proxy, the `metrics` port of its container (8080) | RBAC `pods/proxy` in the operator's namespace |
 | Instance logs | Kubernetes pod log API `GET .../pods/<pod>/log` | Freelens cluster proxy | RBAC `pods/log` |
 | Primary lease, operator lease | `Lease` objects | the host's own store, through the API manager | user's kubeconfig (host) |
 | psql | host terminal tab | `kubectl exec -it -n <ns> -c postgres <pod> -- psql -U postgres` | user's kubeconfig (terminal) |
@@ -129,7 +130,7 @@ src/
   renderer/api/barmancloud/  # The ObjectStore kind of the optional Barman Cloud plugin
   renderer/api/instance/     # Instance manager and metrics contracts: the
                              # PostgresqlStatus type and guard, the Prometheus
-                             # text reader, the pod proxy client (GET on the three
+                             # text reader, the pod proxy client (GET on the four
                              # read endpoints only, typed failures)
   renderer/pages/            # List pages and the ad hoc pages (overview, live view)
   renderer/details/          # Detail panels (kubeObjectDetailItems)

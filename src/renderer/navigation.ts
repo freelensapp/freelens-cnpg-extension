@@ -28,6 +28,8 @@ export const DATABASE_ROLES_PAGE_ID = "cnpg-databases-databaseroles";
 export const PUBLICATIONS_PAGE_ID = "cnpg-databases-publications";
 export const SUBSCRIPTIONS_PAGE_ID = "cnpg-databases-subscriptions";
 export const IMAGES_GROUP_ID = "cnpg-images";
+/** A group that is its own page, like the Overview: the operator is one thing, not a list. */
+export const OPERATOR_PAGE_ID = "cnpg-operator";
 export const IMAGE_CATALOGS_PAGE_ID = "cnpg-images-imagecatalogs";
 export const CLUSTER_IMAGE_CATALOGS_PAGE_ID = "cnpg-images-clusterimagecatalogs";
 

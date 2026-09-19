@@ -1,6 +1,6 @@
 # SPEC-0016: Operator page (ad hoc, read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M5` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -117,3 +117,28 @@ port; the client still has no generic request method.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M5 at the
   milestone review.
+- Deviation: the page sits in a sidebar entry of its own at the end
+  ("Operator"), not inside the Overview group. The Overview group is its own
+  page and has no leaves; giving it one would have turned it into an
+  expandable group and moved the landing page of the extension.
+- Implementation notes: the operator's namespace is rarely in the namespace
+  filter of the host, so the page asks the API server once for the
+  deployments with the operator's label in every namespace, and when that is
+  refused it tries the namespaces an installation usually picks
+  (`cnpg-system`, `openshift-operators`, `operators`) and says that it
+  narrowed the search. The objects of that namespace are then loaded by name
+  of namespace and watched like any other. The leader is the lease of that
+  namespace held by one of the operator's own pods, so the page does not
+  depend on the lease name. The configuration shown is the ConfigMap only;
+  the Secret is a link. The pace of reconciles and errors needs two readings
+  and is left blank across a restart of the operator (counters that went
+  back). The clusters of a plugin are the ones of the selected namespaces, and
+  the row says so when there are none. `getOperatorMetrics` is the fourth and
+  last read endpoint of the pod proxy client.
+- Seen live on the E2E cluster (operator 1.30.0 from the release manifest):
+  Running 1/1, version 1.30.0, the leader with its lease, "All namespaces", no
+  ConfigMap (the defaults), the reconcile table with eight controllers, the
+  Barman Cloud plugin with the clusters that loaded it, the twelve kinds with
+  their views. Covered by unit tests only: several operators, a rollout, an
+  operator that is down, a ConfigMap with a watch scope, the narrowed
+  discovery, a plugin whose deployment is down.

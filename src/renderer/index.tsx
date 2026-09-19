@@ -50,6 +50,7 @@ import {
   LIVE_PAGE_ID,
   LOGS_PAGE_ID,
   OBJECT_STORES_PAGE_ID,
+  OPERATOR_PAGE_ID,
   OVERVIEW_GROUP_ID,
   OVERVIEW_PAGE_ID,
   POOLERS_PAGE_ID,
@@ -72,6 +73,7 @@ import {
 import { LivePage } from "./pages/live-page";
 import { LogsPage } from "./pages/logs-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
+import { OperatorPage } from "./pages/operator-page";
 import { OverviewPage } from "./pages/overview-page";
 import { PoolersPage as PoolersPageV1 } from "./pages/poolers-page-v1";
 import { PublicationsPage as PublicationsPageV1 } from "./pages/publications-page-v1";
@@ -95,6 +97,9 @@ const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", 
 ]);
 const AvailableClustersPage = createAvailableVersionPage(ClusterV1.crd.title, [
   { kubeObjectClass: ClusterV1, PageComponent: ClustersPageV1, version: "v1" },
+]);
+const AvailableOperatorPage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: OperatorPage, version: "v1" },
 ]);
 const AvailableLivePage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: LivePage, version: "v1" },
@@ -303,6 +308,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: CLUSTERS_PAGE_ID,
       components: {
         Page: () => <AvailableClustersPage extension={this} />,
+      },
+    },
+    {
+      id: OPERATOR_PAGE_ID,
+      components: {
+        Page: () => <AvailableOperatorPage extension={this} />,
       },
     },
     {
@@ -545,6 +556,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: IMAGES_GROUP_ID,
       title: ClusterImageCatalogV1.crd.title,
       target: { pageId: CLUSTER_IMAGE_CATALOGS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: OPERATOR_PAGE_ID,
+      parentId: ROOT_MENU_ID,
+      title: "Operator",
+      target: { pageId: OPERATOR_PAGE_ID },
       components: {},
     },
   ];

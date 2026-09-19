@@ -109,3 +109,9 @@ Reads only.
   marker; on `e2e-single` the failed backup and the failing archiving
   condition as errors. Covered by unit tests only: the name rule for objects
   that are gone, a primary that is failing, certificates close to expiry.
+- Merged with #45 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request, after one correction of the E2E case: on a
+  cluster that was just created a schedule that never ran has no next time in
+  its status yet, so the case asserts the schedule that runs at once. The
+  manual verification above is part of the M5 milestone review: the status
+  moves to Verified when its result is recorded here.

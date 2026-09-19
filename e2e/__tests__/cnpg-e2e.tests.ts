@@ -1636,6 +1636,75 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "shows the operator: version, leader, what it watches, its reconciles, the plugin and the kinds (SPEC-0016)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-operator", "Operator");
+
+      const card = frame.locator('[data-testid="cnpg-operator-card"]');
+
+      await card.waitFor({ state: "visible", timeout: 90_000 });
+
+      const leaderPod = cluster
+        .kubectlE2E(
+          "get",
+          "lease",
+          "db9c8771.cnpg.io",
+          "--namespace",
+          "cnpg-system",
+          "-o",
+          "jsonpath={.spec.holderIdentity}",
+        )
+        .stdout.split("_")[0];
+      const cardText = (await card.innerText()).replace(/\s+/g, " ");
+
+      expect(cardText).toContain("Running");
+      expect(cardText).toContain("1 of 1 replicas ready");
+      expect(await frame.locator('[data-testid="cnpg-operator-version"]').innerText()).toBe("1.30.0");
+      expect(await frame.locator('[data-testid="cnpg-operator-watch"]').innerText()).toBe("All namespaces");
+      expect(
+        await waitUntil(
+          () => frame.locator('[data-testid="cnpg-operator-leader"]').innerText(),
+          (text) => text.includes(leaderPod),
+        ),
+      ).toContain(leaderPod);
+
+      // The reconciles per controller, from the operator's own metrics through the pod proxy.
+      const live = frame.locator('[data-testid="cnpg-operator-live"]');
+
+      await live.waitFor({ state: "visible", timeout: 90_000 });
+      expect(await live.innerText()).toContain(`every 30 s from ${leaderPod}`);
+      await frame
+        .locator('[data-testid="cnpg-operator-controller-cluster"]')
+        .waitFor({ state: "visible", timeout: 30_000 });
+
+      // The plugin the operator found, with a cluster that loaded it, and the kinds with their views.
+      const plugins = (await frame.locator('[data-testid="cnpg-operator-plugins"]').innerText()).replace(/\s+/g, " ");
+
+      expect(plugins).toContain("barman-cloud.cloudnative-pg.io");
+      expect(plugins).toContain("cnpg-e2e/e2e-main (0.15.0)");
+
+      const kinds = frame.locator('[data-testid="cnpg-operator-kinds"] .TableRow:not(.TableHead)');
+
+      expect(
+        await waitUntil(
+          () => kinds.count(),
+          (count) => count >= 12,
+        ),
+      ).toBeGreaterThanOrEqual(12);
+
+      const kindsText = (await frame.locator('[data-testid="cnpg-operator-kinds"]').innerText()).replace(/\s+/g, " ");
+
+      for (const kind of ["Cluster", "DatabaseRole", "FailoverQuorum", "ObjectStore", "Subscription"]) {
+        expect(kindsText).toContain(kind);
+      }
+      await checks.expectNoNestedLinks(frame, "Operator");
+      await checks.expectNoAuthoredColors(frame, "Operator");
+      await cluster.captureScreenshot(frame, "operator-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
