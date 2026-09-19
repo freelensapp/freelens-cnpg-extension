@@ -3,12 +3,13 @@
  * Licensed under MIT License. See LICENSE in root directory for more information.
  */
 
-// The only way the extension talks to an instance (SPEC-0006 "Data access"):
-// `GET` on the instance manager status and on the metrics exporter, through
-// the API server's pod proxy behind the host's cluster proxy, with the user's
-// own credentials (spike S1 of SPEC-0001). The module exposes no generic
-// request: the two read endpoints are all it can express, so the action
-// endpoints of the instance manager are out of reach by construction.
+// The only way the extension talks to a pod (SPEC-0006 "Data access",
+// SPEC-0012): `GET` on the instance manager status and on the metrics exporter
+// of an instance, and on the PgBouncer exporter of a pooler, through the API
+// server's pod proxy behind the host's cluster proxy, with the user's own
+// credentials (spike S1 of SPEC-0001). The module exposes no generic request:
+// these three read endpoints are all it can express, so the action endpoints
+// of the instance manager are out of reach by construction.
 
 import { isPostgresqlStatus } from "./postgresql-status";
 
@@ -19,6 +20,8 @@ export const API_KUBE_PREFIX = "/api-kube";
 
 export const STATUS_PORT = 8000;
 export const METRICS_PORT = 9187;
+/** The PgBouncer exporter of a pooler pod. */
+export const POOLER_METRICS_PORT = 9127;
 export const REQUEST_TIMEOUT_MS = 5000;
 
 export type ProxyScheme = "http" | "https";
@@ -54,6 +57,11 @@ export function statusScheme(pod: PodLike | undefined): ProxyScheme {
   const container = pod?.spec?.containers?.find((candidate) => candidate.name === "postgres");
   const words = [...(container?.command ?? []), ...(container?.args ?? [])];
   return words.includes("--status-port-tls") ? "https" : "http";
+}
+
+/** The PgBouncer exporter follows the pooler's own monitoring stanza. */
+export function poolerMetricsScheme(pooler: { spec?: { monitoring?: { tls?: { enabled?: boolean } } } }): ProxyScheme {
+  return pooler.spec?.monitoring?.tls?.enabled ? "https" : "http";
 }
 
 /** SPEC-0001 A3: the metrics port speaks TLS when the cluster opted in. */
@@ -106,6 +114,8 @@ export function failureSentence(
 export interface PodProxyClient {
   getStatus(namespace: string, pod: string, preferred: ProxyScheme): Promise<ProxyResult<PostgresqlStatus>>;
   getMetrics(namespace: string, pod: string, preferred: ProxyScheme): Promise<ProxyResult<string>>;
+  /** The PgBouncer exporter of a pooler pod (SPEC-0012). */
+  getPoolerMetrics(namespace: string, pod: string, preferred: ProxyScheme): Promise<ProxyResult<string>>;
 }
 
 export interface PodProxyClientOptions {
@@ -186,6 +196,9 @@ export function createPodProxyClient({
     },
     getMetrics(namespace, pod, preferred) {
       return get(namespace, pod, METRICS_PORT, "/metrics", preferred);
+    },
+    getPoolerMetrics(namespace, pod, preferred) {
+      return get(namespace, pod, POOLER_METRICS_PORT, "/metrics", preferred);
     },
   };
 }

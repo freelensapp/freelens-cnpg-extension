@@ -10,6 +10,7 @@ import {
   failureSentence,
   metricsScheme,
   podProxyPath,
+  poolerMetricsScheme,
   statusScheme,
 } from "./pod-proxy";
 
@@ -52,6 +53,8 @@ describe("paths and schemes", () => {
     expect(statusScheme(undefined)).toBe("http");
     expect(metricsScheme({ spec: { monitoring: { tls: { enabled: true } } } })).toBe("https");
     expect(metricsScheme({ spec: {} })).toBe("http");
+    expect(poolerMetricsScheme({ spec: { monitoring: { tls: { enabled: true } } } })).toBe("https");
+    expect(poolerMetricsScheme({})).toBe("http");
   });
 });
 
@@ -78,7 +81,7 @@ describe("classifyAnswer and failureSentence", () => {
 });
 
 describe("createPodProxyClient", () => {
-  it("only ever issues GET on the two read endpoints", async () => {
+  it("only ever issues GET on the three read endpoints", async () => {
     const seen: Array<{ url: string; method: string }> = [];
     const client = createPodProxyClient({
       fetch: async (url, init) => {
@@ -88,11 +91,13 @@ describe("createPodProxyClient", () => {
     });
     await client.getStatus("db", "pg-1", "https");
     await client.getMetrics("db", "pg-1", "http");
+    await client.getPoolerMetrics("db", "pg-pooler-abc", "http");
     expect(seen).toEqual([
       { url: "/api-kube/api/v1/namespaces/db/pods/https:pg-1:8000/proxy/pg/status", method: "GET" },
       { url: "/api-kube/api/v1/namespaces/db/pods/http:pg-1:9187/proxy/metrics", method: "GET" },
+      { url: "/api-kube/api/v1/namespaces/db/pods/http:pg-pooler-abc:9127/proxy/metrics", method: "GET" },
     ]);
-    expect(Object.keys(client).sort()).toEqual(["getMetrics", "getStatus"]);
+    expect(Object.keys(client).sort()).toEqual(["getMetrics", "getPoolerMetrics", "getStatus"]);
   });
 
   it("returns the parsed status with the scheme that worked", async () => {
