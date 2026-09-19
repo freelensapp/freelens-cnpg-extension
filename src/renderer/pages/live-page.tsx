@@ -11,7 +11,9 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import React from "react";
+import { maybe } from "../../common/utils";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { Pooler } from "../api/cnpg/pooler-v1";
 import {
   createPodProxyClient,
   failureSentence,
@@ -37,7 +39,9 @@ import {
   WalTile,
 } from "../components/live/tiles";
 import { Topology } from "../components/live/topology";
+import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
+import { StoreLink } from "../components/store-link";
 import { PsqlButton } from "../menus/open-psql";
 import { CLUSTERS_PAGE_ID, extensionPageUrl, LIVE_CLUSTER_PARAM, liveViewUrl } from "../navigation";
 
@@ -136,6 +140,10 @@ const LivePanel = observer(({ cluster }: LivePanelProps) => {
     return () => poller.stop();
   }, [poller]);
 
+  // The poolers in front of the cluster: doors to their own live figures (SPEC-0012).
+  const poolerStore = maybe(() => Pooler.getStore<Pooler>());
+  const poolers = poolersOfCluster(cluster, (poolerStore?.items ?? []) as Pooler[]);
+
   const now = new Date();
   const health = classifyCluster(cluster);
   const hibernated = Cluster.getHibernation(cluster);
@@ -206,6 +214,21 @@ const LivePanel = observer(({ cluster }: LivePanelProps) => {
             namespace={namespace}
             instanceAction={(instanceName) => <PsqlButton cluster={cluster} instanceName={instanceName} />}
           />
+          {poolers.length > 0 ? (
+            <div className={styles.poolers} data-testid="cnpg-live-poolers">
+              <span className={styles.muted}>Poolers in front of it</span>
+              {poolers.map((pooler) => {
+                const state = classifyPooler(pooler);
+                return (
+                  <span key={pooler.getName()} className={styles.poolerChip}>
+                    <Badge small className={state.className} label={state.label} tooltip={state.reason} />
+                    <StoreLink store={poolerStore} name={pooler.getName()} namespace={namespace} />
+                    <span className={styles.muted}>{poolerTypeWords(pooler)}</span>
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
           <div className={styles.tiles} data-testid="cnpg-live-tiles">
             <SessionsTile {...tileProps} />
             <LagTile {...tileProps} />
@@ -233,6 +256,7 @@ export const LivePage = observer((props: LivePageProps) =>
     useReferenceStores([
       { label: Cluster.crd.plural, store: clusterStore },
       { label: "pods", store: podsStore },
+      { label: Pooler.crd.plural, store: maybe(() => Pooler.getStore<Pooler>()) },
     ]);
 
     const clusters = [...(clusterStore.items as Cluster[])].sort(

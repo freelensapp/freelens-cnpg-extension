@@ -12,6 +12,7 @@ import {
   ClusterImageCatalog as ClusterImageCatalogV1,
   ImageCatalog as ImageCatalogV1,
 } from "./api/cnpg/image-catalog-v1";
+import { Pooler as PoolerV1 } from "./api/cnpg/pooler-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
@@ -19,6 +20,7 @@ import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1
 import { FailoverQuorumDetails as FailoverQuorumDetailsV1 } from "./details/failover-quorum-details-v1";
 import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
+import { PoolerDetails as PoolerDetailsV1 } from "./details/pooler-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
@@ -36,6 +38,8 @@ import {
   OBJECT_STORES_PAGE_ID,
   OVERVIEW_GROUP_ID,
   OVERVIEW_PAGE_ID,
+  POOLERS_PAGE_ID,
+  POOLING_GROUP_ID,
   ROOT_MENU_ID,
   SCHEDULED_BACKUPS_PAGE_ID,
 } from "./navigation";
@@ -49,6 +53,7 @@ import {
 import { LivePage } from "./pages/live-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
 import { OverviewPage } from "./pages/overview-page";
+import { PoolersPage as PoolersPageV1 } from "./pages/poolers-page-v1";
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 
 // Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
@@ -77,6 +82,9 @@ const AvailableScheduledBackupsPage = createAvailableVersionPage(ScheduledBackup
 ]);
 const AvailableFailoverQuorumsPage = createAvailableVersionPage(FailoverQuorumV1.crd.title, [
   { kubeObjectClass: FailoverQuorumV1, PageComponent: FailoverQuorumsPageV1, version: "v1" },
+]);
+const AvailablePoolersPage = createAvailableVersionPage(PoolerV1.crd.title, [
+  { kubeObjectClass: PoolerV1, PageComponent: PoolersPageV1, version: "v1" },
 ]);
 const AvailableImageCatalogsPage = createAvailableVersionPage(ImageCatalogV1.crd.title, [
   { kubeObjectClass: ImageCatalogV1, PageComponent: ImageCatalogsPageV1, version: "v1" },
@@ -139,6 +147,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <FailoverQuorumDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: PoolerV1.kind,
+      apiVersions: PoolerV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <PoolerDetailsV1 {...props} extension={this} />
         ),
       },
     },
@@ -216,6 +234,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: OBJECT_STORES_PAGE_ID,
       components: {
         Page: () => <AvailableObjectStoresPage extension={this} />,
+      },
+    },
+    {
+      id: POOLERS_PAGE_ID,
+      components: {
+        Page: () => <AvailablePoolersPage extension={this} />,
       },
     },
     {
@@ -302,6 +326,20 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: BACKUPS_GROUP_ID,
       title: ObjectStoreV1.crd.title,
       target: { pageId: OBJECT_STORES_PAGE_ID },
+      components: {},
+    },
+    {
+      id: POOLING_GROUP_ID,
+      parentId: ROOT_MENU_ID,
+      title: "Pooling",
+      target: { pageId: POOLERS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: POOLERS_PAGE_ID,
+      parentId: POOLING_GROUP_ID,
+      title: PoolerV1.crd.title,
+      target: { pageId: POOLERS_PAGE_ID },
       components: {},
     },
     {

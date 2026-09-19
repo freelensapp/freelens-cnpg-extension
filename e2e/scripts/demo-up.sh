@@ -36,7 +36,7 @@ apply_load() {
 
 	log "waiting for the pgbench tables (up to 300s)"
 	kubectl_e2e wait --for=condition=complete job/demo-pgbench-init --namespace "${E2E_NAMESPACE}" --timeout=300s >/dev/null
-	wait_rollout "${E2E_NAMESPACE}" demo-pgbench
+	wait_rollout "${E2E_NAMESPACE}" demo-pgbench demo-pgbench-pooled
 }
 
 main() {

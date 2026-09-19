@@ -98,3 +98,61 @@ spec:
               memory: 64Mi
             limits:
               memory: 256Mi
+---
+# A second, smaller load through the PgBouncer pooler (SPEC-0012), so that its
+# live figures have clients, servers and, with eight clients on a pool of
+# five, clients waiting: the phenomenon a pooler exists to show. The pooler
+# pools by session, so each client reconnects for every transaction
+# (--connect): with long sessions the three clients in excess would wait
+# forever and the demo would show a misconfiguration instead of a pooler.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-pgbench-pooled
+  namespace: cnpg-e2e
+  labels:
+    app.kubernetes.io/name: demo-pgbench
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: demo-pgbench-pooled
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: demo-pgbench-pooled
+    spec:
+      containers:
+        - name: pgbench
+          image: __POSTGRES_IMAGE__
+          command:
+            - /bin/sh
+            - -c
+            - |
+              while true; do
+                pgbench --client=8 --jobs=2 --rate=10 --time=3600 --progress=60 --no-vacuum --select-only --connect ||
+                  { echo "pgbench could not run, retrying in 10 s"; sleep 10; }
+              done
+          env:
+            - name: PGHOST
+              value: e2e-main-pooler
+            - name: PGDATABASE
+              value: app
+            - name: PGSSLMODE
+              value: require
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-main-app
+                  key: username
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: e2e-main-app
+                  key: password
+          resources:
+            requests:
+              cpu: 25m
+              memory: 32Mi
+            limits:
+              memory: 128Mi

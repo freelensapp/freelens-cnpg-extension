@@ -1,0 +1,43 @@
+@use "../vars" as *;
+
+.table {
+  margin: $unit 0 calc($unit * 2);
+
+  :global(.TableCell) {
+    &.pool {
+      flex-grow: 1.6;
+    }
+
+    &.number {
+      flex-grow: 0.6;
+    }
+  }
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+  user-select: text;
+}
+
+.warning {
+  color: var(--colorWarning);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.block {
+  margin: $unit 0;
+  padding: $unit;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--layoutBackground);
+  color: var(--textColorPrimary);
+  font-family: var(--font-monospace, monospace);
+  font-size: var(--font-size-small, 12px);
+  white-space: pre-wrap;
+  user-select: text;
+}

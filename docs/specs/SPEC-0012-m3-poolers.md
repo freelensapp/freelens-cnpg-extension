@@ -1,6 +1,6 @@
 # SPEC-0012: Poolers, list, detail and live PgBouncer figures (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M3` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -112,3 +112,22 @@ value is read.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M3 at the
   milestone review.
+- Implementation notes: the drawer has its own lean poller
+  (`live/pooler-poller.ts`, one loop, fifteen seconds, nothing while the
+  window is hidden or after the drawer closed) instead of the live view's,
+  which is built around instances with two endpoints. The pod proxy client
+  gained `getPoolerMetrics` and nothing else; its test asserts the three
+  paths it can express.
+- The `Paused` row became "Accepting clients": a pooler that is not paused
+  read `False` in red, against the positive phrasing of DESIGN.md section 2.
+- The exporter reports the longest wait as whole seconds plus a microsecond
+  remainder (`pools_maxwait`, `pools_maxwait_us`): the model adds them.
+- The demo gained a second, small `pgbench` through the pooler. It reconnects
+  for every transaction (`--connect`): the pooler pools by session, and with
+  long sessions the three clients in excess of the pool of five waited
+  forever (observed: `cl_waiting 3`, `maxwait` growing), which shows a
+  misconfiguration, not a pooler. On the E2E cluster of the CI nobody
+  connects through the pooler, so the E2E case asserts the live section
+  whatever it holds.
+- The poolers that take their PgBouncer image from a catalog are now listed
+  in the drawer of the catalog (SPEC-0010).
