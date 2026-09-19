@@ -25,13 +25,13 @@ the Kubernetes API server (pod proxy), never with database credentials.
 ## Licensing boundary (critical)
 
 This repository is MIT and written from scratch. The CloudNativePG operator,
-the `kubectl cnpg` plugin, the Barman Cloud plugin and the CloudNativePG
-Headlamp plugin are Apache-2.0: their documentation, CRD schemas, permission
-lists and observable behavior may be read to understand fields and
-semantics, but components, CSS, UI strings, status-mapping logic and
-generated clients are never copied. TypeScript types for the CRDs are
-written in this repository from the CRD schemas of the pinned operator
-release. See the "Licensing and provenance constraints" section of
+the `kubectl cnpg` plugin and the Barman Cloud plugin are Apache-2.0, and any
+other user interface for CloudNativePG carries its own license: their
+documentation, CRD schemas, permission lists and observable behavior may be
+read to understand fields and semantics, but components, CSS, UI strings,
+status-mapping logic and generated clients are never copied. TypeScript types
+for the CRDs are written in this repository from the CRD schemas of the
+pinned operator release. See the "Licensing and provenance constraints" section of
 [AGENTS.md](../../AGENTS.md) for the binding rules.
 
 ## Upstream facts (verify on every milestone)
