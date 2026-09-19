@@ -1,6 +1,6 @@
 # SPEC-0019: Primary lease and operator lease (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M5` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -84,3 +84,13 @@ Reads only.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M5 at the
   milestone review.
+- Implementation notes: the lease is read from the host's own store of
+  leases, reached through the API manager by its API base, so the extension
+  registers no API for a kind the host already has and the holder pod links
+  to the host's panel. The watch of the namespace keeps "Last renewal"
+  ticking. The timing sentence says "(the defaults)" when the cluster declares
+  no `primaryLease`.
+- Seen live on the E2E cluster (operator 1.30.0): Held by the primary of
+  `e2e-main`, Released on the hibernated cluster (empty holder, one second
+  duration). Covered by unit tests only: Stale, Mismatch, Missing, tuned
+  timings.

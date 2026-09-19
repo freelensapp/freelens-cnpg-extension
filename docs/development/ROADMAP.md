@@ -66,7 +66,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | Operator status page (deployment, version, CRDs, detected plugins, listening namespaces, reconciles right now) | [SPEC-0016](../specs/SPEC-0016-m5-operator-page.md) | Planned |
 | Cluster events timeline (Kubernetes events, backups, switchovers, phase changes) | [SPEC-0017](../specs/SPEC-0017-m5-cluster-timeline.md) | Planned |
 | Instance logs made readable, every instance of a cluster on one time axis | [SPEC-0018](../specs/SPEC-0018-m5-instance-logs.md) | Planned |
-| Leader election lease of the operator and of a cluster (holder, acquire and renew time, transitions) | [SPEC-0019](../specs/SPEC-0019-m5-leases.md) | Planned |
+| Leader election lease of the operator and of a cluster (holder, acquire and renew time, transitions) | [SPEC-0019](../specs/SPEC-0019-m5-leases.md) | In PR |
 
 ### M6 - Write actions (behind explicit confirmation)
 

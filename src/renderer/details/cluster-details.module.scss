@@ -38,8 +38,10 @@
 
     &.status,
     &.state,
-    &.health,
-    &.fenced,
+    &.health {
+      flex-grow: 0.8;
+    }
+
     &.timeline,
     &.version {
       flex-grow: 0.45;

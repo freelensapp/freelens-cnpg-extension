@@ -1429,6 +1429,51 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "shows who holds the primary lease of a cluster and that a hibernated cluster released it (SPEC-0019)",
+    async () => {
+      const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-main", "{.status.currentPrimary}");
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await tableRowName(frame, "e2e-main").click();
+
+      const badge = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-primary-lease"]');
+
+      await badge.waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await waitUntil(
+          () => badge.innerText(),
+          (text) => text.trim() === "Held",
+        ),
+      ).toBe("Held");
+      expect(
+        await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-primary-lease-status"]').innerText(),
+      ).toBe(`Held and renewed by the primary, ${primary}`);
+
+      const holder = frame.locator(".Drawer.KubeObjectDetails .DrawerItem", { hasText: "Lease holder" });
+
+      expect(await holder.locator("a", { hasText: primary }).count()).toBe(1);
+      expect(await frame.locator(".Drawer.KubeObjectDetails").innerText()).toContain(
+        "holds a promotion back for up to 15 s",
+      );
+      await badge.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "cluster-drawer-lease-dark");
+      await cluster.closeDetails(frame);
+
+      await tableRowName(frame, "e2e-hibernated").click();
+      expect(
+        await waitUntil(
+          () =>
+            frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-primary-lease-status"]').innerText(),
+          (text) => text.startsWith("Released"),
+        ),
+      ).toBe("Released: the cluster is hibernated, nobody is primary");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.

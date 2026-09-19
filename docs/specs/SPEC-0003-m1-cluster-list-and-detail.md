@@ -216,3 +216,7 @@ by name through the host's own secret page.
 - M1 milestone review: 2026-09-19, lead maintainer, on the pre-review pass
   screenshots of the views on both themes. Verdict: approved, no blocking
   finding. Status moved to Verified.
+- Changed during M5: the Instances table of the drawer lost its Fenced
+  column. It showed a red "False" on every instance that was not fenced, which
+  reads as a problem, and it squeezed the Health badge until it was cut. A
+  fenced instance now says "fenced" in the warning class in the Health column.
