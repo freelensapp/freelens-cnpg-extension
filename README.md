@@ -53,6 +53,10 @@ What is there today, all of it read-only:
   PostgreSQL has it as declared; when it has not, which part failed and why,
   down to the single extension or schema, and in its drawer the size and the
   sessions of the database right now.
+- **Database Roles**: every role declared for a cluster, what it may do, how
+  it authenticates and until when (password expiry, client certificate
+  expiry), and the role of the cluster spec that wins over it when both
+  declare the same name. Secrets are linked, never read.
 - **Image Catalogs** and **Cluster Image Catalogs**: what each catalog offers
   per major version and which clusters follow it, with the image each cluster
   runs next to the image the catalog offers.

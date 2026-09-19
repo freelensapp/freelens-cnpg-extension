@@ -1193,6 +1193,100 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "lists the declared roles with what they may do, how they authenticate and the traps of role management (SPEC-0014)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-databases-databaseroles", "Database Roles");
+      await cluster.selectNamespace(frame);
+
+      await cluster.expectRow(
+        frame,
+        "e2e-role-reporting",
+        "e2e-main",
+        "reporting",
+        "Login",
+        "pg_monitor",
+        "in 8 years",
+        "Applied",
+      );
+      await cluster.expectRow(
+        frame,
+        "e2e-role-contractor",
+        "Login, Create database",
+        "Applied",
+        "the password expired",
+      );
+      await cluster.expectRow(
+        frame,
+        "e2e-role-batch",
+        "None (a group role)",
+        "Failed",
+        '"e2e_no_such_group" does not exist',
+      );
+      await cluster.expectRow(frame, "e2e-role-inline-rival", "e2e-single", "Failed", "the cluster spec wins");
+      await cluster.expectRow(frame, "e2e-main-app", "app", "Login, Replication", "Never", "Applied");
+      await cluster.captureScreenshot(frame, "database-roles-dark");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-role-reporting",
+        "Reconciliation",
+        "Applied to PostgreSQL",
+        "Role",
+        "Read-only reporting",
+        "pg_monitor",
+        "retain: deleting this object leaves the role in PostgreSQL",
+        "Authentication",
+        "e2e-role-reporting-password",
+        "Client certificate",
+        "e2e-role-reporting-client-cert",
+      );
+
+      // The certificate the operator issued, with its expiry; both Secrets are links, never opened.
+      await tableRowName(frame, "e2e-role-reporting").click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Authentication" });
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      expect((await drawer.innerText()).replace(/\s+/g, " ")).toMatch(/Client certificate Expires in \d+d/);
+      expect(await drawer.locator("a", { hasText: "e2e-role-reporting-client-cert" }).count()).toBeGreaterThan(0);
+      expect(await drawer.locator("a", { hasText: "e2e-role-reporting-password" }).count()).toBeGreaterThan(0);
+      await drawer.locator(".DrawerItem", { hasText: "Certificate expires" }).scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "database-role-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      // The conflict with the cluster spec, told in words on the object that loses.
+      await tableRowName(frame, "e2e-role-inline-rival").click();
+
+      const rival = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-role-inline-rival"]');
+
+      await rival.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await rival.innerText()).toContain("The cluster declares the role e2e_inline in managed.roles");
+      await cluster.closeDetails(frame);
+
+      // The cluster shows its inline roles, the one the operator cannot reconcile with its reason.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-single").click();
+
+      const inline = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-inline-roles"]');
+
+      await inline.waitFor({ state: "visible", timeout: 60_000 });
+
+      const inlineText = (await inline.innerText()).replace(/\s+/g, " ");
+
+      expect(inlineText).toContain("e2e_inline_stuck cannot be reconciled");
+      expect(inlineText).toContain('role "e2e_no_such_group" does not exist');
+      expect(inlineText).toMatch(/e2e_inline reconciled/);
+      expect(
+        await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-database-roles"]').innerText(),
+      ).toBe("1 failed");
+      await inline.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "cluster-declarative-dark");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
@@ -1205,6 +1299,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-clusters-failoverquorums", "Failover Quorums"],
         ["cnpg-pooling-poolers", "Poolers"],
         ["cnpg-databases-databases", "Databases"],
+        ["cnpg-databases-databaseroles", "Database Roles"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

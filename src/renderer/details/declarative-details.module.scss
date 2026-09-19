@@ -38,6 +38,10 @@
   user-select: text;
 }
 
+.warning {
+  color: var(--colorWarning);
+}
+
 .note {
   margin: $unit 0;
   color: var(--textColorSecondary);
@@ -47,6 +51,12 @@
   display: flex;
   flex-direction: column;
   gap: calc($unit / 2);
+}
+
+.inlineRole {
+  display: flex;
+  align-items: baseline;
+  gap: $unit;
 }
 
 .badges {

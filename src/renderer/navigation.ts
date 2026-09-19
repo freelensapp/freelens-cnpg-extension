@@ -22,6 +22,7 @@ export const POOLING_GROUP_ID = "cnpg-pooling";
 export const POOLERS_PAGE_ID = "cnpg-pooling-poolers";
 export const DATABASES_GROUP_ID = "cnpg-databases";
 export const DATABASES_PAGE_ID = "cnpg-databases-databases";
+export const DATABASE_ROLES_PAGE_ID = "cnpg-databases-databaseroles";
 export const IMAGES_GROUP_ID = "cnpg-images";
 export const IMAGE_CATALOGS_PAGE_ID = "cnpg-images-imagecatalogs";
 export const CLUSTER_IMAGE_CATALOGS_PAGE_ID = "cnpg-images-clusterimagecatalogs";

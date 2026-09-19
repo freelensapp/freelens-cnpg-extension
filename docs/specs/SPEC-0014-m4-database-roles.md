@@ -1,6 +1,6 @@
 # SPEC-0014: Database Roles, list and detail (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M4` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -121,3 +121,21 @@ a Secret and its expiry from the status, nothing else.
 - Approved on 2026-09-19 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M4 at the
   milestone review.
+- Deviation: the list has no Password column. With eleven columns the
+  condition badge was cut at the width of a laptop window, and the source of
+  the password is the least useful of them day to day. It stays in the
+  tooltip of Expires, in the search fields and in the drawer.
+- Implementation notes: an expiry is worded at the grain a person reads it at
+  ("in 8 years", "20 months ago", whole days under a year). The expired
+  password warns only on a role that can log in. The inline conflict is
+  recognised both from the cluster spec and from the operator's fixed message,
+  so the sentence holds while the cluster is still loading. The Cluster drawer
+  lists only the inline roles the cluster spec declares, the ones the operator
+  cannot reconcile first with its reason; the roles PostgreSQL merely has and
+  the reserved ones are left out.
+- Seen live on the E2E cluster (operator 1.30.0): Applied with a client
+  certificate and its expiry, Applied with an expired password (warning),
+  Failed on a missing group, Failed on the inline conflict, the adoption of
+  the `app` role with `replication`, the inline roles of `e2e-single` with
+  one that cannot be reconciled. Covered by unit tests only: a certificate in
+  its last week, expired or not issued yet, Deleting with the delete policy.

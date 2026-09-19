@@ -163,3 +163,7 @@ runs.
   a conflict, Pending on the hibernated cluster, Orphan; the size of a
   database from the exporter of the primary. Covered by unit tests only:
   Updating, Waiting on a replica cluster, Deleting.
+- Merged with #36 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request. The manual verification above is part of the M4
+  milestone review: the status moves to Verified when its result is recorded
+  here.
