@@ -48,6 +48,19 @@ function tableRowName(frame: Frame, name: string) {
   return frame.locator(".TableRow", { hasText: name }).first().locator(".TableCell", { hasText: name }).first();
 }
 
+/** Reads a value until it satisfies the predicate: the live view fills in as the instances answer. */
+async function waitUntil<T>(read: () => Promise<T>, accept: (value: T) => boolean, timeout = 60_000): Promise<T> {
+  const deadline = Date.now() + timeout;
+  let value = await read();
+
+  while (!accept(value) && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    value = await read();
+  }
+
+  return value;
+}
+
 interface InstanceManagerStatus {
   isPrimary?: boolean;
   systemID?: string;
@@ -322,6 +335,12 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         await history.scrollIntoViewIfNeeded();
         await cluster.captureScreenshot(frame, "scheduled-backup-history-light");
         await cluster.closeDetails(frame);
+
+        // The Live View (SPEC-0006) on the light theme.
+        await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+        await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]').click();
+        await frame.locator('[data-testid="cnpg-live-sessions-total"]').waitFor({ state: "visible", timeout: 90_000 });
+        await cluster.captureScreenshot(frame, "live-main-light");
       } finally {
         await cnpg.setColorTheme(app, window, "Dark");
       }
@@ -507,6 +526,164 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         .locator(".Drawer.KubeObjectDetails", { hasText: "Certificates" })
         .waitFor({ state: "visible", timeout: 60_000 });
       await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "shows the replication topology and the live tiles of e2e-main (SPEC-0006)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+      await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]').click();
+
+      const topology = frame.locator('[data-testid="cnpg-live-topology"]');
+
+      await topology.waitFor({ state: "visible", timeout: 60_000 });
+
+      // The instance that says it is the primary is the one the cluster status names.
+      const declaredPrimary = cluster.kubectlField(
+        "clusters.postgresql.cnpg.io",
+        "e2e-main",
+        "{.status.currentPrimary}",
+      );
+      const primaryCard = topology.locator('[data-role="primary"]');
+
+      await primaryCard.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await primaryCard.getAttribute("data-testid")).toBe(`cnpg-live-instance-${declaredPrimary}`);
+      expect(await primaryCard.innerText()).toMatch(/LSN [0-9A-F]+\/[0-9A-F]+/);
+      expect(
+        await waitUntil(
+          () => topology.locator('[data-role="standby"]').count(),
+          (count) => count === 2,
+        ),
+      ).toBe(2);
+
+      // One edge per standby, streaming, with a lag figure.
+      const edges = topology.locator('[data-testid^="cnpg-live-edge-"]');
+
+      expect(
+        await waitUntil(
+          () => edges.count(),
+          (count) => count === 2,
+        ),
+      ).toBe(2);
+      for (const text of await edges.allInnerTexts()) {
+        expect(text).toMatch(/async|sync|quorum|potential/);
+        expect(text).toMatch(/lag \d/);
+      }
+
+      // The tiles fed by the metrics exporter and by the status of the primary.
+      const total = frame.locator('[data-testid="cnpg-live-sessions-total"]');
+
+      await total.waitFor({ state: "visible", timeout: 90_000 });
+      expect(Number((await total.innerText()).replace(/,/g, ""))).toBeGreaterThanOrEqual(1);
+
+      const databases = await frame.locator('[data-testid="cnpg-live-databases"]').innerText();
+
+      expect(databases).toContain("app");
+      expect(databases).toContain("postgres");
+      expect(await frame.locator('[data-testid="cnpg-live-wal-state"]').innerText()).toBe("Archiving");
+      expect(await frame.locator('[data-testid="cnpg-live-wal"]').innerText()).toMatch(/[0-9A-F]{24}/);
+
+      const slots = await frame.locator('[data-testid="cnpg-live-slots"]').innerText();
+
+      expect(slots).toContain("_cnpg_e2e_main_2");
+      expect(slots).toContain("_cnpg_e2e_main_3");
+      expect(await frame.locator('[data-testid="cnpg-live-manager"]').innerText()).toContain("1.30.0");
+      expect(await frame.locator('[data-testid="cnpg-live-last-read"]').innerText()).toContain("last read");
+      await cluster.captureScreenshot(frame, "live-main-dark");
+      await frame.locator('[data-testid="cnpg-live-tiles"]').scrollIntoViewIfNeeded();
+      await frame.locator('[data-testid="cnpg-live-manager"]').scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "live-main-tiles-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "reads a TLS metrics endpoint and says that the archive of e2e-single is failing (SPEC-0006)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+      await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-single"]').click();
+
+      const state = frame.locator('[data-testid="cnpg-live-wal-state"]');
+
+      await state.waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await waitUntil(
+          () => state.innerText(),
+          (text) => text === "Failing",
+        ),
+      ).toBe("Failing");
+      await frame.locator('[data-testid="cnpg-live-sessions-total"]').waitFor({ state: "visible", timeout: 90_000 });
+      expect(await frame.locator('[data-testid="cnpg-live-topology"]').innerText()).toContain("A single instance");
+      await cluster.captureScreenshot(frame, "live-single-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "issues no request for a hibernated cluster and draws a fenced instance with what it says (SPEC-0006)",
+    async () => {
+      const proxied: string[] = [];
+      const record = (request: { url(): string }) => {
+        if (request.url().includes("/proxy/")) proxied.push(request.url());
+      };
+
+      window.on("request", record);
+      try {
+        await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+        await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-hibernated"]').click();
+        await frame.locator('[data-testid="cnpg-live-hibernated"]').waitFor({ state: "visible", timeout: 60_000 });
+        await frame.waitForTimeout(6000);
+        expect(proxied.filter((url) => url.includes("e2e-hibernated"))).toEqual([]);
+      } finally {
+        window.off("request", record);
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+      await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-fenced"]').click();
+
+      const fenced = frame.locator('[data-testid="cnpg-live-instance-e2e-fenced-1"]');
+
+      await fenced.waitFor({ state: "visible", timeout: 60_000 });
+      const downSentence = "PostgreSQL does not answer on this instance (fenced)";
+
+      expect(
+        await waitUntil(
+          () => fenced.innerText(),
+          (text) => text.includes(downSentence),
+        ),
+      ).toContain(downSentence);
+      // The page stays alive around the instance that is down.
+      expect(await frame.locator('[data-testid="cnpg-live-tiles"]').count()).toBe(1);
+      await cluster.captureScreenshot(frame, "live-fenced-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "opens the Live View of a cluster from its drawer, its row menu and its Overview tile (SPEC-0006)",
+    async () => {
+      const landedOnMain = async () => {
+        await frame
+          .locator('[data-testid="cnpg-live-instance-e2e-main-1"]')
+          .waitFor({ state: "visible", timeout: 60_000 });
+      };
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await tableRowName(frame, "e2e-main").click();
+      await frame.locator('[data-testid="cnpg-cluster-live-view-link"]').click();
+      await landedOnMain();
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.openRowMenu(frame, "e2e-main");
+      await frame.locator(".Menu").getByText("Live view", { exact: true }).click();
+      await landedOnMain();
+
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+      await frame.locator('[data-testid="cnpg-overview-door-live-cnpg-e2e-e2e-main"]').click();
+      await landedOnMain();
     },
     TIMEOUT,
   );

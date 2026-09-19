@@ -72,6 +72,8 @@ export interface MonitoringConfiguration {
   enablePodMonitor?: boolean;
   disableDefaultQueries?: boolean;
   metricsQueriesTTL?: string;
+  /** Opt-in TLS on the metrics port, with the PostgreSQL server certificate (SPEC-0001 R6). */
+  tls?: { enabled?: boolean };
   customQueriesConfigMap?: Array<{ name: string; key: string }>;
   customQueriesSecret?: Array<{ name: string; key: string }>;
   [key: string]: unknown;

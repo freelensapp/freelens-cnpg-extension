@@ -19,7 +19,7 @@ import styles from "../components/overview/tile-grid.module.scss";
 import stylesInline from "../components/overview/tile-grid.module.scss?inline";
 import { summarize } from "../components/overview-model";
 import { useReferenceStores } from "../components/reference-loader";
-import { BACKUPS_PAGE_ID, CLUSTERS_PAGE_ID, extensionPageUrl } from "../navigation";
+import { BACKUPS_PAGE_ID, CLUSTERS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
 
 import type { ClusterTile as ClusterTileModel } from "../components/overview-model";
 
@@ -159,6 +159,11 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
                   detailsUrl={detailsUrlOf(tile)}
                   backupsUrl={backupsUrl(tile.name)}
                   scheduleUrl={scheduleUrlOf(tile)}
+                  liveUrl={
+                    tile.health.state === "Hibernated"
+                      ? undefined
+                      : liveViewUrl(extension.name, tile.namespace, tile.name)
+                  }
                 />
               ))}
             </div>

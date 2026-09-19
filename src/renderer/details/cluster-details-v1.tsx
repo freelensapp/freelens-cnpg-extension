@@ -28,7 +28,7 @@ import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
-import { BACKUPS_PAGE_ID, extensionPageUrl } from "../navigation";
+import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl } from "../navigation";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
 
@@ -228,6 +228,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <style>{stylesInline}</style>
 
         <DrawerTitle>Health</DrawerTitle>
+        <DrawerItem name="Live view" hidden={hibernated}>
+          <MaybeLink
+            to={liveViewUrl(props.extension.name, namespace, name)}
+            data-testid="cnpg-cluster-live-view-link"
+            onClick={(event) => event.stopPropagation()}
+          >
+            Sessions, replication lag, WAL and databases right now
+          </MaybeLink>
+        </DrawerItem>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />
         </DrawerItem>

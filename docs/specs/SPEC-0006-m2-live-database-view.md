@@ -1,6 +1,6 @@
 # SPEC-0006: Live database view (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (drift watch of 2026-09-19)
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -270,3 +270,39 @@ module cannot even express them). Polling stops when nobody is looking.
   age warning at 1.0 and error at 1.5 billion, all named constants of the
   model; a "Live view" navigation entry in the row menu of the PostgreSQL
   Clusters list.
+- Implementation notes, from what the E2E cluster answered (operator 1.30.0):
+  - In the status answer `pod` is a trimmed Pod object (`pod.metadata.name`),
+    not a string, `syncPriority` is a number in a string, and an instance
+    that never archived reports its archiver times as `-infinity`: the guard
+    and `parseStatusTime` follow the answers, not the draft.
+  - **A fenced instance answers.** The instance manager replies 200 with
+    `mightBeUnavailable: true`, the reason in `mightBeUnavailableMaskedError`,
+    and `isPrimary: true` with an empty system ID, because it cannot ask
+    PostgreSQL for the role. The draft expected an unreachable instance; the
+    model instead reports "PostgreSQL does not answer on this instance", never
+    takes such an instance for the primary, and the E2E case asserts that.
+  - A plain request against the TLS status port comes back from the API
+    server as a bare 400, a TLS request against a plain port as a 503 that
+    quotes the TLS handshake error: both are classified `scheme`, and the
+    client then tries the other scheme once and remembers what worked.
+  - The sessions count the platform's own (`streaming_replica`,
+    `cnpg_metrics_exporter`) apart from the users': on an idle cluster every
+    session is the platform's, and the longest transaction ignores them
+    (replication sessions are long lived by design).
+    `cnpg_pg_settings_setting{name="max_connections"}` is in the default
+    queries and gives the limit per instance.
+- Deviations from the draft: the page id and the menu id are the same
+  (`cnpg-clusters-live`), as for every other leaf; the contracts live in
+  `src/renderer/api/instance/` and the parsers, the model, the poller and the
+  components in `src/renderer/components/live/` (ARCHITECTURE.md); the labels
+  of the edges sit on their lines, positioned by the pure layout
+  (`labelY`), and the SVG of the lines is stretched over its cell and kept out
+  of the flow, since an SVG with a viewBox would otherwise size the grid; the
+  replication slots table shows the type in the tooltip, not in a column.
+- The cluster travels in the URL through the host's `createPageParam`, and the
+  row menu entry navigates with the host's `navigate`: both work from an
+  extension page (verified by the E2E case of the three doors).
+- Manual verification still open for the M2 milestone review: a kubeconfig
+  without `pods/proxy` (the permission panel is covered by unit tests of the
+  model and of the client only) and the lived experience against a busy
+  database, which needs the demo cluster of SPEC-0008.

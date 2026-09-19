@@ -12,6 +12,7 @@ export const OVERVIEW_GROUP_ID = "cnpg-overview";
 export const OVERVIEW_PAGE_ID = "cnpg-overview";
 export const CLUSTERS_GROUP_ID = "cnpg-clusters";
 export const CLUSTERS_PAGE_ID = "cnpg-clusters-clusters";
+export const LIVE_PAGE_ID = "cnpg-clusters-live";
 export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
 export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
@@ -26,4 +27,13 @@ export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
 export function extensionPageUrl(extensionName: string, pageId: string, search?: string): string {
   const base = `/extension/${extensionName.replace(/^@/, "").replace(/\//g, "--")}/${pageId}`;
   return search ? `${base}?search=${encodeURIComponent(search)}` : base;
+}
+
+/** Name of the query parameter that carries the cluster of the Live View (SPEC-0006 "Placement and addressing"). */
+export const LIVE_CLUSTER_PARAM = "cluster";
+
+/** The Live View of a cluster: the cluster travels in the URL, so every door lands on the right one. */
+export function liveViewUrl(extensionName: string, namespace?: string, name?: string): string {
+  const base = extensionPageUrl(extensionName, LIVE_PAGE_ID);
+  return namespace && name ? `${base}?${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}` : base;
 }

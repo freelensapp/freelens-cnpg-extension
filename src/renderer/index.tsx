@@ -12,11 +12,13 @@ import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
+import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import {
   BACKUPS_GROUP_ID,
   BACKUPS_PAGE_ID,
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
+  LIVE_PAGE_ID,
   OVERVIEW_GROUP_ID,
   OVERVIEW_PAGE_ID,
   ROOT_MENU_ID,
@@ -24,6 +26,7 @@ import {
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import { LivePage } from "./pages/live-page";
 import { OverviewPage } from "./pages/overview-page";
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 
@@ -32,7 +35,8 @@ import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/schedule
 // first so the root opens it (SPEC-0004 "Placement"); the Clusters group holds
 // the PostgreSQL Clusters list (SPEC-0003 "Sidebar"; the title is qualified
 // because the host already has a "Cluster" sidebar item). The Backups group
-// holds the Backups and the Scheduled Backups lists (SPEC-0005 "Sidebar").
+// holds the Backups and the Scheduled Backups lists (SPEC-0005 "Sidebar"); the
+// Live View sits in the Clusters group (SPEC-0006 "Placement and addressing").
 // The pages probe the CRD store per API version (newest first) and fall back
 // to the explanatory panel when the operator is absent (DESIGN.md section 6).
 const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", [
@@ -40,6 +44,9 @@ const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", 
 ]);
 const AvailableClustersPage = createAvailableVersionPage(ClusterV1.crd.title, [
   { kubeObjectClass: ClusterV1, PageComponent: ClustersPageV1, version: "v1" },
+]);
+const AvailableLivePage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: LivePage, version: "v1" },
 ]);
 const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
   { kubeObjectClass: BackupV1, PageComponent: BackupsPageV1, version: "v1" },
@@ -82,6 +89,18 @@ export default class CnpgRenderer extends Renderer.LensExtension {
     },
   ];
 
+  kubeObjectMenuItems = [
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => (
+          <ClusterLiveViewMenuItem {...props} extension={this} />
+        ),
+      },
+    },
+  ];
+
   clusterPages = [
     {
       id: OVERVIEW_PAGE_ID,
@@ -95,6 +114,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: CLUSTERS_PAGE_ID,
       components: {
         Page: () => <AvailableClustersPage extension={this} />,
+      },
+    },
+    {
+      id: LIVE_PAGE_ID,
+      components: {
+        Page: () => <AvailableLivePage extension={this} />,
       },
     },
     {
@@ -139,6 +164,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: ClusterV1.crd.title,
       target: { pageId: CLUSTERS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: LIVE_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: "Live View",
+      target: { pageId: LIVE_PAGE_ID },
       components: {},
     },
     {
