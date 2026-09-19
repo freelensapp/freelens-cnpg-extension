@@ -14,10 +14,19 @@ import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
 import { DatabaseRole } from "../api/cnpg/database-role-v1";
 import { Database } from "../api/cnpg/database-v1";
+import { Publication } from "../api/cnpg/publication-v1";
+import { Subscription } from "../api/cnpg/subscription-v1";
 import { declaredInlineRoles, inlineStatusWords, roleHealth } from "../components/database-roles";
 import { countHealth, countWords, databaseHealth, objectsOfCluster } from "../components/declarative";
+import { publicationHealth, subscriptionHealth } from "../components/logical-replication";
 import { useReferenceStores } from "../components/reference-loader";
-import { DATABASE_ROLES_PAGE_ID, DATABASES_PAGE_ID, extensionPageUrl } from "../navigation";
+import {
+  DATABASE_ROLES_PAGE_ID,
+  DATABASES_PAGE_ID,
+  extensionPageUrl,
+  PUBLICATIONS_PAGE_ID,
+  SUBSCRIPTIONS_PAGE_ID,
+} from "../navigation";
 import styles from "./declarative-details.module.scss";
 import stylesInline from "./declarative-details.module.scss?inline";
 
@@ -47,10 +56,14 @@ export const ClusterDeclarativeSection = observer(({ cluster, extension }: Clust
   const name = cluster.metadata?.name ?? "";
   const databaseStore = maybe(() => Database.getStore<Database>());
   const roleStore = maybe(() => DatabaseRole.getStore<DatabaseRole>());
+  const publicationStore = maybe(() => Publication.getStore<Publication>());
+  const subscriptionStore = maybe(() => Subscription.getStore<Subscription>());
 
   useReferenceStores([
     { label: Database.crd.plural, store: databaseStore, namespaces: [namespace] },
     { label: DatabaseRole.crd.plural, store: roleStore, namespaces: [namespace] },
+    { label: Publication.crd.plural, store: publicationStore, namespaces: [namespace] },
+    { label: Subscription.crd.plural, store: subscriptionStore, namespaces: [namespace] },
   ]);
 
   const lookup = { cluster, known: true };
@@ -69,6 +82,22 @@ export const ClusterDeclarativeSection = observer(({ cluster, extension }: Clust
       pageId: DATABASE_ROLES_PAGE_ID,
       counts: countHealth(
         objectsOfCluster(cluster, roleStore?.items ?? []).map((object) => roleHealth(object, lookup)),
+      ),
+    },
+    {
+      label: "Publications",
+      testId: "cnpg-cluster-publications",
+      pageId: PUBLICATIONS_PAGE_ID,
+      counts: countHealth(
+        objectsOfCluster(cluster, publicationStore?.items ?? []).map((object) => publicationHealth(object, lookup)),
+      ),
+    },
+    {
+      label: "Subscriptions",
+      testId: "cnpg-cluster-subscriptions",
+      pageId: SUBSCRIPTIONS_PAGE_ID,
+      counts: countHealth(
+        objectsOfCluster(cluster, subscriptionStore?.items ?? []).map((object) => subscriptionHealth(object, lookup)),
       ),
     },
   ].filter((row) => row.counts.total > 0);

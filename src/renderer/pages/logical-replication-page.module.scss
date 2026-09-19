@@ -1,0 +1,44 @@
+@use "../vars" as *;
+
+// Shared by the Publications and the Subscriptions lists (SPEC-0015).
+
+.page {
+  :global(.TableCell) {
+    &.cluster,
+    &.database,
+    &.pgName,
+    &.publisher,
+    &.publication {
+      flex-grow: 0.8;
+    }
+
+    &.target {
+      flex-grow: 0.8;
+    }
+
+    &.subscriptions {
+      flex-grow: 0.9;
+    }
+
+    &.condition {
+      flex-grow: 0.7;
+    }
+
+    &.status {
+      flex-grow: 1.6;
+    }
+
+    &.age {
+      flex-grow: 0.35;
+    }
+
+    &.cluster a,
+    &.publisher a,
+    &.subscriptions a {
+      display: block;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  }
+}

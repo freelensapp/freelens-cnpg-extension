@@ -1287,6 +1287,126 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "reads a logical replication as one path, with the slot on the publisher and the failover caveat (SPEC-0015)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-databases-publications", "Publications");
+      await cluster.selectNamespace(frame);
+      await cluster.expectRow(
+        frame,
+        "e2e-pub-numbers",
+        "e2e-main",
+        "app",
+        "e2e_numbers_pub",
+        "1 table",
+        "e2e-sub-numbers",
+        "Applied",
+      );
+      await cluster.expectRow(frame, "e2e-pub-all", "e2e_all_pub", "All tables", "None here", "Applied");
+      await cluster.expectRow(frame, "e2e-pub-missing-table", "Failed", 'relation "e2e_no_such_table" does not exist');
+      await cluster.captureScreenshot(frame, "publications-dark");
+
+      await cluster.expectDetails(
+        frame,
+        "e2e-pub-numbers",
+        "Reconciliation",
+        "Applied to PostgreSQL",
+        "Publication",
+        "e2e_numbers_pub",
+        "public.e2e_numbers",
+        "columns i, m",
+        "Subscriptions",
+        "row changes",
+        "e2e-sub-numbers",
+        "Publisher failover",
+        "Right now",
+      );
+
+      // The slots of the database, read from the primary: the one of the subscription is being consumed.
+      await tableRowName(frame, "e2e-pub-numbers").click();
+
+      const publicationLive = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-publication-live"]');
+
+      await publicationLive.waitFor({ state: "visible", timeout: 90_000 });
+
+      const slots = frame.locator(".Drawer.KubeObjectDetails .TableRow", { hasText: "e2e_numbers_sub" });
+
+      await slots.first().waitFor({ state: "visible", timeout: 60_000 });
+      expect(await slots.first().locator("a", { hasText: "e2e-sub-numbers" }).count()).toBe(1);
+      await publicationLive.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "publication-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-databases-subscriptions", "Subscriptions");
+      await cluster.selectNamespace(frame);
+      await cluster.expectRow(
+        frame,
+        "e2e-sub-numbers",
+        "e2e-single",
+        "app",
+        "e2e_numbers_sub",
+        "e2e-main",
+        "e2e_numbers_pub",
+        "Applied",
+      );
+      await cluster.expectRow(
+        frame,
+        "e2e-sub-no-publisher",
+        "e2e-nowhere",
+        "Failed",
+        "externalCluster 'e2e-nowhere' not declared",
+      );
+      await cluster.captureScreenshot(frame, "subscriptions-dark");
+
+      await tableRowName(frame, "e2e-sub-numbers").click();
+
+      const path = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-replication-path"]');
+
+      await path.waitFor({ state: "visible", timeout: 60_000 });
+
+      const pathText = (await path.innerText()).replace(/\s+/g, " ");
+
+      expect(pathText).toMatch(/PUBLISHER e2e-main database app publication e2e-pub-numbers/i);
+      expect(pathText).toMatch(/SUBSCRIBER e2e-single database app subscription e2e_numbers_sub/i);
+      expect(await path.locator("a", { hasText: "e2e-pub-numbers" }).count()).toBe(1);
+
+      // e2e-main has three instances and does not synchronize its logical slots.
+      expect(
+        await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-subscription-failover"]').innerText(),
+      ).toContain("e2e-main does not synchronize its logical slots to the standbys");
+
+      // The slot on the publisher, read through the pod proxy of its primary.
+      const live = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-subscription-live"]');
+
+      await live.waitFor({ state: "visible", timeout: 90_000 });
+      expect(await live.innerText()).toContain("from the primary, e2e-main-");
+      expect(
+        await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-subscription-slot-active"]').innerText(),
+      ).toBe("True");
+      await path.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "subscription-drawer-dark");
+      await cluster.closeDetails(frame);
+
+      // The one the operator fails says why on its own terms too.
+      await cluster.expectDetails(
+        frame,
+        "e2e-sub-no-publisher",
+        "The cluster e2e-single declares no external cluster named e2e-nowhere",
+      );
+
+      // The cluster counts its publications.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-main").click();
+
+      const counts = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-publications"]');
+
+      await counts.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await counts.innerText()).toBe("2 applied, 1 failed");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "keeps the rules of DESIGN.md on every list and agrees with the instance manager on the LSN (SPEC-0008)",
     async () => {
       // Graduated from the pre-review pass: what it proved once stays proven.
@@ -1300,6 +1420,8 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-pooling-poolers", "Poolers"],
         ["cnpg-databases-databases", "Databases"],
         ["cnpg-databases-databaseroles", "Database Roles"],
+        ["cnpg-databases-publications", "Publications"],
+        ["cnpg-databases-subscriptions", "Subscriptions"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

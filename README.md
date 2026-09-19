@@ -57,6 +57,11 @@ What is there today, all of it read-only:
   it authenticates and until when (password expiry, client certificate
   expiry), and the role of the cluster spec that wins over it when both
   declare the same name. Secrets are linked, never read.
+- **Publications** and **Subscriptions**: a logical replication read as one
+  path, from the publication of one cluster to the subscription of another,
+  with the replication slot on the publisher right now (being consumed or
+  not, the WAL kept for it) and whether the pair survives a failover of the
+  publisher.
 - **Image Catalogs** and **Cluster Image Catalogs**: what each catalog offers
   per major version and which clusters follow it, with the image each cluster
   runs next to the image the catalog offers.
