@@ -1,0 +1,21 @@
+declare const classNames: {
+  readonly history: "history";
+  readonly row: "row";
+  readonly track: "track";
+  readonly band: "band";
+  readonly mark: "mark";
+  readonly completed: "completed";
+  readonly failed: "failed";
+  readonly running: "running";
+  readonly pending: "pending";
+  readonly unknown: "unknown";
+  readonly count: "count";
+  readonly now: "now";
+  readonly next: "next";
+  readonly nextMark: "nextMark";
+  readonly axis: "axis";
+  readonly facts: "facts";
+  readonly empty: "empty";
+  readonly warning: "warning";
+};
+export = classNames;

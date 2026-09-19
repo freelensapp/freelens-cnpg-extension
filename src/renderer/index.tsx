@@ -8,7 +8,9 @@ import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { createAvailableVersionPage } from "./components/available-version";
+import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
+import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { CnpgIcon } from "./icons";
 import {
   BACKUPS_GROUP_ID,
@@ -55,6 +57,26 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <ClusterDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: BackupV1.kind,
+      apiVersions: BackupV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <BackupDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: ScheduledBackupV1.kind,
+      apiVersions: ScheduledBackupV1.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <ScheduledBackupDetailsV1 {...props} extension={this} />
         ),
       },
     },

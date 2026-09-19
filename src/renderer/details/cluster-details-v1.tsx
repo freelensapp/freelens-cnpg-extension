@@ -12,9 +12,13 @@ import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
+import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
+import { buildHistory, schedulesOfCluster } from "../components/backup-history";
+import { BackupHistoryStrip } from "../components/backup-history-strip";
 import {
   archivingState,
   backupFacts,
+  backupsOfCluster,
   certificateFacts,
   classifyCluster,
   instanceFacts,
@@ -23,6 +27,8 @@ import { withErrorPage } from "../components/error-page";
 import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
 import { useReferenceStores } from "../components/reference-loader";
+import { StoreLink } from "../components/store-link";
+import { BACKUPS_PAGE_ID, extensionPageUrl } from "../navigation";
 import styles from "./cluster-details.module.scss";
 import stylesInline from "./cluster-details.module.scss?inline";
 
@@ -135,6 +141,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const spec = object.spec;
     const status = object.status;
     const backupStore = maybe(() => Backup.getStore<Backup>());
+    const scheduleStore = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
     const health = classifyCluster(object);
     const archiving = archivingState(object);
     const instances = instanceFacts(object);
@@ -163,12 +170,23 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       { label: "services", store: serviceStore, namespaces: [namespace] },
       { label: "secrets", store: secretsStore, namespaces: [namespace] },
       { label: Backup.crd.plural, store: backupStore, namespaces: [namespace] },
+      { label: ScheduledBackup.crd.plural, store: scheduleStore, namespaces: [namespace] },
     ]);
 
-    const backups = backupFacts(
-      object,
-      ((backupStore?.items ?? []) as Backup[]).filter((b) => b.getNs() === namespace),
-    );
+    const namespaceBackups = ((backupStore?.items ?? []) as Backup[]).filter((b) => b.getNs() === namespace);
+    const backups = backupFacts(object, namespaceBackups);
+
+    // The backup history strip and its doors (SPEC-0005): the cluster's own
+    // backups over time, its schedules, and the way to the filtered list.
+    const now = new Date();
+    const ownBackups = backupsOfCluster(object, namespaceBackups);
+    const ownSchedules = schedulesOfCluster(object, (scheduleStore?.items ?? []) as ScheduledBackup[]);
+    const history = buildHistory(ownBackups, ownSchedules, now, { archivingFailing: archiving.state === "Failing" });
+    const backupsListUrl = extensionPageUrl(props.extension.name, BACKUPS_PAGE_ID, name);
+    const backupUrl = (backupName: string) => {
+      const backup = backupStore?.getByName(backupName, namespace);
+      return backup ? getDetailsUrl(backup.selfLink) : undefined;
+    };
     const podsByName = new Map(
       instances.map((instance) => [instance.name, podsStore.getByName(instance.name, namespace)] as const),
     );
@@ -445,6 +463,28 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             label="barmanObjectStore (deprecated)"
             tooltip="Use the Barman Cloud plugin instead"
           />
+        </DrawerItem>
+        <BackupHistoryStrip history={history} now={now} backupUrl={backupUrl} listUrl={backupsListUrl} />
+        <DrawerItem name="Scheduled backups">
+          {ownSchedules.length === 0 ? (
+            "None defined"
+          ) : (
+            <div className={styles.list}>
+              {ownSchedules.map((schedule) => (
+                <StoreLink
+                  key={schedule.getName()}
+                  store={scheduleStore}
+                  name={schedule.getName()}
+                  namespace={namespace}
+                />
+              ))}
+            </div>
+          )}
+        </DrawerItem>
+        <DrawerItem name="Backups" hidden={ownBackups.length === 0}>
+          <MaybeLink to={backupsListUrl} onClick={(event) => event.stopPropagation()}>
+            All backups of this cluster ({ownBackups.length})
+          </MaybeLink>
         </DrawerItem>
         <DrawerItem name="Last successful backup">
           {backups.lastSuccessful ? <LocaleDate date={backups.lastSuccessful} /> : notAvailable}
