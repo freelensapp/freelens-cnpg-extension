@@ -1,6 +1,6 @@
 # SPEC-0005: Backups and Scheduled Backups, lists and details (read-only)
 
-- **Status:** Draft
+- **Status:** Approved
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (drift watch of 2026-09-19:
   still the latest operator release; Barman Cloud plugin `v0.15.0` still the
@@ -130,7 +130,8 @@ This spec adds static helpers only (no instance methods):
   alone. The raw expression is always visible: the words are an aid, never
   a replacement. Implementation: the `cronstrue` package (MIT, no
   dependencies, six-field aware) behind this function, plus the descriptor
-  handling it lacks. See "Open points" for the alternative.
+  handling it lacks; the wrapper keeps the package replaceable without
+  touching the views.
 
 ### Backups list (`src/renderer/pages/backups-page-v1.tsx`)
 
@@ -292,19 +293,11 @@ anywhere (the row menus keep only the host's entries).
   call on the strip ("does it tell the protection story at a glance")
   during the milestone review.
 
-## Open points for the lead maintainer (to close before Approved)
-
-1. **Strip in M2 or later.** Proposed: in M2, inside the drawers, because
-   it is what makes the backup views better than a table. Alternative:
-   ship lists and drawers now and move the strip next to the events
-   timeline of M5.
-2. **`cronstrue` as a bundled dependency** (MIT, zero dependencies, about
-   22 kB minified for the English locale) versus an own describer limited
-   to the common shapes. Proposed: `cronstrue`, wrapped so it can be
-   replaced without touching the views.
-3. **Suspended as `warning`.** Proposed as above; the alternative is the
-   neutral `info` with the `--colorTerminated` token.
-
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- Approved on 2026-09-19 by the lead maintainer, with the three points the
+  draft left open closed as proposed: the backup history strip ships in M2
+  inside the drawers (not deferred to the events timeline of M5);
+  `cronstrue` is a bundled dependency (MIT, zero dependencies, about 22 kB
+  minified for the English locale) behind `describeSchedule`; a suspended
+  schedule is classified `warning`.

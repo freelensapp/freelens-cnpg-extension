@@ -1,6 +1,6 @@
 # SPEC-0006: Live database view (read-only)
 
-- **Status:** Draft
+- **Status:** Approved
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (drift watch of 2026-09-19)
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -259,23 +259,14 @@ module cannot even express them). Polling stops when nobody is looking.
   cluster of SPEC-0008): the figures move, nothing flickers, the page stays
   responsive for ten minutes; (3) both themes. Results recorded here.
 
-## Open points for the lead maintainer (to close before Approved)
-
-1. **Placement.** Proposed: a page of its own with the cluster in the URL,
-   reached from the drawer, the list and the Overview. Alternative: a
-   section inside the Cluster drawer (narrower, no topology at full size).
-2. **Sparklines in 0.1.** Proposed: yes, in memory only, since the page
-   opened (they cost one small pure module and tell whether a figure is
-   rising or falling, which a number cannot). Persisted or long-range
-   charts stay in M7.
-3. **Intervals and thresholds.** Proposed: 5 s status, 30 s metrics; lag
-   warning at 10 s or 64 MiB; longest transaction warning at 5 minutes;
-   waiting WAL files warning above 10; transaction ID age warning at 1.0
-   and error at 1.5 billion. All are named constants in the model.
-4. **Row menu entry.** Proposed: "Live view" in the row menu of the
-   PostgreSQL Clusters list as navigation. Alternative: doors only in the
-   drawer and the Overview, keeping row menus for the M6 actions.
-
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- Approved on 2026-09-19 by the lead maintainer, with the four points the
+  draft left open closed as proposed: a page of its own with the cluster in
+  the URL (not a drawer section); in-memory sparklines in 0.1, persisted or
+  long-range charts in M7; polling every 5 s for the status and every 30 s
+  for the metrics, lag warning at 10 s or 64 MiB, longest transaction
+  warning at 5 minutes, waiting WAL files warning above 10, transaction ID
+  age warning at 1.0 and error at 1.5 billion, all named constants of the
+  model; a "Live view" navigation entry in the row menu of the PostgreSQL
+  Clusters list.
