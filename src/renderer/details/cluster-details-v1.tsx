@@ -48,7 +48,6 @@ const { observer } = MobxReact;
 const {
   Component: {
     Badge,
-    BadgeBoolean,
     DrawerItem,
     DrawerTitle,
     LinkToNode,
@@ -356,7 +355,6 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
               <TableCell className={styles.node}>Node</TableCell>
               <TableCell className={styles.ip}>IP</TableCell>
               <TableCell className={styles.timeline}>Timeline</TableCell>
-              <TableCell className={styles.fenced}>Fenced</TableCell>
               <TableCell className={styles.psql}>psql</TableCell>
             </TableHead>
             {instances.map((instance) => {
@@ -374,7 +372,17 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                     <WithTooltip>{instance.role}</WithTooltip>
                   </TableCell>
                   <TableCell className={styles.health}>
-                    <Badge small className={INSTANCE_HEALTH_CLASS[instance.health]} label={instance.health} />
+                    {/* A fenced instance is down on purpose: it says so here, instead of a red "False" on every other row. */}
+                    {instance.fenced ? (
+                      <Badge
+                        small
+                        className="warning"
+                        label="fenced"
+                        tooltip="Fenced: PostgreSQL is stopped on purpose"
+                      />
+                    ) : (
+                      <Badge small className={INSTANCE_HEALTH_CLASS[instance.health]} label={instance.health} />
+                    )}
                   </TableCell>
                   <TableCell className={styles.node}>
                     {node && objectExists(nodesStore, node) ? (
@@ -388,9 +396,6 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                   </TableCell>
                   <TableCell className={styles.timeline}>
                     <WithTooltip>{instance.timeline ?? notAvailable}</WithTooltip>
-                  </TableCell>
-                  <TableCell className={styles.fenced}>
-                    <BadgeBoolean value={instance.fenced} />
                   </TableCell>
                   <TableCell className={styles.psql}>
                     <PsqlButton cluster={object} instanceName={instance.name} />
