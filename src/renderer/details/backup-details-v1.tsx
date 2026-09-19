@@ -233,17 +233,17 @@ export const BackupDetails = observer((props: BackupDetailsProps) =>
           snapshotElements.length > 0 ? (
             <Table scrollable={false} sortSyncWithUrl={false} className={styles.snapshots}>
               <TableHead flat sticky={false}>
-                <TableCell className="name">Volume snapshot</TableCell>
-                <TableCell className="type">Type</TableCell>
-                <TableCell className="tablespace">Tablespace</TableCell>
+                <TableCell className={styles.name}>Volume snapshot</TableCell>
+                <TableCell className={styles.type}>Type</TableCell>
+                <TableCell className={styles.tablespace}>Tablespace</TableCell>
               </TableHead>
               {snapshotElements.map((element, index) => (
                 <TableRow key={String(element.name ?? index)} nowrap>
-                  <TableCell className="name">
+                  <TableCell className={styles.name}>
                     <WithTooltip>{String(element.name ?? notAvailable)}</WithTooltip>
                   </TableCell>
-                  <TableCell className="type">{String(element.type ?? notAvailable)}</TableCell>
-                  <TableCell className="tablespace">{String(element.tablespaceName ?? "")}</TableCell>
+                  <TableCell className={styles.type}>{String(element.type ?? notAvailable)}</TableCell>
+                  <TableCell className={styles.tablespace}>{String(element.tablespaceName ?? "")}</TableCell>
                 </TableRow>
               ))}
             </Table>
@@ -257,15 +257,15 @@ export const BackupDetails = observer((props: BackupDetailsProps) =>
             <DrawerTitle>Plugin metadata</DrawerTitle>
             <Table scrollable={false} sortSyncWithUrl={false} className={styles.metadata}>
               <TableHead flat sticky={false}>
-                <TableCell className="key">Key</TableCell>
-                <TableCell className="value">Value</TableCell>
+                <TableCell className={styles.key}>Key</TableCell>
+                <TableCell className={styles.value}>Value</TableCell>
               </TableHead>
               {pluginMetadata.map(([key, value]) => (
                 <TableRow key={key} nowrap>
-                  <TableCell className="key">
+                  <TableCell className={styles.key}>
                     <WithTooltip>{key}</WithTooltip>
                   </TableCell>
-                  <TableCell className="value">
+                  <TableCell className={styles.value}>
                     <WithTooltip>{value}</WithTooltip>
                   </TableCell>
                 </TableRow>

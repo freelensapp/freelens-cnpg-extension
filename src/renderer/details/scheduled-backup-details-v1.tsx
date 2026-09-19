@@ -188,10 +188,10 @@ export const ScheduledBackupDetails = observer((props: ScheduledBackupDetailsPro
           <>
             <Table scrollable={false} sortSyncWithUrl={false} className={styles.generated}>
               <TableHead flat sticky={false}>
-                <TableCell className="name">Backup</TableCell>
-                <TableCell className="condition">Condition</TableCell>
-                <TableCell className="started">Started</TableCell>
-                <TableCell className="duration">Duration</TableCell>
+                <TableCell className={styles.name}>Backup</TableCell>
+                <TableCell className={styles.condition}>Condition</TableCell>
+                <TableCell className={styles.started}>Started</TableCell>
+                <TableCell className={styles.duration}>Duration</TableCell>
               </TableHead>
               {generated.slice(0, GENERATED_LIMIT).map((backup) => {
                 const backupHealth = classifyBackup(backup, now);
@@ -199,10 +199,10 @@ export const ScheduledBackupDetails = observer((props: ScheduledBackupDetailsPro
                 const duration = backupDuration(backup);
                 return (
                   <TableRow key={backup.getName()} nowrap>
-                    <TableCell className="name">
+                    <TableCell className={styles.name}>
                       <StoreLink store={backupStore} name={backup.getName()} namespace={namespace} />
                     </TableCell>
-                    <TableCell className="condition">
+                    <TableCell className={styles.condition}>
                       <Badge
                         small
                         className={backupHealth.className}
@@ -210,8 +210,10 @@ export const ScheduledBackupDetails = observer((props: ScheduledBackupDetailsPro
                         tooltip={backupHealth.reason}
                       />
                     </TableCell>
-                    <TableCell className="started">{started ? humanizeRelative(started, now) : notAvailable}</TableCell>
-                    <TableCell className="duration">
+                    <TableCell className={styles.started}>
+                      {started ? humanizeRelative(started, now) : notAvailable}
+                    </TableCell>
+                    <TableCell className={styles.duration}>
                       {duration !== undefined ? humanizeDuration(duration) : notAvailable}
                     </TableCell>
                   </TableRow>
