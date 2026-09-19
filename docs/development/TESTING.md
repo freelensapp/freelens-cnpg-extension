@@ -75,7 +75,8 @@ certificate), and every such fixture says so in a comment.
 - `e2e/fixtures/` - hand-written resources in numbered files applied
   together: the object store, a three-instance cluster, a single-instance
   cluster, a hibernated cluster, a cluster with a fenced instance, backups
-  (one completed, one failed), a scheduled backup, a pooler.
+  (one completed, one failed), three scheduled backups (nightly, immediate
+  with the backup it generates, suspended), a pooler.
   `fixtures/status/` holds the few status patches for states the operator
   cannot produce on demand. Each fixture is chosen to cover a state its
   views distinguish, so the suite can assert both branches.

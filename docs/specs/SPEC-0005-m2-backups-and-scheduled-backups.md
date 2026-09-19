@@ -1,6 +1,6 @@
 # SPEC-0005: Backups and Scheduled Backups, lists and details (read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M2` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (drift watch of 2026-09-19:
   still the latest operator release; Barman Cloud plugin `v0.15.0` still the
@@ -331,3 +331,10 @@ anywhere (the row menus keep only the host's entries).
 - The Instance column of the Backups list and the pod row of the drawer link
   through the host details URL (`StoreLink`), the mechanism M1 found to work
   for every kind, rather than through `LinkToPod`.
+- Found while verifying the new drawers: the nested tables of every drawer
+  passed literal class names to their cells while the module selectors are
+  hashed, so no declared column width ever applied (the Cluster drawer of
+  SPEC-0003 included). The cells now take the module classes; the fix to the
+  Cluster drawer is a commit of its own in the same pull request.
+- The E2E suite counts the Overview tiles by their test id prefix, so the
+  doors inside a tile use a prefix of their own (`cnpg-overview-door-`).
