@@ -144,3 +144,15 @@ entry; it shows the host, the user and the database.
   publisher without slot synchronization, 1000 rows counted on the
   subscriber. Covered by unit tests only: an external publisher, a custom
   `slot_name`, the notes, a publisher with synchronized slots, a missing slot.
+- Merged with #38 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request. Two findings of that run were about the suite,
+  not the views: closing a drawer aborts the reference loads it had just
+  started and the kubectl proxy of the host logs each abort at error level,
+  which the error collector took for a failure of the extension on the slower
+  runner; and the first key typed into the dock terminal can get lost there.
+  Both are handled in the helpers. The manual verification above is part of
+  the M4 milestone review: the status moves to Verified when its result is
+  recorded here.
+- At the closure of M4 the links inside the replication path became plain
+  inline links (`StoreLink` with `inline`): the host's truncating tooltip box
+  is a block and did not sit on the text line.

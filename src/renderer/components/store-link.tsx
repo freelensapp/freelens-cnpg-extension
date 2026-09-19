@@ -32,15 +32,21 @@ export interface StoreLinkProps {
   missing?: string;
   /** Text shown when there is no name at all. */
   empty?: string;
+  /**
+   * Inside a sentence: the name as plain inline text, without the host's
+   * truncating tooltip box, which is a block and does not sit on a text line.
+   */
+  inline?: boolean;
 }
 
-export function StoreLink({ store, name, namespace, missing, empty = "N/A" }: StoreLinkProps) {
+export function StoreLink({ store, name, namespace, missing, empty = "N/A", inline = false }: StoreLinkProps) {
   if (!name) return <>{empty}</>;
   const object = store?.getByName(name, namespace);
-  if (!object) return <WithTooltip tooltip={missing}>{name}</WithTooltip>;
+  if (!object)
+    return inline ? <span title={missing}>{name}</span> : <WithTooltip tooltip={missing}>{name}</WithTooltip>;
   return (
     <MaybeLink to={getDetailsUrl(object.selfLink)} onClick={(event) => event.stopPropagation()}>
-      <WithTooltip>{name}</WithTooltip>
+      {inline ? name : <WithTooltip>{name}</WithTooltip>}
     </MaybeLink>
   );
 }

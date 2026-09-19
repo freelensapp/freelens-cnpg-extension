@@ -206,14 +206,16 @@
   flex: none;
 }
 
+// Up to four short facts: they wrap onto a second line rather than being cut
+// (a cluster with failed declared objects, a live view and a next backup).
 .tileFooter {
   display: flex;
+  flex-wrap: wrap;
   justify-content: space-between;
-  gap: $unit;
+  gap: calc($unit / 2) $unit;
   color: var(--textColorSecondary);
   font-size: 12px;
   white-space: nowrap;
-  overflow: hidden;
 }
 
 .warningText {

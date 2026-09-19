@@ -144,7 +144,12 @@ export const PublicationDetails = observer((props: PublicationDetailsProps) =>
                   testId="cnpg-replication-path"
                   publisher={{
                     cluster: (
-                      <StoreLink store={clusterStore} name={Publication.getClusterName(object)} namespace={namespace} />
+                      <StoreLink
+                        inline
+                        store={clusterStore}
+                        name={Publication.getClusterName(object)}
+                        namespace={namespace}
+                      />
                     ),
                     database,
                     object: spec?.name ?? "N/A",
@@ -152,6 +157,7 @@ export const PublicationDetails = observer((props: PublicationDetailsProps) =>
                   subscriber={{
                     cluster: (
                       <StoreLink
+                        inline
                         store={clusterStore}
                         name={Subscription.getClusterName(subscription)}
                         namespace={subscription.getNs()}
@@ -161,6 +167,7 @@ export const PublicationDetails = observer((props: PublicationDetailsProps) =>
                     database: subscription.spec?.dbname ?? "",
                     object: (
                       <StoreLink
+                        inline
                         store={subscriptionStore}
                         name={subscription.getName()}
                         namespace={subscription.getNs()}

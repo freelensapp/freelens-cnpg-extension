@@ -16,9 +16,9 @@ import { DatabaseRole } from "../api/cnpg/database-role-v1";
 import { Database } from "../api/cnpg/database-v1";
 import { Publication } from "../api/cnpg/publication-v1";
 import { Subscription } from "../api/cnpg/subscription-v1";
-import { declaredInlineRoles, inlineStatusWords, roleHealth } from "../components/database-roles";
-import { countHealth, countWords, databaseHealth, objectsOfCluster } from "../components/declarative";
-import { publicationHealth, subscriptionHealth } from "../components/logical-replication";
+import { declaredInlineRoles, inlineStatusWords } from "../components/database-roles";
+import { countWords } from "../components/declarative";
+import { declaredCounts } from "../components/declarative-summary";
 import { useReferenceStores } from "../components/reference-loader";
 import {
   DATABASE_ROLES_PAGE_ID,
@@ -66,39 +66,31 @@ export const ClusterDeclarativeSection = observer(({ cluster, extension }: Clust
     { label: Subscription.crd.plural, store: subscriptionStore, namespaces: [namespace] },
   ]);
 
-  const lookup = { cluster, known: true };
+  const counts = declaredCounts(cluster, {
+    databases: databaseStore?.items,
+    roles: roleStore?.items,
+    publications: publicationStore?.items,
+    subscriptions: subscriptionStore?.items,
+  });
   const rows: KindRow[] = [
-    {
-      label: "Databases",
-      testId: "cnpg-cluster-databases",
-      pageId: DATABASES_PAGE_ID,
-      counts: countHealth(
-        objectsOfCluster(cluster, databaseStore?.items ?? []).map((object) => databaseHealth(object, lookup)),
-      ),
-    },
+    { label: "Databases", testId: "cnpg-cluster-databases", pageId: DATABASES_PAGE_ID, counts: counts.Databases },
     {
       label: "Database roles",
       testId: "cnpg-cluster-database-roles",
       pageId: DATABASE_ROLES_PAGE_ID,
-      counts: countHealth(
-        objectsOfCluster(cluster, roleStore?.items ?? []).map((object) => roleHealth(object, lookup)),
-      ),
+      counts: counts["Database roles"],
     },
     {
       label: "Publications",
       testId: "cnpg-cluster-publications",
       pageId: PUBLICATIONS_PAGE_ID,
-      counts: countHealth(
-        objectsOfCluster(cluster, publicationStore?.items ?? []).map((object) => publicationHealth(object, lookup)),
-      ),
+      counts: counts.Publications,
     },
     {
       label: "Subscriptions",
       testId: "cnpg-cluster-subscriptions",
       pageId: SUBSCRIPTIONS_PAGE_ID,
-      counts: countHealth(
-        objectsOfCluster(cluster, subscriptionStore?.items ?? []).map((object) => subscriptionHealth(object, lookup)),
-      ),
+      counts: counts.Subscriptions,
     },
   ].filter((row) => row.counts.total > 0);
   // The roles the cluster spec declares inline are not objects, but they are

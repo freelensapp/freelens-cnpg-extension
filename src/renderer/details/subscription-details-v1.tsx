@@ -92,6 +92,7 @@ export const SubscriptionDetails = observer((props: SubscriptionDetailsProps) =>
             cluster:
               publisher.outcome === "resolved" ? (
                 <StoreLink
+                  inline
                   store={clusterStore}
                   name={publisher.cluster?.metadata?.name}
                   namespace={publisher.cluster?.metadata?.namespace}
@@ -103,6 +104,7 @@ export const SubscriptionDetails = observer((props: SubscriptionDetailsProps) =>
             object:
               publications.length > 0 ? (
                 <StoreLink
+                  inline
                   store={publicationStore}
                   name={publications[0].getName()}
                   namespace={publications[0].getNs()}
@@ -116,6 +118,7 @@ export const SubscriptionDetails = observer((props: SubscriptionDetailsProps) =>
           subscriber={{
             cluster: (
               <StoreLink
+                inline
                 store={clusterStore}
                 name={Subscription.getClusterName(object)}
                 namespace={namespace}

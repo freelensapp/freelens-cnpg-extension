@@ -167,3 +167,9 @@ runs.
   green on the pull request. The manual verification above is part of the M4
   milestone review: the status moves to Verified when its result is recorded
   here.
+- Added at the closure of M4: the Overview counts the declared objects that
+  failed. A sixth counter of the strip ("Declared objects failed", by kind in
+  its tooltip, a door to the list of the first kind that has one, filtered on
+  Failed) and a line on the tile of the cluster. An object without its
+  cluster belongs to no tile and is not counted there. The counts come from
+  `declarative-summary.ts`, which the Cluster drawer uses too.

@@ -21,11 +21,13 @@ import {
   type InstanceFact,
   instanceFacts,
 } from "./cluster-health";
+import { DECLARED_KINDS, declaredFailures } from "./declarative-summary";
 import { parseGoTime } from "./go-time";
 
 import type { ObjectStore } from "../api/barmancloud/object-store-v1";
 import type { Backup } from "../api/cnpg/backup-v1";
 import type { Cluster } from "../api/cnpg/cluster-v1";
+import type { DeclaredKind, DeclaredObjects } from "./declarative-summary";
 
 /** A successful backup older than this counts as overdue (SPEC-0004 strip). */
 export const BACKUP_OVERDUE_MS = 24 * 60 * 60 * 1000;
@@ -71,6 +73,8 @@ export interface ClusterTile {
   nextScheduleName?: string;
   scheduledBackupSuspended: boolean;
   postgresMajor?: number;
+  /** Declared databases, roles, publications and subscriptions of the cluster that failed (SPEC-0013). */
+  declaredFailed: number;
 }
 
 export interface OverviewSummary {
@@ -81,6 +85,9 @@ export interface OverviewSummary {
   archivingFailing: number;
   backupsOverdue: number;
   certificatesExpiring: number;
+  /** Declared objects that failed, all clusters, and the same by kind. */
+  declaredFailed: number;
+  declaredFailedByKind: Record<DeclaredKind, number>;
   tiles: ClusterTile[];
 }
 
@@ -144,6 +151,7 @@ export function buildTile(
   schedules: readonly ScheduledBackup[],
   now: Date,
   stores: readonly ObjectStore[] = [],
+  declaredFailed = 0,
 ): ClusterTile {
   const health = classifyCluster(cluster);
   const facts = backupFacts(cluster, backups, stores);
@@ -170,6 +178,7 @@ export function buildTile(
     nextScheduleName: schedule?.metadata?.name,
     scheduledBackupSuspended: schedule ? ScheduledBackup.isSuspended(schedule) : false,
     postgresMajor: status?.pgDataImageInfo?.majorVersion,
+    declaredFailed,
   };
 }
 
@@ -188,8 +197,25 @@ export function summarize(
   schedules: readonly ScheduledBackup[],
   now: Date = new Date(),
   stores: readonly ObjectStore[] = [],
+  declared: DeclaredObjects = {},
 ): OverviewSummary {
-  const tiles = clusters.map((cluster) => buildTile(cluster, backups, schedules, now, stores)).sort(compareTiles);
+  const declaredFailedByKind: Record<DeclaredKind, number> = {
+    Databases: 0,
+    "Database roles": 0,
+    Publications: 0,
+    Subscriptions: 0,
+  };
+  const tiles = clusters
+    .map((cluster) => {
+      const failures = declaredFailures(cluster, declared, now);
+      let failed = 0;
+      for (const kind of DECLARED_KINDS) {
+        declaredFailedByKind[kind] += failures[kind];
+        failed += failures[kind];
+      }
+      return buildTile(cluster, backups, schedules, now, stores, failed);
+    })
+    .sort(compareTiles);
   const byState = emptyByState();
   let instancesReady = 0;
   let instancesTotal = 0;
@@ -216,6 +242,8 @@ export function summarize(
     archivingFailing,
     backupsOverdue,
     certificatesExpiring,
+    declaredFailed: DECLARED_KINDS.reduce((sum, kind) => sum + declaredFailedByKind[kind], 0),
+    declaredFailedByKind,
     tiles,
   };
 }
