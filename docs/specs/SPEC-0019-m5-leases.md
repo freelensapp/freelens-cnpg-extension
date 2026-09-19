@@ -94,3 +94,7 @@ Reads only.
   `e2e-main`, Released on the hibernated cluster (empty holder, one second
   duration). Covered by unit tests only: Stale, Mismatch, Missing, tuned
   timings.
+- Merged with #43 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on the pull request. The manual verification above is part of the M5
+  milestone review: the status moves to Verified when its result is recorded
+  here.

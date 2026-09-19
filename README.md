@@ -44,6 +44,11 @@ What is there today, all of it read-only:
   slots), read from the instances through the API server pod proxy. It needs
   the `get` verb on `pods/proxy` and nothing installed beyond the operator:
   no database credential is ever read, stored or asked for.
+- **Logs**: the JSON lines of the instances as rows you can read: who said it
+  (PostgreSQL, the instance manager, WAL archiving, a plugin), how serious it
+  is, the message, and for PostgreSQL the user, the database and the query,
+  with every instance of a cluster on one time axis, followed live. It needs
+  the `get` verb on `pods/log`.
 - **Failover Quorums**: for clusters with quorum based failover, whether a
   failover could be decided safely right now, with the check told in words.
 - **Poolers**: every PgBouncer pooler, what it fronts, and in its drawer what

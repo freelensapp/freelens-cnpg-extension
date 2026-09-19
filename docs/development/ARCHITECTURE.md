@@ -91,6 +91,8 @@ client above, exposed to the renderer through the extension's IPC.
 | Instance pods, PVCs, services, secrets metadata, events | core stores | host stores (`podsStore`, `pvcStore`, ...) | user's kubeconfig (host) |
 | Instance status (LSN, WAL, replication, slots, basebackups) | instance manager `GET /pg/status` | pod proxy, port 8000 | RBAC `pods/proxy` |
 | Sessions, lag, sizes, archiver counters | metrics exporter `GET /metrics` | pod proxy, port 9187 | RBAC `pods/proxy` |
+| Instance logs | Kubernetes pod log API `GET .../pods/<pod>/log` | Freelens cluster proxy | RBAC `pods/log` |
+| Primary lease, operator lease | `Lease` objects | the host's own store, through the API manager | user's kubeconfig (host) |
 | psql | host terminal tab | `kubectl exec -it -n <ns> -c postgres <pod> -- psql -U postgres` | user's kubeconfig (terminal) |
 | Query-level detail (later, if ever) | `exec` with fixed queries | main process, `@kubernetes/client-node` | RBAC `pods/exec` |
 
@@ -140,6 +142,8 @@ src/
                              # topology layout and component, tiles; the pooler
                              # model; the polling loop the drawers share and the
                              # readings of a database and of a replication slot
+  renderer/components/logs/  # The Logs page: line parser, merge buffer, filters,
+                             # the reading loop over the pod log API
   renderer/icons/            # Original SVG icons (never copied)
   common/                    # Code shared between main and renderer
 e2e/                         # kind cluster scripts, fixtures, Playwright suite

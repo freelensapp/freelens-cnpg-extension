@@ -14,7 +14,6 @@ declare const classNames: {
   readonly status: "status";
   readonly state: "state";
   readonly health: "health";
-  readonly fenced: "fenced";
   readonly timeline: "timeline";
   readonly version: "version";
   readonly reason: "reason";
