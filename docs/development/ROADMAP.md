@@ -46,10 +46,10 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Pooler list + detail (PgBouncer, referring cluster, pooler metrics) | | Planned |
-| ImageCatalog and ClusterImageCatalog list + detail | | Planned |
-| FailoverQuorum list + detail | | Planned |
-| ObjectStore (Barman Cloud plugin) list + detail with referring clusters | | Planned |
+| Pooler list + detail (PgBouncer, referring cluster, live pooler figures through the pod proxy) | [SPEC-0012](../specs/SPEC-0012-m3-poolers.md) | Approved |
+| ImageCatalog and ClusterImageCatalog list + detail, with the clusters that follow them | [SPEC-0010](../specs/SPEC-0010-m3-image-catalogs.md) | Approved |
+| FailoverQuorum list + detail, with the quorum check in words | [SPEC-0011](../specs/SPEC-0011-m3-failover-quorums.md) | Approved |
+| ObjectStore (Barman Cloud plugin) list + detail with referring clusters and the plugin's recovery windows | [SPEC-0009](../specs/SPEC-0009-m3-object-stores.md) | Approved |
 
 ### M4 - Declarative database management (read-only)
 
