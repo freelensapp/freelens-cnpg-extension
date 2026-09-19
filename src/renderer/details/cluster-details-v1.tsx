@@ -246,18 +246,18 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         {conditions.length > 0 ? (
           <Table scrollable={false} sortSyncWithUrl={false} className={styles.conditions}>
             <TableHead flat sticky={false}>
-              <TableCell className="type">Type</TableCell>
-              <TableCell className="status">Status</TableCell>
-              <TableCell className="reason">Reason</TableCell>
-              <TableCell className="since">Since</TableCell>
-              <TableCell className="message">Message</TableCell>
+              <TableCell className={styles.type}>Type</TableCell>
+              <TableCell className={styles.status}>Status</TableCell>
+              <TableCell className={styles.reason}>Reason</TableCell>
+              <TableCell className={styles.since}>Since</TableCell>
+              <TableCell className={styles.message}>Message</TableCell>
             </TableHead>
             {conditions.map((condition) => (
               <TableRow key={condition.type} nowrap>
-                <TableCell className="type">
+                <TableCell className={styles.type}>
                   <WithTooltip>{condition.type}</WithTooltip>
                 </TableCell>
-                <TableCell className="status">
+                <TableCell className={styles.status}>
                   <Badge
                     small
                     className={
@@ -266,17 +266,17 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                     label={condition.status}
                   />
                 </TableCell>
-                <TableCell className="reason">
+                <TableCell className={styles.reason}>
                   <WithTooltip>{condition.reason ?? notAvailable}</WithTooltip>
                 </TableCell>
-                <TableCell className="since">
+                <TableCell className={styles.since}>
                   {condition.lastTransitionTime ? (
                     <Renderer.Component.ReactiveDuration timestamp={condition.lastTransitionTime} />
                   ) : (
                     notAvailable
                   )}
                 </TableCell>
-                <TableCell className="message">
+                <TableCell className={styles.message}>
                   <WithTooltip>{condition.message ?? notAvailable}</WithTooltip>
                 </TableCell>
               </TableRow>
@@ -308,45 +308,45 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         {instances.length > 0 ? (
           <Table scrollable={false} sortSyncWithUrl={false} className={styles.instances}>
             <TableHead flat sticky={false}>
-              <TableCell className="name">Name</TableCell>
-              <TableCell className="role">Role</TableCell>
-              <TableCell className="health">Health</TableCell>
-              <TableCell className="node">Node</TableCell>
-              <TableCell className="ip">IP</TableCell>
-              <TableCell className="timeline">Timeline</TableCell>
-              <TableCell className="fenced">Fenced</TableCell>
+              <TableCell className={styles.name}>Name</TableCell>
+              <TableCell className={styles.role}>Role</TableCell>
+              <TableCell className={styles.health}>Health</TableCell>
+              <TableCell className={styles.node}>Node</TableCell>
+              <TableCell className={styles.ip}>IP</TableCell>
+              <TableCell className={styles.timeline}>Timeline</TableCell>
+              <TableCell className={styles.fenced}>Fenced</TableCell>
             </TableHead>
             {instances.map((instance) => {
               const node = nodeOf(instance);
               return (
                 <TableRow key={instance.name} nowrap>
-                  <TableCell className="name">
+                  <TableCell className={styles.name}>
                     {objectExists(podsStore, instance.name, namespace) ? (
                       <LinkToPod name={instance.name} namespace={namespace} />
                     ) : (
                       <WithTooltip tooltip="The pod is not in the cluster (yet)">{instance.name}</WithTooltip>
                     )}
                   </TableCell>
-                  <TableCell className="role">
+                  <TableCell className={styles.role}>
                     <WithTooltip>{instance.role}</WithTooltip>
                   </TableCell>
-                  <TableCell className="health">
+                  <TableCell className={styles.health}>
                     <Badge small className={INSTANCE_HEALTH_CLASS[instance.health]} label={instance.health} />
                   </TableCell>
-                  <TableCell className="node">
+                  <TableCell className={styles.node}>
                     {node && objectExists(nodesStore, node) ? (
                       <LinkToNode name={node} />
                     ) : (
                       <WithTooltip>{node ?? notAvailable}</WithTooltip>
                     )}
                   </TableCell>
-                  <TableCell className="ip">
+                  <TableCell className={styles.ip}>
                     <WithTooltip>{instance.ip ?? notAvailable}</WithTooltip>
                   </TableCell>
-                  <TableCell className="timeline">
+                  <TableCell className={styles.timeline}>
                     <WithTooltip>{instance.timeline ?? notAvailable}</WithTooltip>
                   </TableCell>
-                  <TableCell className="fenced">
+                  <TableCell className={styles.fenced}>
                     <BadgeBoolean value={instance.fenced} />
                   </TableCell>
                 </TableRow>
@@ -516,23 +516,23 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerTitle>Certificates</DrawerTitle>
         <Table scrollable={false} sortSyncWithUrl={false} className={styles.certificates}>
           <TableHead flat sticky={false}>
-            <TableCell className="role">Role</TableCell>
-            <TableCell className="secret">Secret</TableCell>
-            <TableCell className="expires">Expires</TableCell>
-            <TableCell className="state">State</TableCell>
+            <TableCell className={styles.role}>Role</TableCell>
+            <TableCell className={styles.secret}>Secret</TableCell>
+            <TableCell className={styles.expires}>Expires</TableCell>
+            <TableCell className={styles.state}>State</TableCell>
           </TableHead>
           {certificates.map((certificate) => (
             <TableRow key={certificate.role} nowrap>
-              <TableCell className="role">
+              <TableCell className={styles.role}>
                 <WithTooltip>{certificate.role}</WithTooltip>
               </TableCell>
-              <TableCell className="secret">
+              <TableCell className={styles.secret}>
                 <SecretRef name={certificate.secretName} namespace={namespace} />
               </TableCell>
-              <TableCell className="expires">
+              <TableCell className={styles.expires}>
                 {certificate.expiresAt ? <LocaleDate date={certificate.expiresAt} /> : notAvailable}
               </TableCell>
-              <TableCell className="state">
+              <TableCell className={styles.state}>
                 <Badge small className={CERTIFICATE_CLASS[certificate.state]} label={certificate.state} />
               </TableCell>
             </TableRow>
@@ -567,20 +567,20 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             <DrawerTitle>Plugins</DrawerTitle>
             <Table scrollable={false} sortSyncWithUrl={false} className={styles.plugins}>
               <TableHead flat sticky={false}>
-                <TableCell className="name">Name</TableCell>
-                <TableCell className="version">Version</TableCell>
-                <TableCell className="capabilities">Capabilities</TableCell>
-                <TableCell className="status">Status</TableCell>
+                <TableCell className={styles.name}>Name</TableCell>
+                <TableCell className={styles.version}>Version</TableCell>
+                <TableCell className={styles.capabilities}>Capabilities</TableCell>
+                <TableCell className={styles.status}>Status</TableCell>
               </TableHead>
               {status.pluginStatus.map((plugin) => (
                 <TableRow key={plugin.name} nowrap>
-                  <TableCell className="name">
+                  <TableCell className={styles.name}>
                     <WithTooltip>{plugin.name}</WithTooltip>
                   </TableCell>
-                  <TableCell className="version">
+                  <TableCell className={styles.version}>
                     <WithTooltip>{plugin.version ?? notAvailable}</WithTooltip>
                   </TableCell>
-                  <TableCell className="capabilities">
+                  <TableCell className={styles.capabilities}>
                     <WithTooltip>
                       {[
                         ...(plugin.capabilities ?? []),
@@ -590,7 +590,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                       ].join(", ") || notAvailable}
                     </WithTooltip>
                   </TableCell>
-                  <TableCell className="status">
+                  <TableCell className={styles.status}>
                     <WithTooltip>{plugin.status ?? notAvailable}</WithTooltip>
                   </TableCell>
                 </TableRow>

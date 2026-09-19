@@ -63,3 +63,13 @@
     }
   }
 }
+
+// The condition types are long words an operator reads first
+// (LastBackupSucceeded, ContinuousArchiving): they get the room to show whole.
+.conditions {
+  :global(.TableCell) {
+    &.type {
+      flex-grow: 1.5;
+    }
+  }
+}
