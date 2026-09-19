@@ -19,7 +19,7 @@ import styles from "../components/overview/tile-grid.module.scss";
 import stylesInline from "../components/overview/tile-grid.module.scss?inline";
 import { summarize } from "../components/overview-model";
 import { useReferenceStores } from "../components/reference-loader";
-import { CLUSTERS_PAGE_ID } from "../navigation";
+import { CLUSTERS_PAGE_ID, extensionPageUrl } from "../navigation";
 
 import type { ClusterTile as ClusterTileModel } from "../components/overview-model";
 
@@ -29,13 +29,6 @@ const {
   Component: { TabLayout },
   Navigation: { getDetailsUrl },
 } = Renderer;
-
-/** The host mounts an extension's pages under `/extension/<name with @ dropped and / as -->/<pageId>`. */
-function extensionPageUrl(extensionName: string, pageId: string, search?: string): string {
-  const base = `/extension/${extensionName.replace(/^@/, "").replace(/\//g, "--")}/${pageId}`;
-  // The list layout keeps its search box in the global `search` query parameter.
-  return search ? `${base}?search=${encodeURIComponent(search)}` : base;
-}
 
 export interface OverviewPageProps {
   extension: Renderer.LensExtension;

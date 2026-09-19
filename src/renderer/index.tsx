@@ -4,19 +4,33 @@
  */
 
 import { Renderer } from "@freelensapp/extensions";
+import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
+import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { createAvailableVersionPage } from "./components/available-version";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
 import { CnpgIcon } from "./icons";
-import { CLUSTERS_GROUP_ID, CLUSTERS_PAGE_ID, OVERVIEW_GROUP_ID, OVERVIEW_PAGE_ID, ROOT_MENU_ID } from "./navigation";
+import {
+  BACKUPS_GROUP_ID,
+  BACKUPS_PAGE_ID,
+  CLUSTERS_GROUP_ID,
+  CLUSTERS_PAGE_ID,
+  OVERVIEW_GROUP_ID,
+  OVERVIEW_PAGE_ID,
+  ROOT_MENU_ID,
+  SCHEDULED_BACKUPS_PAGE_ID,
+} from "./navigation";
+import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
 import { OverviewPage } from "./pages/overview-page";
+import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 
 // Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
 // target on their first leaf (DESIGN.md section 4). The Overview group comes
 // first so the root opens it (SPEC-0004 "Placement"); the Clusters group holds
 // the PostgreSQL Clusters list (SPEC-0003 "Sidebar"; the title is qualified
-// because the host already has a "Cluster" sidebar item).
+// because the host already has a "Cluster" sidebar item). The Backups group
+// holds the Backups and the Scheduled Backups lists (SPEC-0005 "Sidebar").
 // The pages probe the CRD store per API version (newest first) and fall back
 // to the explanatory panel when the operator is absent (DESIGN.md section 6).
 const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", [
@@ -24,6 +38,12 @@ const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", 
 ]);
 const AvailableClustersPage = createAvailableVersionPage(ClusterV1.crd.title, [
   { kubeObjectClass: ClusterV1, PageComponent: ClustersPageV1, version: "v1" },
+]);
+const AvailableBackupsPage = createAvailableVersionPage(BackupV1.crd.title, [
+  { kubeObjectClass: BackupV1, PageComponent: BackupsPageV1, version: "v1" },
+]);
+const AvailableScheduledBackupsPage = createAvailableVersionPage(ScheduledBackupV1.crd.title, [
+  { kubeObjectClass: ScheduledBackupV1, PageComponent: ScheduledBackupsPageV1, version: "v1" },
 ]);
 
 export default class CnpgRenderer extends Renderer.LensExtension {
@@ -53,6 +73,18 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: CLUSTERS_PAGE_ID,
       components: {
         Page: () => <AvailableClustersPage extension={this} />,
+      },
+    },
+    {
+      id: BACKUPS_PAGE_ID,
+      components: {
+        Page: () => <AvailableBackupsPage extension={this} />,
+      },
+    },
+    {
+      id: SCHEDULED_BACKUPS_PAGE_ID,
+      components: {
+        Page: () => <AvailableScheduledBackupsPage extension={this} />,
       },
     },
   ];
@@ -85,6 +117,27 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: ClusterV1.crd.title,
       target: { pageId: CLUSTERS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: BACKUPS_GROUP_ID,
+      parentId: ROOT_MENU_ID,
+      title: "Backups",
+      target: { pageId: BACKUPS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: BACKUPS_PAGE_ID,
+      parentId: BACKUPS_GROUP_ID,
+      title: BackupV1.crd.title,
+      target: { pageId: BACKUPS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: SCHEDULED_BACKUPS_PAGE_ID,
+      parentId: BACKUPS_GROUP_ID,
+      title: ScheduledBackupV1.crd.title,
+      target: { pageId: SCHEDULED_BACKUPS_PAGE_ID },
       components: {},
     },
   ];

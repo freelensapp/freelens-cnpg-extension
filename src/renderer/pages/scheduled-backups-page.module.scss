@@ -1,0 +1,45 @@
+@use "../vars" as *;
+
+.page {
+  :global(.TableCell) {
+    &.cluster {
+      flex-grow: 0.9;
+    }
+
+    &.schedule {
+      flex-grow: 0.8;
+    }
+
+    &.method {
+      flex-grow: 0.7;
+    }
+
+    &.lastRun {
+      flex-grow: 0.5;
+    }
+
+    &.nextRun {
+      flex-grow: 0.5;
+    }
+
+    &.active {
+      flex-grow: 0.45;
+    }
+
+    &.condition {
+      flex-grow: 0.75;
+    }
+
+    &.status {
+      flex-grow: 1.4;
+    }
+
+    &.age {
+      flex-grow: 0.3;
+    }
+  }
+}
+
+.expression {
+  font-family: var(--font-monospace, monospace);
+}
