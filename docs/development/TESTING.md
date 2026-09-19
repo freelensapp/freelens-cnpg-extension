@@ -77,7 +77,12 @@ certificate), and every such fixture says so in a comment.
   cluster, a hibernated cluster, a cluster with a fenced instance, backups
   (one completed, one failed), three scheduled backups (nightly, immediate
   with the backup it generates, suspended), a pooler, a namespaced and a
-  cluster scoped image catalog (the hibernated cluster follows the first).
+  cluster scoped image catalog (the hibernated cluster follows the first),
+  and, applied after the hibernation, the declarative databases, roles,
+  publications and subscriptions with one object per state (applied,
+  failed with each kind of reason, waiting for a primary, without its
+  cluster), including a logical replication that really runs from the
+  three-instance cluster to the single-instance one.
   `fixtures/status/` holds the few status patches for states the operator
   cannot produce on demand. Each fixture is chosen to cover a state its
   views distinguish, so the suite can assert both branches.
