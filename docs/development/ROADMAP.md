@@ -39,7 +39,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | --- | --- | --- |
 | Backup and ScheduledBackup lists + details, backup history strip, backup-derived health | [SPEC-0005](../specs/SPEC-0005-m2-backups-and-scheduled-backups.md) | Done |
 | Live database view (instance status and metrics through the API server pod proxy: replication topology, sessions, replication lag, database sizes, WAL, slots) | [SPEC-0006](../specs/SPEC-0006-m2-live-database-view.md) | In PR |
-| Open psql in a Freelens terminal tab (primary or replica) | SPEC-0007 | Planned |
+| Open psql in a Freelens terminal tab (primary or replica) | [SPEC-0007](../specs/SPEC-0007-m2-open-psql.md) | Approved |
 | Pre-review agent pass and local demo cluster | SPEC-0008 | Planned |
 
 ### M3 - Pooling, images, quorum, object stores (read-only)
