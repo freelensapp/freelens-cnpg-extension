@@ -52,6 +52,7 @@ function fakeClient(overrides: Partial<PodProxyClient> = {}) {
     getStatus: async (_namespace, pod) => statusOf(pod),
     getMetrics: async () => ({ ok: true, scheme: "http", value: "cnpg_backends_waiting_total 2\n" }),
     getPoolerMetrics: async () => ({ ok: true, scheme: "http", value: "" }),
+    getOperatorMetrics: async () => ({ ok: true, scheme: "http", value: "" }),
     ...overrides,
   };
   const client: PodProxyClient = {
@@ -64,6 +65,7 @@ function fakeClient(overrides: Partial<PodProxyClient> = {}) {
       return answers.getMetrics(namespace, pod, scheme);
     },
     getPoolerMetrics: (namespace, pod, scheme) => answers.getPoolerMetrics(namespace, pod, scheme),
+    getOperatorMetrics: (namespace, pod, port) => answers.getOperatorMetrics(namespace, pod, port),
   };
   return { calls, client };
 }

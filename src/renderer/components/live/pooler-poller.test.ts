@@ -42,6 +42,7 @@ function client(answer: (pod: string) => Promise<ProxyResult<string>>) {
   const api: PodProxyClient = {
     getStatus: refuse,
     getMetrics: refuse,
+    getOperatorMetrics: refuse,
     getPoolerMetrics: (_namespace, pod) => {
       calls.push(pod);
       return answer(pod);
