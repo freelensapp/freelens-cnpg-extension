@@ -36,11 +36,22 @@ What is there today, all of it read-only:
   every backup and its reason, the coordinates needed to restore from it, the
   schedule as written and in words, and a backup history strip that shows at
   a glance how a cluster has been protected over time.
+- **Object Stores** (Barman Cloud plugin): where backups and WAL go, which
+  clusters write there, and the recovery window the plugin itself reports for
+  each of them.
 - **Live View**: what happens inside a cluster right now (replication
   topology and lag, sessions, database sizes, WAL and archiving, replication
   slots), read from the instances through the API server pod proxy. It needs
   the `get` verb on `pods/proxy` and nothing installed beyond the operator:
   no database credential is ever read, stored or asked for.
+- **Failover Quorums**: for clusters with quorum based failover, whether a
+  failover could be decided safely right now, with the check told in words.
+- **Poolers**: every PgBouncer pooler, what it fronts, and in its drawer what
+  it is doing right now (clients, servers, clients waiting and for how long),
+  read from its pods through the same pod proxy.
+- **Image Catalogs** and **Cluster Image Catalogs**: what each catalog offers
+  per major version and which clusters follow it, with the image each cluster
+  runs next to the image the catalog offers.
 - **Open psql**: a `psql` session on the primary, or on the instance you pick,
   in a Freelens terminal tab.
 
@@ -56,9 +67,8 @@ read-only session. The extension itself never runs SQL and never sees a
 credential: it composes the command from the namespace and the pod name,
 and everything after that happens in your terminal.
 
-Later milestones: Pooler, Database, DatabaseRole, Publication, Subscription,
-ImageCatalog, ClusterImageCatalog, FailoverQuorum, Barman Cloud ObjectStore,
-operator status and events timeline, write actions behind explicit
+Later milestones: Database, DatabaseRole, Publication, Subscription, operator
+status and events timeline, write actions behind explicit
 confirmation, creation forms, metrics charts. The roadmap and the
 specifications live under `docs/` and are the single source of truth for
 scope and progress.

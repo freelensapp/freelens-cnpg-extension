@@ -139,3 +139,7 @@ Reads only. Secrets are linked by name; no value is read.
   Barman Cloud plugin is optional instead of naming the operator.
 - The E2E case of the psql terminal now closes its dock tabs: they covered
   half of every view that followed.
+- Merged with #26 on 2026-09-19; the unit, integration and E2E workflows ran
+  green on main at `ab98c0e`. The manual verification above is part of the M3
+  milestone review: the status moves to Verified when its result is recorded
+  here.

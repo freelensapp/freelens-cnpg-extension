@@ -202,6 +202,35 @@ export type ColorTheme = "Dark" | "Light";
  * its own route and state - so callers can keep using a `Frame` obtained
  * before calling this.
  */
+/**
+ * Closes the preferences and makes sure they are gone. A click on the close
+ * button can land while the theme select still has its menu open, in which
+ * case it only closes the menu: the preferences then stay over the cluster
+ * frame and intercept every click of the cases that follow. So the close is
+ * verified, retried, and finally asked of Escape, which closes the preferences.
+ */
+async function closePreferences(window: Page): Promise<void> {
+  const preferences = window.locator(".SettingLayout.Preferences");
+
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    await window.click('[data-testid="close-preferences"]', { timeout: 10_000 }).catch(() => undefined);
+
+    try {
+      await preferences.waitFor({ state: "hidden", timeout: 5000 });
+
+      return;
+    } catch {
+      await window.keyboard.press("Escape").catch(() => undefined);
+
+      if ((await preferences.count()) === 0 || !(await preferences.first().isVisible())) {
+        return;
+      }
+    }
+  }
+
+  throw new Error("The preferences could not be closed after the theme change");
+}
+
 export async function setColorTheme(app: ElectronApplication, window: Page, theme: ColorTheme): Promise<void> {
   await navigateToPreferences(app);
 
@@ -233,7 +262,7 @@ export async function setColorTheme(app: ElectronApplication, window: Page, them
       }
     }
   } finally {
-    await window.click('[data-testid="close-preferences"]', { timeout: ELEMENT_TIMEOUT });
+    await closePreferences(window);
   }
 
   if (lastError) {

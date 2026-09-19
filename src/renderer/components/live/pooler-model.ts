@@ -5,8 +5,9 @@
 
 // Pure model of what a PgBouncer pooler is doing right now (SPEC-0012), from
 // the samples of the exporter of every pooler pod (`cnpg_pgbouncer_*`), summed
-// over the pods. PgBouncer's own admin pool (database `pgbouncer`) is how the
-// exporter reads the figures: it is left out of what the user is shown.
+// over the pods. PgBouncer's own admin pool (database `pgbouncer`, how the
+// exporter reads the figures) and the pool of the operator's `auth_query` user
+// are the platform's: they are left out of what the user is shown.
 
 import { selectSamples, singleValue } from "../../api/instance/prometheus-text";
 
@@ -17,6 +18,13 @@ import type { Level } from "./live-model";
 export const POOLER_WAIT_ERROR_MS = 5000;
 
 const ADMIN_DATABASE = "pgbouncer";
+/** The user PgBouncer runs its `auth_query` with: the operator's own, not an application's. */
+const AUTH_QUERY_USER = "cnpg_pooler_pgbouncer";
+
+/** PgBouncer's admin pool and the operator's authentication pool: the platform's own, left out of the user figures. */
+function isPlatformPool(sample: MetricSample): boolean {
+  return sample.labels.database === ADMIN_DATABASE || sample.labels.user === AUTH_QUERY_USER;
+}
 
 export interface PoolView {
   database: string;
@@ -59,7 +67,7 @@ export function buildPoolerView(
 
     const read = (name: string, key: keyof PoolView) => {
       for (const sample of selectSamples(samples, name)) {
-        if (sample.labels.database === ADMIN_DATABASE || !Number.isFinite(sample.value)) continue;
+        if (isPlatformPool(sample) || !Number.isFinite(sample.value)) continue;
         const id = poolKey(sample);
         const pool =
           pools.get(id) ??
@@ -88,7 +96,7 @@ export function buildPoolerView(
     // The wait comes as whole seconds plus a microsecond remainder.
     const seconds = new Map(selectSamples(samples, "cnpg_pgbouncer_pools_maxwait").map((s) => [poolKey(s), s.value]));
     for (const sample of selectSamples(samples, "cnpg_pgbouncer_pools_maxwait_us")) {
-      if (sample.labels.database === ADMIN_DATABASE) continue;
+      if (isPlatformPool(sample)) continue;
       const pool = pools.get(poolKey(sample));
       if (!pool) continue;
       const wait =

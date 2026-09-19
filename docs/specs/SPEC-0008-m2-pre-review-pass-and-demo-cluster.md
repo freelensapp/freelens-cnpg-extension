@@ -140,3 +140,9 @@ a disposable cluster. The pass is read-only.
   report lists: the psql terminal on Windows and Linux desktops, the live view
   with a kubeconfig without `pods/proxy`, the live view against a busy
   database for ten minutes.
+- M3 (2026-09-19): the pass walks the M3 views too (38 screenshots on the two
+  themes) and the DESIGN.md checks cover the four new namespaced lists. The
+  theme helper now verifies that the preferences are closed after a theme
+  change: a close click that landed while the theme select still had its menu
+  open only closed the menu, and the preferences then covered the cluster
+  frame for the rest of the walk.

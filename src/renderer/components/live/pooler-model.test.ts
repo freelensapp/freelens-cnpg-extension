@@ -85,10 +85,13 @@ describe("buildPoolerView", () => {
     expect(buildPoolerView(pods({ a: stuck }))?.level).toBe("error");
   });
 
-  it("shows an idle pooler as such: only the admin pool answers", () => {
+  it("shows an idle pooler as such: only the platform's own pools answer", () => {
+    // As observed on the E2E cluster: the admin pool and the pool of the operator's auth_query user.
     const idle = `
 cnpg_pgbouncer_lists_free_clients 49
 cnpg_pgbouncer_pools_cl_active{database="pgbouncer",user="pgbouncer"} 1
+cnpg_pgbouncer_pools_sv_idle{database="postgres",user="cnpg_pooler_pgbouncer"} 2
+cnpg_pgbouncer_pools_maxwait_us{database="postgres",user="cnpg_pooler_pgbouncer"} 0
 `;
     expect(buildPoolerView(pods({ a: idle }))).toMatchObject({
       clients: { active: 0, waiting: 0, free: 49 },
