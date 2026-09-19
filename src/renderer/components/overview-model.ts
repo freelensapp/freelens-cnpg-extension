@@ -23,6 +23,7 @@ import {
 } from "./cluster-health";
 import { parseGoTime } from "./go-time";
 
+import type { ObjectStore } from "../api/barmancloud/object-store-v1";
 import type { Backup } from "../api/cnpg/backup-v1";
 import type { Cluster } from "../api/cnpg/cluster-v1";
 
@@ -142,9 +143,10 @@ export function buildTile(
   backups: readonly Backup[],
   schedules: readonly ScheduledBackup[],
   now: Date,
+  stores: readonly ObjectStore[] = [],
 ): ClusterTile {
   const health = classifyCluster(cluster);
-  const facts = backupFacts(cluster, backups);
+  const facts = backupFacts(cluster, backups, stores);
   const certificates = certificateFacts(cluster, now);
   const schedule = nextScheduledBackup(cluster, schedules);
   const status = cluster.status;
@@ -185,8 +187,9 @@ export function summarize(
   backups: readonly Backup[],
   schedules: readonly ScheduledBackup[],
   now: Date = new Date(),
+  stores: readonly ObjectStore[] = [],
 ): OverviewSummary {
-  const tiles = clusters.map((cluster) => buildTile(cluster, backups, schedules, now)).sort(compareTiles);
+  const tiles = clusters.map((cluster) => buildTile(cluster, backups, schedules, now, stores)).sort(compareTiles);
   const byState = emptyByState();
   let instancesReady = 0;
   let instancesTotal = 0;

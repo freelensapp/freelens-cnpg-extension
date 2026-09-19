@@ -39,6 +39,8 @@ interface VersionVariant<T extends AvailableVersionPageProps> {
 export function createAvailableVersionPage<T extends AvailableVersionPageProps>(
   resourceName: string,
   variants: VersionVariant<T>[],
+  /** What the kind belongs to when it is not the operator itself (an optional plugin), and what to do about it. */
+  hint?: string,
 ): React.ComponentType<T> {
   return (props: T) => {
     for (const variant of variants) {
@@ -72,6 +74,7 @@ export function createAvailableVersionPage<T extends AvailableVersionPageProps>(
             <p className={styles.unavailableMessage}>
               The <strong>{resourceName}</strong> CRDs are not installed in this cluster.
             </p>
+            {hint ? <p className={styles.unavailableMessage}>{hint}</p> : null}
             <p className={styles.unavailableDetails}>
               Tried API versions: <code>{triedVersions}</code>
             </p>

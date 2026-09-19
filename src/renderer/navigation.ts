@@ -16,6 +16,7 @@ export const LIVE_PAGE_ID = "cnpg-clusters-live";
 export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
 export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
+export const OBJECT_STORES_PAGE_ID = "cnpg-backups-objectstores";
 
 /**
  * The URL of one of the extension's pages. The host mounts them under

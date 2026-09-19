@@ -26,7 +26,8 @@
 
 .snapshots,
 .metadata,
-.generated {
+.generated,
+.windows {
   margin: $unit 0 calc($unit * 2);
 
   :global(.TableCell) {
@@ -47,6 +48,19 @@
       flex-grow: 1.6;
     }
 
+    &.server {
+      flex-grow: 1;
+    }
+
+    &.first,
+    &.last {
+      flex-grow: 1.3;
+    }
+
+    &.windowState {
+      flex-grow: 0.7;
+    }
+
     &.type,
     &.tablespace,
     &.condition,
@@ -62,4 +76,16 @@
   margin: 0 0 calc($unit * 2);
   // Outside a DrawerItem the host gives a link no color of its own.
   color: var(--primary);
+}
+
+// The key of a Secret reference, or a note beside a link: quieter than the link.
+.secretKey {
+  color: var(--textColorSecondary);
+}
+
+.secretRef {
+  display: inline-flex;
+  align-items: baseline;
+  gap: $unit;
+  min-width: 0;
 }

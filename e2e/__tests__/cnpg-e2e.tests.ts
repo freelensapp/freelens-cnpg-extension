@@ -76,6 +76,19 @@ async function typeInTerminal(frame: Frame, line: string): Promise<void> {
   await frame.page().keyboard.press("Enter");
 }
 
+/** Closes the dock tabs whose title starts with the given text, so they do not cover the views that follow. */
+async function closeDockTabs(frame: Frame, title: string): Promise<void> {
+  const tabs = frame.locator(".Dock .Tab", { hasText: title });
+
+  for (let guard = 0; guard < 10 && (await tabs.count()) > 0; guard += 1) {
+    const tab = tabs.first();
+
+    await tab.hover();
+    await tab.locator(".Icon").last().click();
+    await frame.waitForTimeout(500);
+  }
+}
+
 interface InstanceManagerStatus {
   isPrimary?: boolean;
   systemID?: string;
@@ -780,6 +793,110 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ),
       ).toContain("recovery:true");
       await typeInTerminal(frame, "\\q");
+      await closeDockTabs(frame, "psql:");
+      expect(await frame.locator(".Dock .Tab", { hasText: "psql:" }).count()).toBe(0);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "lists the object stores with their writers and shows the recovery window the plugin reports (SPEC-0009)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-backups-objectstores", "Object Stores");
+      await cluster.selectNamespace(frame);
+
+      await cluster.expectRow(frame, "e2e-store", "S3 compatible", "s3://backups/", "In use", "e2e-main");
+      await cluster.expectRow(frame, "e2e-store-broken", "Failing", "The last backup failed for e2e-single");
+      await cluster.captureScreenshot(frame, "object-stores-dark");
+
+      // What the drawer says about e2e-main is what the plugin wrote in the status of the store.
+      const first = cluster.kubectlField(
+        "objectstores.barmancloud.cnpg.io",
+        "e2e-store",
+        "{.status.serverRecoveryWindow.e2e-main.firstRecoverabilityPoint}",
+      );
+
+      expect(first).not.toBe("");
+      await cluster.expectDetails(
+        frame,
+        "e2e-store",
+        "Store",
+        "In use",
+        "S3 compatible",
+        "http://minio.cnpg-e2e.svc:9000",
+        "Credentials",
+        "e2e-store-creds",
+        "ACCESS_KEY_ID",
+        "WAL and data",
+        "gzip",
+        "Recovery windows",
+        "Protected",
+        "Clusters",
+        "WAL and backups",
+        "e2e-main",
+      );
+      await tableRowName(frame, "e2e-store").click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Recovery windows" });
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      await drawer.getByText("Recovery windows").scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "object-store-drawer-dark");
+
+      const shown = (await drawer.locator(".TableRow", { hasText: "e2e-main" }).first().innerText()).replace(
+        /\s+/g,
+        " ",
+      );
+
+      // The row tells the times as relative ones (the exact time is in the tooltip); the exact
+      // first recoverability point is compared with the plugin's in the Cluster drawer below.
+      expect(shown).toMatch(/e2e-main .*ago .*Protected/);
+      // The secret is a link by name: the drawer never shows a value.
+      expect(await drawer.innerText()).not.toContain("e2e-minio-secret-1");
+      await cluster.closeDetails(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "leads from a backup and from a cluster to their object store (SPEC-0009)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-backups-backups", "Backups");
+      await tableRowName(frame, "e2e-backup-ok").click();
+
+      const backupDrawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Destination" });
+
+      await backupDrawer.waitFor({ state: "visible", timeout: 60_000 });
+      await backupDrawer.locator("a", { hasText: "e2e-store" }).first().click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Recovery windows" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.closeDetails(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await tableRowName(frame, "e2e-main").click();
+
+      const clusterDrawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Backups and archiving" });
+
+      await clusterDrawer.waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await waitUntil(
+          async () => (await clusterDrawer.innerText()).replace(/\s+/g, " "),
+          (text) => text.includes("as the Barman Cloud plugin reports it"),
+        ),
+      ).toContain("as the Barman Cloud plugin reports it");
+
+      // The point the drawer shows is the one the plugin wrote in the status of the store.
+      const reported = cluster.kubectlField(
+        "objectstores.barmancloud.cnpg.io",
+        "e2e-store",
+        "{.status.serverRecoveryWindow.e2e-main.firstRecoverabilityPoint}",
+      );
+      const row = clusterDrawer.locator(".DrawerItem", { hasText: "First recoverability point" }).first();
+      const shownPoint = /\d{4}-\d{2}-\d{2}T[0-9:.+-]+Z?/.exec(await row.innerText())?.[0] ?? "";
+
+      expect(Math.abs(Date.parse(shownPoint) - Date.parse(reported))).toBeLessThan(1000);
+      await cluster.closeDetails(frame);
     },
     TIMEOUT,
   );
@@ -792,6 +909,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         ["cnpg-clusters-clusters", "PostgreSQL Clusters"],
         ["cnpg-backups-backups", "Backups"],
         ["cnpg-backups-scheduledbackups", "Scheduled Backups"],
+        ["cnpg-backups-objectstores", "Object Stores"],
       ] as const) {
         await cluster.openCnpgPage(frame, menuId, title);
         await frame.locator(".TableRow:not(.TableHead)").first().waitFor({ state: "visible", timeout: 60_000 });

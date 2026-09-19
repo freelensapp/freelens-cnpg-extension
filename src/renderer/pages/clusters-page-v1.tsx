@@ -10,6 +10,7 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
+import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster, type ClusterApi } from "../api/cnpg/cluster-v1";
 import { archivingState, backupFacts, classifyCluster, instanceFacts } from "../components/cluster-health";
@@ -44,7 +45,8 @@ const sortingCallbacks = {
   primary: (object: KubeObject) => KubeObject.getPrimary(object) ?? "",
   postgres: (object: KubeObject) => object.status?.pgDataImageInfo?.majorVersion ?? 0,
   archiving: (object: KubeObject) => archivingState(object).state,
-  backup: (object: KubeObject) => backupFacts(object, backupsOf(object)).lastSuccessful?.getTime() ?? 0,
+  backup: (object: KubeObject) =>
+    backupFacts(object, backupsOf(object), storesOf(object)).lastSuccessful?.getTime() ?? 0,
   condition: (object: KubeObject) => classifyCluster(object).state,
   status: (object: KubeObject) => classifyCluster(object).reason,
   age: (object: KubeObject) => object.getCreationTimestamp(),
@@ -70,6 +72,13 @@ function backupsOf(object: KubeObject): Backup[] {
   return items.filter((backup) => backup.getNs() === object.getNs());
 }
 
+/** The object stores of the row's namespace, when the Barman Cloud plugin is installed (SPEC-0009). */
+function storesOf(object: KubeObject): ObjectStore[] {
+  const store = maybe(() => ObjectStore.getStore<ObjectStore>());
+  const items = (store?.items ?? []) as ObjectStore[];
+  return items.filter((item) => item.getNs() === object.getNs());
+}
+
 export interface ClustersPageProps {
   extension: Renderer.LensExtension;
 }
@@ -83,7 +92,10 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
     // namespaces the list shows; the loader keeps the store filled and watched
     // for as long as the page is mounted (DESIGN.md section 3 rule, applied to
     // a list column).
-    useReferenceStores([{ label: Backup.crd.plural, store: backupStore }]);
+    useReferenceStores([
+      { label: Backup.crd.plural, store: backupStore },
+      { label: ObjectStore.crd.plural, store: maybe(() => ObjectStore.getStore<ObjectStore>()) },
+    ]);
 
     return (
       <>
@@ -99,7 +111,7 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
           renderTableContents={(object: KubeObject) => {
             const health = classifyCluster(object);
             const archiving = archivingState(object);
-            const backups = backupFacts(object, backupsOf(object));
+            const backups = backupFacts(object, backupsOf(object), storesOf(object));
             const declared = KubeObject.getInstances(object);
             const ready = KubeObject.getReadyInstances(object);
             const primary = KubeObject.getPrimary(object);
@@ -142,7 +154,7 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
               lastBackup ? (
                 <WithTooltip
                   key="backup"
-                  tooltip={`${lastBackup.toISOString()} (source: ${backups.source === "backups" ? "Backup objects" : "cluster status, deprecated"})`}
+                  tooltip={`${lastBackup.toISOString()} (source: ${backups.source === "backups" ? "Backup objects" : backups.source === "object store" ? "object store, no Backup object" : "cluster status, deprecated"})`}
                 >
                   <Renderer.Component.ReactiveDuration timestamp={lastBackup.toISOString()} />
                 </WithTooltip>

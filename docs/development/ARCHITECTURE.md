@@ -124,6 +124,7 @@ src/
   renderer/api/cnpg/         # One file per CRD: KubeObject + KubeApi +
                              # KubeObjectStore, typed Spec/Status interfaces
                              # written from the CRD schemas
+  renderer/api/barmancloud/  # The ObjectStore kind of the optional Barman Cloud plugin
   renderer/api/instance/     # Instance manager and metrics contracts: the
                              # PostgresqlStatus type and guard, the Prometheus
                              # text reader, the pod proxy client (GET on the two
