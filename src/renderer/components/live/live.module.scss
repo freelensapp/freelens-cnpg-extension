@@ -1,0 +1,462 @@
+@use "../../vars" as *;
+
+// Levels: one custom property for strokes and borders, the text color only
+// where a level is worth the eye. No color is authored here (DESIGN.md 5).
+.levelOk {
+  --level: var(--colorOk);
+}
+
+.levelWarning {
+  --level: var(--colorWarning);
+
+  color: var(--colorWarning);
+}
+
+.levelError {
+  --level: var(--colorError);
+
+  color: var(--colorError);
+}
+
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit * 2);
+  padding: calc($unit * 2);
+  color: var(--textColorPrimary);
+}
+
+.title {
+  margin: 0;
+}
+
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $unit calc($unit * 2);
+}
+
+.picker {
+  flex: 0 1 360px;
+  min-width: 240px;
+}
+
+.headerFacts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $unit calc($unit * 1.5);
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: calc($unit / 2);
+  margin-left: auto;
+}
+
+.control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: calc($unit * 4);
+  height: calc($unit * 4);
+  padding: 0;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+  color: var(--textColorPrimary);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--textColorAccent);
+    outline: none;
+  }
+}
+
+.panel {
+  padding: calc($unit * 2);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+  color: var(--textColorSecondary);
+
+  strong {
+    color: var(--textColorPrimary);
+  }
+}
+
+.doors {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.doorRow {
+  display: flex;
+  align-items: center;
+  gap: $unit;
+  padding: $unit calc($unit * 1.5);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+  color: inherit;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--textColorAccent);
+    outline: none;
+  }
+}
+
+.doorName {
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+  user-select: text;
+}
+
+// Topology ------------------------------------------------------------------
+
+.topology {
+  padding: calc($unit * 1.5);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+}
+
+.banner {
+  margin-bottom: $unit;
+  padding: $unit;
+  border-left: 3px solid var(--colorWarning);
+  background: color-mix(in srgb, var(--colorWarning) 12%, transparent);
+}
+
+.topologyGrid {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.7fr) minmax(220px, 1fr);
+  gap: $unit 0;
+  align-items: center;
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(180px, 1fr) minmax(120px, 0.6fr) minmax(180px, 1fr);
+  }
+}
+
+.primaryColumn {
+  grid-column: 1;
+  align-self: center;
+}
+
+.lines {
+  grid-column: 2;
+  width: 100%;
+  height: 100%;
+  align-self: stretch;
+}
+
+.line {
+  stroke: var(--level, var(--textColorSecondary));
+  stroke-width: 2;
+}
+
+.lineBroken {
+  stroke-dasharray: 6 5;
+}
+
+.edgeCell {
+  grid-column: 2;
+  display: flex;
+  justify-content: center;
+  // Above the lines that share the column.
+  position: relative;
+  z-index: 1;
+}
+
+.rowCard {
+  grid-column: 3;
+}
+
+.edgeLabel {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 $unit;
+  padding: calc($unit / 4) $unit;
+  border: 1px solid var(--level, var(--borderColor));
+  border-radius: calc($unit * 1.5);
+  background: var(--contentColor);
+  font-size: var(--font-size-small, 12px);
+  white-space: nowrap;
+}
+
+.edgeState {
+  font-weight: 600;
+}
+
+.instanceCard {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+  padding: $unit calc($unit * 1.5);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--layoutBackground);
+  min-width: 0;
+}
+
+.primaryCard {
+  border-left: 3px solid var(--colorOk);
+}
+
+.instanceHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $unit;
+  min-width: 0;
+}
+
+.instanceName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.instanceFacts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc($unit * 1.5);
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc($unit / 2);
+}
+
+.failure {
+  color: var(--colorError);
+  font-size: var(--font-size-small, 12px);
+}
+
+.noPrimary {
+  padding: $unit calc($unit * 1.5);
+  border: 1px dashed var(--colorError);
+  border-radius: calc($unit / 2);
+  color: var(--colorError);
+}
+
+// Tiles -----------------------------------------------------------------------
+
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $unit;
+  align-items: start;
+
+  @media (max-width: 1200px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 760px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  padding: calc($unit * 1.5);
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit / 2);
+  background: var(--contentColor);
+  min-width: 0;
+}
+
+.tileTitle {
+  margin: 0;
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.skeleton {
+  height: calc($unit * 8);
+  border-radius: calc($unit / 2);
+  background: color-mix(in srgb, var(--textColorSecondary) 12%, transparent);
+}
+
+.headline {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: $unit;
+}
+
+.headlineValue {
+  font-size: 26px;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.sparkline {
+  margin-left: auto;
+  color: var(--textColorSecondary);
+}
+
+.stateBar {
+  display: flex;
+  height: $unit;
+  border-radius: calc($unit / 2);
+  overflow: hidden;
+  background: var(--borderFaintColor, rgba(127, 127, 127, 0.25));
+}
+
+.stateSegment {
+  min-width: 2px;
+}
+
+.stateActive {
+  background: var(--colorOk);
+}
+
+.stateIdle {
+  background: var(--colorVague);
+}
+
+.stateIdleInTransaction {
+  background: var(--colorWarning);
+}
+
+.stateOther {
+  background: var(--colorInfo);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 calc($unit * 1.5);
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}
+
+.legendDot {
+  display: inline-block;
+  width: $unit;
+  height: $unit;
+  margin-right: calc($unit / 2);
+  border-radius: 50%;
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: $unit calc($unit * 1.5);
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.figureLabel {
+  color: var(--textColorSecondary);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.figureValue {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topLists {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: calc($unit * 1.5);
+}
+
+.topList {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 4);
+  min-width: 0;
+}
+
+.topEntry {
+  display: flex;
+  justify-content: space-between;
+  gap: $unit;
+  min-width: 0;
+}
+
+.lagRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 96px;
+  align-items: center;
+  gap: $unit;
+  color: var(--textColorPrimary);
+}
+
+.nested {
+  :global(.TableCell) {
+    &.colName {
+      flex-grow: 1.2;
+    }
+
+    &.colBar {
+      flex-grow: 1.4;
+    }
+
+    &.colNumber {
+      flex-grow: 0.9;
+    }
+
+    &.colSmall {
+      flex-grow: 0.6;
+    }
+  }
+}
+
+.sizeCell {
+  display: flex;
+  align-items: center;
+  gap: $unit;
+  min-width: 0;
+}
+
+.sizeBar {
+  flex: 1 1 40px;
+  height: calc($unit / 2);
+  border-radius: calc($unit / 4);
+  background: var(--borderFaintColor, rgba(127, 127, 127, 0.25));
+  overflow: hidden;
+}
+
+.sizeBarFill {
+  display: block;
+  height: 100%;
+  background: var(--colorInfo);
+}
