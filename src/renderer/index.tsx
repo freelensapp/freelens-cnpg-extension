@@ -4,58 +4,37 @@
  */
 
 import { Renderer } from "@freelensapp/extensions";
-import { ExamplePreferencesStore } from "../common/store";
-import { Example as ExampleV1alpha1 } from "./api/example/example-v1alpha1";
-import { Example as ExampleV1alpha2 } from "./api/example/example-v1alpha2";
+import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
 import { createAvailableVersionPage } from "./components/available-version";
-import { ExampleDetails as ExampleDetailsV1alpha1 } from "./details/example-details-v1alpha1";
-import { ExampleDetails as ExampleDetailsV1alpha2 } from "./details/example-details-v1alpha2";
-import { ExampleIcon } from "./icons";
-import {
-  ExampleActiveToggleMenuItem as ExampleActiveToggleMenuItem_v1alpha1,
-  type ExampleActiveToggleMenuItemProps as ExampleActiveToggleMenuItemProps_v1alpha1,
-} from "./menus/example-active-toggle-menu-item-v1alpha1";
-import {
-  ExampleActiveToggleMenuItem as ExampleActiveToggleMenuItem_v1alpha2,
-  type ExampleActiveToggleMenuItemProps as ExampleActiveToggleMenuItemProps_v1alpha2,
-} from "./menus/example-active-toggle-menu-item-v1alpha2";
-import { ExamplesPage as ExamplesPageV1alpha1 } from "./pages/examples-page-v1alpha1";
-import { ExamplesPage as ExamplesPageV1alpha2 } from "./pages/examples-page-v1alpha2";
-import { ExamplePreferenceHint, ExamplePreferenceInput } from "./preferences/example-preference";
+import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
+import { CnpgIcon } from "./icons";
+import { CLUSTERS_GROUP_ID, CLUSTERS_PAGE_ID, OVERVIEW_GROUP_ID, OVERVIEW_PAGE_ID, ROOT_MENU_ID } from "./navigation";
+import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import { OverviewPage } from "./pages/overview-page";
 
-export default class ExampleRenderer extends Renderer.LensExtension {
-  async onActivate() {
-    ExamplePreferencesStore.getInstanceOrCreate().loadExtension(this);
-  }
+// Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
+// target on their first leaf (DESIGN.md section 4). The Overview group comes
+// first so the root opens it (SPEC-0004 "Placement"); the Clusters group holds
+// the PostgreSQL Clusters list (SPEC-0003 "Sidebar"; the title is qualified
+// because the host already has a "Cluster" sidebar item).
+// The pages probe the CRD store per API version (newest first) and fall back
+// to the explanatory panel when the operator is absent (DESIGN.md section 6).
+const AvailableOverviewPage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: OverviewPage, version: "v1" },
+]);
+const AvailableClustersPage = createAvailableVersionPage(ClusterV1.crd.title, [
+  { kubeObjectClass: ClusterV1, PageComponent: ClustersPageV1, version: "v1" },
+]);
 
-  appPreferences = [
-    {
-      title: "Example Preferences",
-      components: {
-        Input: () => <ExamplePreferenceInput />,
-        Hint: () => <ExamplePreferenceHint />,
-      },
-    },
-  ];
-
+export default class CnpgRenderer extends Renderer.LensExtension {
   kubeObjectDetailItems = [
     {
-      kind: ExampleV1alpha1.kind,
-      apiVersions: ExampleV1alpha1.crd.apiVersions,
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
       priority: 10,
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
-          <ExampleDetailsV1alpha1 {...props} extension={this} />
-        ),
-      },
-    },
-    {
-      kind: ExampleV1alpha2.kind,
-      apiVersions: ExampleV1alpha2.crd.apiVersions,
-      priority: 10,
-      components: {
-        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
-          <ExampleDetailsV1alpha2 {...props} extension={this} />
+          <ClusterDetailsV1 {...props} extension={this} />
         ),
       },
     },
@@ -63,57 +42,50 @@ export default class ExampleRenderer extends Renderer.LensExtension {
 
   clusterPages = [
     {
-      id: "example",
+      id: OVERVIEW_PAGE_ID,
       components: {
-        Page: () => <ExamplesPageV1alpha1 extension={this} />,
+        // The extension instance is what the pages need to build their own
+        // URLs and to report errors; the host passes no props of its own.
+        Page: () => <AvailableOverviewPage extension={this} />,
       },
     },
     {
-      id: "example",
+      id: CLUSTERS_PAGE_ID,
       components: {
-        Page: () => <ExamplesPageV1alpha2 extension={this} />,
-      },
-    },
-    {
-      id: "example",
-      components: {
-        Page: createAvailableVersionPage("Examples", [
-          { kubeObjectClass: ExampleV1alpha2, PageComponent: ExamplesPageV1alpha2, version: "v1alpha2" },
-          { kubeObjectClass: ExampleV1alpha1, PageComponent: ExamplesPageV1alpha1, version: "v1alpha1" },
-        ]),
+        Page: () => <AvailableClustersPage extension={this} />,
       },
     },
   ];
 
   clusterPageMenus = [
     {
-      id: "example",
-      title: ExampleV1alpha1.crd.title,
-      target: { pageId: "example" },
+      id: ROOT_MENU_ID,
+      title: "CloudNativePG",
+      target: { pageId: OVERVIEW_PAGE_ID },
       components: {
-        Icon: ExampleIcon,
-      },
-    },
-  ];
-
-  kubeObjectMenuItems = [
-    {
-      kind: ExampleV1alpha1.kind,
-      apiVersions: ExampleV1alpha1.crd.apiVersions,
-      components: {
-        MenuItem: (props: ExampleActiveToggleMenuItemProps_v1alpha1) => (
-          <ExampleActiveToggleMenuItem_v1alpha1 {...props} extension={this} />
-        ),
+        Icon: CnpgIcon,
       },
     },
     {
-      kind: ExampleV1alpha2.kind,
-      apiVersions: ExampleV1alpha2.crd.apiVersions,
-      components: {
-        MenuItem: (props: ExampleActiveToggleMenuItemProps_v1alpha2) => (
-          <ExampleActiveToggleMenuItem_v1alpha2 {...props} extension={this} />
-        ),
-      },
+      id: OVERVIEW_GROUP_ID,
+      parentId: ROOT_MENU_ID,
+      title: "Overview",
+      target: { pageId: OVERVIEW_PAGE_ID },
+      components: {},
+    },
+    {
+      id: CLUSTERS_GROUP_ID,
+      parentId: ROOT_MENU_ID,
+      title: "Clusters",
+      target: { pageId: CLUSTERS_PAGE_ID },
+      components: {},
+    },
+    {
+      id: CLUSTERS_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: ClusterV1.crd.title,
+      target: { pageId: CLUSTERS_PAGE_ID },
+      components: {},
     },
   ];
 }

@@ -29,9 +29,9 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | Feature | Spec | Status |
 | --- | --- | --- |
 | Recon digest, data access architecture, health model | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md) | Approved |
-| Test environment and E2E infrastructure (kind, operator, fixtures) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md) | In PR |
-| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | [SPEC-0003](../specs/SPEC-0003-m1-cluster-list-and-detail.md) | Draft |
-| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | [SPEC-0004](../specs/SPEC-0004-m1-overview-page.md) | Draft |
+| Test environment and E2E infrastructure (kind, operator, fixtures) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md) | Done |
+| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | [SPEC-0003](../specs/SPEC-0003-m1-cluster-list-and-detail.md) | In PR |
+| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | [SPEC-0004](../specs/SPEC-0004-m1-overview-page.md) | In PR |
 
 ### M2 - Backups, live view, psql (read-only)
 
@@ -96,7 +96,7 @@ the cluster.
 
 | Item | Status |
 | --- | --- |
-| E2E test infrastructure (kind + operator + fixtures + Playwright) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md), In PR |
+| E2E test infrastructure (kind + operator + fixtures + Playwright) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md), Done |
 | Local demo cluster and milestone review gate (`pnpm demo:up`) | SPEC-0008, Planned |
 
 ## Out of scope for v1

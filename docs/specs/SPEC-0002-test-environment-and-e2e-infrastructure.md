@@ -1,6 +1,6 @@
 # SPEC-0002: Test environment and E2E infrastructure
 
-- **Status:** Draft
+- **Status:** Verified
 - **Milestone:** `M1` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (operator), Barman Cloud
   plugin `v0.15.0`

@@ -1,0 +1,37 @@
+@use "../vars" as *;
+
+.bricks {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: $unit;
+  vertical-align: middle;
+
+  :global(.StatusBrick) {
+    margin: 0;
+  }
+
+  .healthy {
+    background: var(--colorOk);
+  }
+
+  .replicating {
+    background: var(--colorWarning);
+  }
+
+  .failed {
+    background: var(--colorError);
+  }
+
+  .unknown {
+    background: var(--colorVague);
+  }
+
+  .primary {
+    box-shadow: 0 0 0 1px var(--textColorPrimary);
+  }
+
+  .fenced {
+    opacity: 0.45;
+  }
+}

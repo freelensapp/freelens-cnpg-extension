@@ -1,6 +1,6 @@
 # SPEC-0004: Overview page (ad hoc)
 
-- **Status:** Draft
+- **Status:** Implemented
 - **Milestone:** `M1` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-18
@@ -136,4 +136,19 @@ Reads only, from stores; no network call of its own.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- Approved on 2026-09-18 by the lead maintainer together with SPEC-0003.
+- The strip has five tiles: Clusters (with the host `PieChart` of the health
+  states, colored by reading the theme tokens at render time), Instances
+  ready, Archiving failing, Backups overdue, Certificates expiring. The
+  "Operator" tile of the plan is deferred to the operator status page of M5:
+  the operator deployment lives in another namespace and would have needed
+  its own loader for one figure.
+- Navigation from the strip: every tile opens the list through
+  `extension.navigate` and presets the list search box through the global
+  `search` page parameter (the list registers the health words as search
+  fields). Clicking a cluster tile opens its drawer with `showDetails`.
+- On the E2E cluster the hibernated fixture still declares one instance in
+  `status.instances`, so the strip reads 4 of 6 ready instances, not 4 of 5.
+- The Pod store cross-check of the plan is not needed: the operator's
+  `status.readyInstances` already reflects pod readiness (verified on the
+  fenced fixture).

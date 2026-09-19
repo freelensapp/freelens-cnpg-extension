@@ -465,12 +465,25 @@ export async function expectDetails(frame: Frame, name: string, ...texts: string
 
   await drawer.waitFor({ state: "visible", timeout: ELEMENT_TIMEOUT });
 
-  const text = (await drawer.innerText()).replace(/\s+/g, " ").trim();
+  // Drawer sections fill in as their stores load (the reference loader
+  // retries for a while), so every expected text is awaited, not read once.
+  const deadline = Date.now() + ELEMENT_TIMEOUT;
+  let text = "";
+  let missing: string | undefined;
 
-  for (const expected of texts) {
-    if (!text.includes(expected)) {
-      throw new Error(`Details of "${name}" should show "${expected}", got "${text}"`);
+  do {
+    text = (await drawer.innerText()).replace(/\s+/g, " ").trim();
+    missing = texts.find((expected) => !text.includes(expected));
+
+    if (!missing) {
+      break;
     }
+
+    await frame.waitForTimeout(500);
+  } while (Date.now() < deadline);
+
+  if (missing) {
+    throw new Error(`Details of "${name}" should show "${missing}", got "${text}"`);
   }
 
   await closeDetails(frame);

@@ -1,6 +1,6 @@
 # SPEC-0003: PostgreSQL Clusters list and detail (read-only)
 
-- **Status:** Draft
+- **Status:** Implemented
 - **Milestone:** `M1` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-18
@@ -198,3 +198,19 @@ by name through the host's own secret page.
   trusts the phase alone.
 - `status.readyInstances` is omitted from the JSON when zero: every reader
   treats an absent value as 0.
+- Approved on 2026-09-18 by the lead maintainer together with SPEC-0004.
+- Implementation notes: "Waiting for user action" is not listed by SPEC-0001
+  H1; the classifier maps it to `Degraded` (the cluster runs, a human has to
+  act), with the phase reason in the sentence. Host status classes chosen for
+  the Condition badge: Healthy `success`, Degraded `warning`, Failed `error`,
+  Progressing, Hibernated and Unknown `info`; custom elements use the tokens of
+  DESIGN.md section 2 (`--colorOk`, `--colorWarning`, `--colorError`,
+  `--colorTerminated`, `--colorVague`). The drawer renders its own compact
+  conditions table instead of the host's `KubeObjectConditionsDrawer`, so
+  conditions cannot appear twice. Node placement is not exported by
+  `status.topology` on 1.30.0: the drawer reads it from the instance pods.
+  The reference loader and the object existence checks are the modules of
+  freelens-kubeswift-extension (same organization, MIT), adapted.
+- The "Last backup" column reads the Backup objects of the row's namespace
+  from the Backup store, registered by this spec; the store is filled by the
+  reference loader while the list is mounted.
