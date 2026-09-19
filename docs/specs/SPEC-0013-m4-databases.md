@@ -1,6 +1,6 @@
 # SPEC-0013: Databases, list and detail (read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M4` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -173,3 +173,8 @@ runs.
   Failed) and a line on the tile of the cluster. An object without its
   cluster belongs to no tile and is not counted there. The counts come from
   `declarative-summary.ts`, which the Cluster drawer uses too.
+- M4 milestone review: 2026-09-19, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified. Still open for a later look: the states that only unit tests
+  cover, listed above.
