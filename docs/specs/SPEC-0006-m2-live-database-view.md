@@ -23,10 +23,6 @@ in no Kubernetes object becomes a page of Freelens.
   of A3; spike S1 (passed on 2026-09-18, SPEC-0001 notes), which proved
   both endpoints reachable from the cluster frame through the API server
   pod proxy for `http` and `https` instances.
-- Other CloudNativePG user interfaces show what the `Cluster` object says
-  and leave live figures to a Grafana dashboard that needs a Prometheus
-  stack. This view needs nothing installed beyond the operator. Functional
-  reference only.
 
 ## Scope
 

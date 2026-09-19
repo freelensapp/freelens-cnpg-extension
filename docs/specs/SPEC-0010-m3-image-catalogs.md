@@ -1,6 +1,6 @@
 # SPEC-0010: Image Catalogs and Cluster Image Catalogs, lists and details (read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M3` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -127,3 +127,10 @@ Reads only.
   green on main at `c4f2481`. The manual verification above is part of the M3
   milestone review: the status moves to Verified when its result is recorded
   here.
+- M3 milestone review: 2026-09-19, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified. Still open for a later look: the states that only unit tests
+  cover (a pooler with clients waiting on a screenshot, a catalog follower
+  rolling out or asking for a missing major, a quorum at risk, stale or
+  reset) and the CRD-absent panel of the optional Barman Cloud plugin.

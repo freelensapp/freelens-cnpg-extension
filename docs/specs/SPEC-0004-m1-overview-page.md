@@ -20,9 +20,6 @@ drawer behind it.
   which is what operators do today.
 - The Overview page of freelens-karpenter-extension (MIT, the reference for
   an ad hoc dashboard inside Freelens: tiles, host `PieChart`, drill-down).
-- Other CloudNativePG user interfaces show a per-cluster traffic light;
-  none of them shows the fleet of clusters of a Kubernetes cluster on one
-  screen with backups and certificates. Functional reference only.
 
 ## Scope
 

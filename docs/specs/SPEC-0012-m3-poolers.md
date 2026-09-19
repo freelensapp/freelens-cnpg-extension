@@ -1,6 +1,6 @@
 # SPEC-0012: Poolers, list, detail and live PgBouncer figures (read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M3` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -139,3 +139,10 @@ value is read.
   `auth_query` user (`cnpg_pooler_pgbouncer`) showed among the user pools; it
   is the platform's own, like PgBouncer's admin pool, and is left out of the
   figures with it.
+- M3 milestone review: 2026-09-19, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified. Still open for a later look: the states that only unit tests
+  cover (a pooler with clients waiting on a screenshot, a catalog follower
+  rolling out or asking for a missing major, a quorum at risk, stale or
+  reset) and the CRD-absent panel of the optional Barman Cloud plugin.

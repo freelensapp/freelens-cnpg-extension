@@ -37,11 +37,6 @@ strip in the drawers that own it.
   - `spec.schedule` is parsed by a six-field cron parser (seconds first)
     that also accepts the descriptors `@yearly`, `@monthly`, `@weekly`,
     `@daily`, `@hourly` and `@every <duration>`.
-- Other CloudNativePG user interfaces list backups as plain rows. This spec
-  matches that and adds what they lack: the outcome classified with its
-  reason, the restore coordinates in one place, the parent schedule and the
-  generated backups linked both ways, the schedule in words, and the backup
-  history strip. Functional reference only.
 
 ## Scope
 

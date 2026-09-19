@@ -66,6 +66,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 | Operator status page (deployment, version, CRDs, detected plugins, listening namespaces) | | Planned |
 | Cluster events timeline (Kubernetes events, backups, switchovers, phase changes) | | Planned |
 | Instance pod logs from the cluster drawer | | Planned |
+| Leader election lease of the operator and of a cluster (holder, acquire and renew time, transitions) | | Planned |
 
 ### M6 - Write actions (behind explicit confirmation)
 
@@ -90,6 +91,7 @@ the cluster.
 | --- | --- | --- |
 | Create Cluster form with live YAML preview (plugin-based backups by default) | | Planned |
 | Create ScheduledBackup (cron editor), Pooler, ObjectStore | | Planned |
+| Create Database, DatabaseRole, Publication, Subscription | | Planned |
 | Metrics charts (host chart components over the live view data) | | Planned |
 
 ### Cross-cutting
