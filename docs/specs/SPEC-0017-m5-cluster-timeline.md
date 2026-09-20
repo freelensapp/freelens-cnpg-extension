@@ -1,6 +1,6 @@
 # SPEC-0017: Cluster timeline (ad hoc, read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M5` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-19
@@ -115,3 +115,8 @@ Reads only.
   its status yet, so the case asserts the schedule that runs at once. The
   manual verification above is part of the M5 milestone review: the status
   moves to Verified when its result is recorded here.
+- M5 milestone review: 2026-09-20, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified. Still open for a later look: the states that only unit tests
+  cover, listed above.
