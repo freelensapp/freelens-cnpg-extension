@@ -377,15 +377,25 @@ outage.
   While the write is in flight the dialog's OK button stays in the host's
   `waiting` state and no second submit is possible.
 - Failures are reported with the API server's message in a
-  `Notifications` error and never swallowed; a 409 conflict reopens the
-  dialog with the values intact.
-- Patch types are explicit (merge patch on `spec`, JSON patch on
-  annotations) and each write case in the E2E suite reads the result
-  back from the cluster with `kubectl`.
+  `Notifications` error and never swallowed; a 409 conflict is retried
+  only while the write the user read is still the write that would be
+  sent, otherwise the dialog reopens with the new facts and the values
+  intact.
+- Patch types are explicit: a JSON merge patch with a spelled out body,
+  carrying `metadata.resourceVersion` when the new value was computed from
+  the old one and whenever the status subresource is the target. A JSON
+  patch is not used: a failed `test` answers `422` with a sentence that
+  tells the user nothing, where a stale resource version answers `409`
+  with a clear one (spike S1 of SPEC-0020). Each write case in the E2E
+  suite reads the result back from the cluster with `kubectl`.
 - The psql terminal is not a write action of the extension: it composes
   a command line for the host's terminal and issues no API call, so it
   carries no confirmation dialog but a tooltip that states it connects as
   the `postgres` superuser.
-- Actions that can cause a failover or a data loss (switchover, fencing,
+- Actions that interrupt the primary, take instances down or lose data
+  (switchover, restart of a cluster or of its primary, fencing,
   hibernation, delete) additionally require the user to type the cluster
-  name in the dialog.
+  name in the dialog. The actions that bring things back (lift a fence,
+  resume) confirm with one click.
+- The full rules, W1 to W12, are in
+  [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md).
