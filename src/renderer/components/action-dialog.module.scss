@@ -1,0 +1,141 @@
+@use "../vars" as *;
+
+// The body of every write action dialog (SPEC-0020, W4 and W5).
+//
+// The host paints the box of its ConfirmDialog white in BOTH themes, so
+// nothing in here may follow the theme's text tokens: in the dark theme
+// `--textColorPrimary` is a light grey, unreadable on that box. The dialog
+// carries its own ink and pulls back the host controls that override the
+// inherited color (the value of a select, the label an input is wrapped in,
+// the global grey of `code`, a checked radio).
+$ink: rgba(0, 0, 0, 0.87);
+$ink-secondary: rgba(0, 0, 0, 0.6);
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  min-width: 460px;
+  max-width: 640px;
+  // The box has no maximum height of its own: without one a long dialog
+  // pushes its OK button off the screen.
+  max-height: 70vh;
+  overflow-y: auto;
+  color: $ink;
+  text-align: left;
+
+  p {
+    margin: 0;
+  }
+
+  code {
+    color: $ink;
+    overflow-wrap: anywhere;
+  }
+
+  :global(.Select__single-value) {
+    color: inherit;
+  }
+
+  :global(.Input) label {
+    color: inherit;
+  }
+
+  :global(.Input) input::placeholder {
+    color: $ink-secondary;
+    opacity: 0.75;
+  }
+
+  :global(.Radio),
+  :global(.Radio.checked .label) {
+    color: inherit;
+  }
+}
+
+// The portalled menu of a select lives on `document.body`, outside `.dialog`.
+.selectMenu {
+  color: $ink;
+}
+
+.lead {
+  font-size: 1.1em;
+}
+
+.context {
+  color: $ink-secondary;
+}
+
+.heading {
+  margin-top: calc($unit / 2);
+  color: $ink-secondary;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+// The host resets the markers of every list, so the numbers are declared here:
+// the order of the API calls is part of what the user confirms. One write
+// alone carries no number.
+.writes {
+  margin: 0;
+  padding: $unit $unit $unit calc($unit * 3.5);
+  border-radius: calc($unit / 2);
+  background-color: rgba(0, 0, 0, 0.04);
+  list-style: decimal outside;
+
+  &.single {
+    padding-left: $unit * 1.5;
+    list-style: none;
+  }
+
+  li + li {
+    margin-top: calc($unit / 2);
+  }
+}
+
+.warning {
+  display: flex;
+  gap: $unit;
+  align-items: flex-start;
+  font-weight: 500;
+
+  // `--colorWarning` is a yellow picked for dark surfaces; on white it needs a darker ink.
+  :global(.Icon) {
+    flex: none;
+    color: #b26a00;
+  }
+}
+
+.changed {
+  padding: $unit;
+  border-left: 3px solid #b26a00;
+  background-color: rgba(178, 106, 0, 0.08);
+  font-weight: 500;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.label {
+  font-weight: 500;
+}
+
+.hint {
+  color: $ink-secondary;
+  font-size: 0.9em;
+}
+
+.error {
+  color: var(--colorError);
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.list {
+  margin: 0;
+  padding-left: calc($unit * 2.5);
+}

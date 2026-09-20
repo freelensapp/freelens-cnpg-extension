@@ -289,6 +289,27 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     await frame.locator(".Drawer.KubeObjectDetails").getByText("How to read it").scrollIntoViewIfNeeded();
     await shot(`${theme}-failover-quorum-drawer`);
     await cluster.closeDetails(frame);
+
+    await walkActionDialogs(theme);
+  }
+
+  /**
+   * The dialog of every write action (M6), opened on the cluster of the write
+   * cases and closed without confirming: the pass looks, it never writes.
+   */
+  async function walkActionDialogs(theme: string): Promise<void> {
+    await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+    await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+    try {
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+      await shot(`${theme}-cluster-row-menu-actions`);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-backup-now-menu-item"]').first().click();
+      await frame.locator('[data-testid="cnpg-backup-now-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-backup-now`);
+      await cluster.cancelDialog(frame);
+    } finally {
+      await cluster.selectNamespace(frame);
+    }
   }
 
   beforeAll(async () => {
@@ -411,6 +432,84 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           if ((await button.count()) !== 1) throw new Error(`no button labelled "${label}"`);
           await button.focus();
         }
+      });
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020)",
+    async () => {
+      const backups = () =>
+        cluster.kubectlE2E("get", "backups.postgresql.cnpg.io", "--all-namespaces", "-o", "name").stdout;
+      const before = backups();
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+
+      await record("A refused action carries its reason in the row menu (W2)", async () => {
+        await cluster.openRowMenu(frame, "e2e-hibernated");
+
+        const item = frame.locator('.Menu [data-testid="cnpg-cluster-backup-now-menu-item"]').first();
+
+        await item.waitFor({ state: "visible", timeout: 60_000 });
+
+        const title = (await item.getAttribute("title")) ?? "";
+        const classes = (await item.getAttribute("class")) ?? "";
+
+        await cluster.closeRowMenu(frame);
+        if (!classes.includes("disabled")) throw new Error('"Back up now" of e2e-hibernated should be refused');
+        if (!title.includes("hibernated")) throw new Error(`the reason should name the hibernation, got "${title}"`);
+      });
+
+      await record("A refused action is dimmed and explained in the toolbar of the drawer (W2)", async () => {
+        await table(frame, "e2e-hibernated").click();
+
+        const item = frame.locator('.Drawer [data-testid="cnpg-cluster-backup-now-menu-item"]').first();
+
+        await item.waitFor({ state: "visible", timeout: 60_000 });
+
+        const title = (await item.getAttribute("title")) ?? "";
+        const opacity = await item
+          .locator(".Icon")
+          .first()
+          .evaluate((icon) => getComputedStyle(icon).opacity);
+
+        await cluster.closeDetails(frame);
+        if (!title.includes("hibernated")) throw new Error(`no reason on the toolbar item, got "${title}"`);
+        if (Number(opacity) >= 1) throw new Error(`the refused icon should be dimmed, opacity is ${opacity}`);
+      });
+
+      await record("A dialog names the object, the Kubernetes context and every API call (W4)", async () => {
+        await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+        try {
+          await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+          await frame.locator('.Menu [data-testid="cnpg-cluster-backup-now-menu-item"]').first().click();
+
+          const dialog = frame.locator('[data-testid="cnpg-backup-now-dialog"]');
+
+          await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+          const subject = await dialog.locator('[data-testid="cnpg-action-subject"]').innerText();
+          const context = await dialog.locator('[data-testid="cnpg-action-context"]').innerText();
+          const writes = await dialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts();
+
+          await cluster.cancelDialog(frame);
+          if (subject !== `Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${cluster.E2E_ACTIONS_CLUSTER}`) {
+            throw new Error(`unexpected subject "${subject}"`);
+          }
+          if (!context.includes(cluster.E2E_KUBE_CONTEXT)) throw new Error(`no context in "${context}"`);
+          if (writes.length !== 1 || !writes[0].startsWith("create Backup ")) {
+            throw new Error(`unexpected writes ${JSON.stringify(writes)}`);
+          }
+        } finally {
+          await cluster.selectNamespace(frame);
+        }
+      });
+
+      await record("Looking at the dialogs wrote nothing (W8)", () => {
+        const after = backups();
+
+        if (after !== before) throw new Error(`the backups changed during the pass: "${before}" then "${after}"`);
       });
     },
     TIMEOUT,

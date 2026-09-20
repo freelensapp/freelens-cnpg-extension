@@ -97,7 +97,18 @@ client above, exposed to the renderer through the extension's IPC.
 | psql | host terminal tab | `kubectl exec -it -n <ns> -c postgres <pod> -- psql -U postgres` | user's kubeconfig (terminal) |
 | Query-level detail (later, if ever) | `exec` with fixed queries | main process, `@kubernetes/client-node` | RBAC `pods/exec` |
 
-Nothing in the table stores a database password. The psql terminal
+### Write paths (from M6)
+
+Every write is confirmed in a dialog that lists it, and follows the rules W1
+to W12 of [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md).
+
+| Write | Target | Path | Credentials |
+| --- | --- | --- | --- |
+| Create a `Backup` (on demand) | `backups` | the host's `KubeObjectStore.create` | RBAC `create` on `backups` |
+| Switchover, in-place restart of the primary | `clusters/status` | merge patch with the resource version through the Freelens cluster proxy, from a module that can express these two bodies only | RBAC `patch` on `clusters/status` |
+| May I? (before an action is offered) | `SelfSubjectAccessReview` | `POST` through the Freelens cluster proxy; the review is answered and not stored | any authenticated user |
+
+Nothing in these tables stores a database password. The psql terminal
 connects as the `postgres` superuser through the container's local socket
 and says so in its tooltip.
 
@@ -128,17 +139,24 @@ src/
                              # KubeObjectStore, typed Spec/Status interfaces
                              # written from the CRD schemas
   renderer/api/barmancloud/  # The ObjectStore kind of the optional Barman Cloud plugin
+  renderer/api/writes/       # The writes the host's KubeApi cannot express: the two
+                             # merge patches on the status subresource of a Cluster
+                             # (SPEC-0020 W7), and nothing else
   renderer/api/instance/     # Instance manager and metrics contracts: the
                              # PostgresqlStatus type and guard, the Prometheus
                              # text reader, the pod proxy client (GET on the four
                              # read endpoints only, typed failures)
   renderer/pages/            # List pages and the ad hoc pages (overview, live view)
   renderer/details/          # Detail panels (kubeObjectDetailItems)
-  renderer/menus/            # kubeObjectMenuItems: navigation (live view) and,
-                             # from M6, the actions; the psql terminal comes next
+  renderer/menus/            # kubeObjectMenuItems: the doors (live view, logs,
+                             # timeline, psql) and the write actions, each built on
+                             # the shared action shell (guard at render and on the
+                             # click, access review, dialog)
   renderer/components/       # Shared pure modules and components: health model,
                              # status classifiers, parsers (Go time, LSN, intervals,
-                             # cron text), backup history, reference loading
+                             # cron text), backup history, reference loading;
+                             # the write actions: guards, dialog facts, failure
+                             # sentences, access review, the confirmation dialog
   renderer/components/live/  # The live view: pure model, poller, sparkline series,
                              # topology layout and component, tiles; the pooler
                              # model; the polling loop the drawers share and the

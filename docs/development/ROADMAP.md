@@ -72,7 +72,7 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Write actions ground rules, and the on-demand backup | [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md) | Planned |
+| Write actions ground rules, and the on-demand backup | [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md) | In PR |
 | Switchover, with the candidates and their lag in the dialog | [SPEC-0022](../specs/SPEC-0022-m6-switchover.md) | Planned |
 | Restart (cluster, standby, primary in place) and reload | [SPEC-0023](../specs/SPEC-0023-m6-restart-and-reload.md) | Planned |
 | Fencing and hibernation, with their consequences listed | [SPEC-0024](../specs/SPEC-0024-m6-fencing-and-hibernation.md) | Planned |

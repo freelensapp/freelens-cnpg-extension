@@ -1768,6 +1768,85 @@ describe("CloudNativePG extension against the fixture cluster", () => {
     TIMEOUT,
   );
 
+  // The write cases (M6) run last and against a cluster of their own, in a
+  // namespace of its own: nothing they do changes what the cases above assert.
+  it(
+    "requests a backup from the row menu, and the cluster has it (SPEC-0020)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+
+      // A hibernated cluster: the operator would fail the backup, so the entry says so instead of offering it.
+      await cluster.selectNamespace(frame);
+      await cluster.openRowMenu(frame, "e2e-hibernated");
+
+      const refused = frame.locator('.Menu [data-testid="cnpg-cluster-backup-now-menu-item"]').first();
+
+      await refused.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await refused.getAttribute("class")).toContain("disabled");
+      expect(await refused.getAttribute("title")).toBe(
+        "Back up now: The operator fails a backup requested on a hibernated cluster",
+      );
+      await cluster.closeRowMenu(frame);
+
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-backup-now-menu-item"]').first().click();
+
+      const dialog = frame.locator('[data-testid="cnpg-backup-now-dialog"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      // W4: the object, the Kubernetes cluster with its context, and the one API call.
+      expect(await dialog.locator('[data-testid="cnpg-action-subject"]').innerText()).toBe(
+        `Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${cluster.E2E_ACTIONS_CLUSTER}`,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-context"]').innerText()).toContain(
+        cluster.E2E_KUBE_CONTEXT,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-backup-now-method"]').innerText()).toBe(
+        "Plugin barman-cloud.cloudnative-pg.io",
+      );
+
+      const name = await dialog.locator('[data-testid="cnpg-backup-now-name"]').inputValue();
+
+      expect(name).toMatch(/^e2e-actions-\d{14}$/);
+
+      const writes = dialog.locator('[data-testid="cnpg-action-writes"] li');
+
+      expect(await writes.count()).toBe(1);
+      expect(await writes.first().innerText()).toBe(
+        `create Backup ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: cluster e2e-actions, method plugin (barman-cloud.cloudnative-pg.io), label cnpg.io/cluster=e2e-actions`,
+      );
+      await cluster.captureScreenshot(frame, "backup-now-dialog-dark");
+
+      // W8: nothing exists until the user confirms.
+      expect(cluster.kubectlActions("get", "backups.postgresql.cnpg.io", name).status).not.toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Backup ${name}`);
+
+      // W12: read back from the cluster.
+      const backup = "backups.postgresql.cnpg.io";
+
+      expect(cluster.kubectlActionsField(backup, name, "{.spec.cluster.name}")).toBe("e2e-actions");
+      expect(cluster.kubectlActionsField(backup, name, "{.spec.method}")).toBe("plugin");
+      expect(cluster.kubectlActionsField(backup, name, "{.spec.pluginConfiguration.name}")).toBe(
+        "barman-cloud.cloudnative-pg.io",
+      );
+      expect(cluster.kubectlActionsField(backup, name, "{.metadata.labels}")).toBe('{"cnpg.io/cluster":"e2e-actions"}');
+      expect(cluster.kubectlActionsField(backup, name, "{.spec.target}")).toBe("");
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(backup, name, "{.status.phase}"),
+          (phase) => phase === "completed" || phase === "failed",
+          5 * 60_000,
+        ),
+      ).toBe("completed");
+
+      await cluster.clearNotifications(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
   it(
     "activated without errors",
     async () => {

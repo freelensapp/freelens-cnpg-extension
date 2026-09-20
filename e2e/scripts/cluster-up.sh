@@ -103,6 +103,10 @@ wait_clusters() {
 			"${E2E_HEALTHY_PHASE}" "${WAIT_CLUSTER%s}"
 	done
 	wait_for_jsonpath "${E2E_NAMESPACE}" clusters.postgresql.cnpg.io e2e-main '{.status.readyInstances}' 3 "${WAIT_CLUSTER%s}"
+	log "waiting for cluster ${E2E_ACTIONS_CLUSTER} of the write cases to be healthy (up to ${WAIT_CLUSTER})"
+	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_ACTIONS_CLUSTER}" '{.status.phase}' \
+		"${E2E_HEALTHY_PHASE}" "${WAIT_CLUSTER%s}"
+	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_ACTIONS_CLUSTER}" '{.status.readyInstances}' 2 "${WAIT_CLUSTER%s}"
 	log "all clusters healthy"
 }
 

@@ -1,0 +1,9 @@
+// What a refused action looks like in the toolbar of the drawer (SPEC-0020,
+// W2). Opacity and nothing else: the title bar of the drawer is one of the few
+// surfaces whose colors the host hardcodes (white text in both themes), so a
+// rule that dimmed by color would have to name one. The value multiplies with
+// the 0.5 the host already puts on a disabled menu item, which alone reads as
+// a slightly different shade rather than as a control that is refused.
+.disabledIcon {
+  opacity: 0.6;
+}

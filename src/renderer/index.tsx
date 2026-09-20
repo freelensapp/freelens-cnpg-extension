@@ -31,6 +31,7 @@ import { PublicationDetails as PublicationDetailsV1 } from "./details/publicatio
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscription-details-v1";
 import { CnpgIcon } from "./icons";
+import { ClusterBackupNowMenuItem } from "./menus/cluster-backup-now-menu-item";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
 import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
@@ -291,6 +292,14 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterPsqlMenuItem {...props} />,
+      },
+    },
+    // The write actions come after the doors (SPEC-0020, W1).
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterBackupNowMenuItem {...props} />,
       },
     },
   ];
