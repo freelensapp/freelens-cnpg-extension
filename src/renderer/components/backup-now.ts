@@ -11,6 +11,7 @@
 // The method is never left out of the body: the CRD default is the deprecated
 // in-tree method, which fails on a cluster that only uses a plugin.
 
+import { scheduleRunPattern } from "./scheduled-backup-actions";
 import { compactTimestamp, disabledGuard, enabledGuard, subjectOf } from "./write-actions";
 
 import type { ActionDialogFacts, ActionGuard } from "./write-actions";
@@ -127,16 +128,12 @@ export function backupNameError(
   if (!DNS_SUBDOMAIN.test(name)) {
     return "Lowercase letters, digits, '-' and '.', starting and ending with a letter or a digit";
   }
-  const schedule = scheduleNames.find((candidate) => new RegExp(`^${escapeRegExp(candidate)}-\\d{14}$`).test(name));
+  const schedule = scheduleNames.find((candidate) => scheduleRunPattern(candidate).test(name));
   if (schedule) {
     return `This is the form of a run of the schedule ${schedule}: the operator would skip that run`;
   }
   if (existing.some((backup) => backup.name === name)) return "A backup with this name exists already";
   return undefined;
-}
-
-function escapeRegExp(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /** What "The cluster's default" resolves to, in words. */

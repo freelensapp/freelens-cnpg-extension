@@ -104,7 +104,8 @@ to W12 of [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backu
 
 | Write | Target | Path | Credentials |
 | --- | --- | --- | --- |
-| Create a `Backup` (on demand) | `backups` | the host's `KubeObjectStore.create` | RBAC `create` on `backups` |
+| Create a `Backup` (on demand, or with the settings of a schedule) | `backups` | the host's `KubeObjectStore.create` | RBAC `create` on `backups` |
+| Suspend or resume a `ScheduledBackup` | `scheduledbackups` | the host's `KubeObjectStore.patch`, a merge patch of `spec.suspend` with its explicit value | RBAC `patch` on `scheduledbackups` |
 | Switchover, in-place restart of the primary | `clusters/status` | merge patch with the resource version through the Freelens cluster proxy, from a module that can express these two bodies only | RBAC `patch` on `clusters/status` |
 | May I? (before an action is offered) | `SelfSubjectAccessReview` | `POST` through the Freelens cluster proxy; the review is answered and not stored | any authenticated user |
 

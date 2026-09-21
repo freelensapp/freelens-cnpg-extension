@@ -1,6 +1,6 @@
 # SPEC-0021: Scheduled backups, suspend, resume and run now
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -117,3 +117,35 @@ replace a run of the schedule.
 - Approved on 2026-09-20 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M6 at the
   milestone review.
+- Implemented on 2026-09-21.
+- The history strip has no success ratio to keep a backup requested by hand
+  out of: the figures it has are "Last successful" and "Longest gap". Both,
+  and the choice of the window and the recoverability band with them, are
+  computed from the runs of the schedule only. A backup requested by hand is
+  a mark on the axis, never merged with a run, and it is not listed in the
+  table of the generated backups, which stays the list of what the schedule
+  generated. On the strip of the Cluster it is a backup like any other: there
+  it does protect the cluster. Under the strip "Requested by hand: N" is the
+  legend of the hollow marks, so what they are does not depend on a tooltip.
+- `canSuspend` and `canResume` refuse on the click the write that would change
+  nothing (W4): between the render and the click somebody else may have
+  written the same value. At render exactly one entry exists, read from the
+  object as the store holds it, so after the write the entry turns into its
+  opposite in the row menu and in the toolbar of the drawer without a reload.
+- "Run now" is not refused while the clusters of the namespace are still
+  loading: a read that has not finished never blocks a write (the principle
+  of W3), and the guard runs again on the click. The list of the schedules
+  does not load the clusters by itself, so the entry asks for them.
+- The name of the backup and the body are computed from one instant, taken
+  when the dialog opens: the name the user reads is the name that is sent. On
+  `AlreadyExists` the dialog reopens with the name of the current second.
+- A schedule that declares no method gets no method in the body either, so
+  the backup takes the default of the API exactly as a run of the schedule
+  would; the dialog says so and warns that this default is the deprecated
+  in-tree method. Forcing a method here would make "with the settings of the
+  schedule" untrue.
+- On the fixture of the write cases the schedule has never run, so
+  `status.nextScheduleTime` is absent and the dialog of a resume says that no
+  next run is reported yet. The warning about the backup taken right away is
+  covered by the unit cases: making it happen in the E2E suite would need a
+  schedule left suspended across one of its runs.

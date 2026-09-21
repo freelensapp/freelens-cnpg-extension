@@ -29,6 +29,7 @@ import { withErrorPage } from "../components/error-page";
 import { parseGoTime } from "../components/go-time";
 import { MethodLabel } from "../components/method-label";
 import { useReferenceStores } from "../components/reference-loader";
+import { requestedFromSchedule } from "../components/scheduled-backup-actions";
 import { StoreLink } from "../components/store-link";
 import { BACKUPS_PAGE_ID, extensionPageUrl } from "../navigation";
 import styles from "./backup-details.module.scss";
@@ -112,8 +113,14 @@ export const ScheduledBackupDetails = observer((props: ScheduledBackupDetailsPro
     const generated = ((backupStore?.items ?? []) as Backup[])
       .filter((backup) => backup.getNs() === namespace && Backup.getParentSchedule(backup) === name)
       .sort((a, b) => (backupStart(b)?.getTime() ?? 0) - (backupStart(a)?.getTime() ?? 0));
+    // Requested by hand with the settings of this schedule (SPEC-0021): on the
+    // axis with a hollow mark, out of the figures and of the table of the runs.
+    const byHand = ((backupStore?.items ?? []) as Backup[]).filter(
+      (backup) => backup.getNs() === namespace && requestedFromSchedule(backup) === name,
+    );
     const history = buildHistory(generated, [object], now, {
       archivingFailing: cluster ? archivingState(cluster).state === "Failing" : false,
+      manual: byHand,
     });
     const listUrl = extensionPageUrl(extension.name, BACKUPS_PAGE_ID, name);
     const backupUrl = (backupName: string) => {

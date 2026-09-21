@@ -36,6 +36,12 @@ export interface HistoryMark {
   state: BackupState;
   /** Names of the backups in the mark, latest first. */
   names: string[];
+  /**
+   * True for the backups requested by hand with the settings of a schedule
+   * (SPEC-0021): on the axis of that schedule, never merged with its runs and
+   * never counted in its figures, because the schedule did not run them.
+   */
+  manual: boolean;
 }
 
 export interface BackupHistory {
@@ -50,12 +56,16 @@ export interface BackupHistory {
   nextRun?: Date;
   /** Whether a schedule that is not suspended exists at all. */
   hasActiveSchedule: boolean;
+  /** How many backups requested by hand are on the axis (SPEC-0021): the legend of the hollow marks. */
+  manualCount: number;
 }
 
 export interface HistoryOptions {
   /** True when WAL archiving is failing: without WAL there is no recoverability window. */
   archivingFailing?: boolean;
   resolution?: number;
+  /** The backups requested by hand with the settings of the schedule the strip is about (SPEC-0021). */
+  manual?: readonly Backup[];
 }
 
 /** The `ScheduledBackup` objects that belong to the cluster (same namespace, `spec.cluster.name`). */
@@ -97,7 +107,7 @@ export function buildHistory(
   backups: readonly Backup[],
   schedules: readonly ScheduledBackup[],
   now: Date,
-  { archivingFailing = false, resolution = DEFAULT_RESOLUTION }: HistoryOptions = {},
+  { archivingFailing = false, resolution = DEFAULT_RESOLUTION, manual = [] }: HistoryOptions = {},
 ): BackupHistory {
   const all = timed(backups, now).filter((backup) => backup.time.getTime() <= now.getTime());
   const shortStart = now.getTime() - SHORT_WINDOW_DAYS * DAY_MS;
@@ -107,23 +117,30 @@ export function buildHistory(
   const windowStart = new Date(now.getTime() - windowMs);
   const position = (time: Date) => Math.min(1, Math.max(0, (time.getTime() - windowStart.getTime()) / windowMs));
 
-  const inWindow = all.filter((backup) => backup.time.getTime() >= windowStart.getTime());
-  const slots = new Map<number, TimedBackup[]>();
-  for (const backup of inWindow) {
-    const slot = Math.min(resolution - 1, Math.floor(position(backup.time) * resolution));
-    slots.set(slot, [...(slots.get(slot) ?? []), backup]);
-  }
-  const marks: HistoryMark[] = [...slots.keys()]
-    .sort((a, b) => a - b)
-    .map((slot) => {
-      const members = [...(slots.get(slot) ?? [])].reverse();
-      return {
-        time: members[0].time,
-        position: position(members[0].time),
-        state: worst(members.map((member) => member.state)),
-        names: members.map((member) => member.name),
-      };
-    });
+  const marksOf = (backups: readonly TimedBackup[], byHand: boolean): HistoryMark[] => {
+    const slots = new Map<number, TimedBackup[]>();
+    for (const backup of backups) {
+      if (backup.time.getTime() < windowStart.getTime()) continue;
+      const slot = Math.min(resolution - 1, Math.floor(position(backup.time) * resolution));
+      slots.set(slot, [...(slots.get(slot) ?? []), backup]);
+    }
+    return [...slots.keys()]
+      .sort((a, b) => a - b)
+      .map((slot) => {
+        const members = [...(slots.get(slot) ?? [])].reverse();
+        return {
+          time: members[0].time,
+          position: position(members[0].time),
+          state: worst(members.map((member) => member.state)),
+          names: members.map((member) => member.name),
+          manual: byHand,
+        };
+      });
+  };
+  // The window, the band and the figures below are the schedule's own: a backup
+  // requested by hand is on the axis and nowhere else.
+  const byHand = timed(manual, now).filter((backup) => backup.time.getTime() <= now.getTime());
+  const marks = [...marksOf(all, false), ...marksOf(byHand, true)].sort((a, b) => a.position - b.position);
 
   const completed = all.filter((backup) => backup.state === "Completed");
   const lastSuccessful = completed.at(-1)?.time;
@@ -161,5 +178,6 @@ export function buildHistory(
     longestGapMs,
     nextRun: nextRuns[0],
     hasActiveSchedule: active.length > 0,
+    manualCount: marks.filter((mark) => mark.manual).reduce((count, mark) => count + mark.names.length, 0),
   };
 }

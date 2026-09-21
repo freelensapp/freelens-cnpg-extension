@@ -75,6 +75,32 @@
   &.unknown {
     background: var(--colorVague);
   }
+
+  // Requested by hand with the settings of the schedule (SPEC-0021): hollow,
+  // the state is the ring, so it never reads as a run of the schedule.
+  &.manual {
+    background: transparent;
+
+    &.completed {
+      border-color: var(--colorSuccess);
+    }
+
+    &.failed {
+      border-color: var(--colorError);
+    }
+
+    &.running {
+      border-color: var(--colorInfo);
+    }
+
+    &.pending {
+      border-color: var(--colorWarning);
+    }
+
+    &.unknown {
+      border-color: var(--colorVague);
+    }
+  }
 }
 
 .count {

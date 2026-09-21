@@ -307,9 +307,36 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await frame.locator('[data-testid="cnpg-backup-now-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
       await shot(`${theme}-action-backup-now`);
       await cluster.cancelDialog(frame);
+
+      // SPEC-0021: the two dialogs of a schedule that is not suspended.
+      await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_SCHEDULE);
+      await shot(`${theme}-schedule-row-menu-actions`);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-suspend-menu-item"]').first().click();
+      await frame
+        .locator('[data-testid="cnpg-schedule-suspend-dialog"]')
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-schedule-suspend`);
+      await cluster.cancelDialog(frame);
+
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_SCHEDULE);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-run-now-menu-item"]').first().click();
+      await frame
+        .locator('[data-testid="cnpg-schedule-run-now-dialog"]')
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-schedule-run-now`);
+      await cluster.cancelDialog(frame);
     } finally {
       await cluster.selectNamespace(frame);
     }
+
+    // The dialog of a resume, on the schedule the fixtures keep suspended.
+    await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+    await cluster.openRowMenu(frame, "e2e-suspended");
+    await frame.locator('.Menu [data-testid="cnpg-schedule-resume-menu-item"]').first().click();
+    await frame.locator('[data-testid="cnpg-schedule-resume-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+    await shot(`${theme}-action-schedule-resume`);
+    await cluster.cancelDialog(frame);
   }
 
   beforeAll(async () => {
@@ -438,11 +465,20 @@ describe("pre-review pass of the CloudNativePG extension", () => {
   );
 
   it(
-    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020)",
+    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020, SPEC-0021)",
     async () => {
       const backups = () =>
         cluster.kubectlE2E("get", "backups.postgresql.cnpg.io", "--all-namespaces", "-o", "name").stdout;
+      const suspensions = () =>
+        cluster.kubectlE2E(
+          "get",
+          "scheduledbackups.postgresql.cnpg.io",
+          "--all-namespaces",
+          "-o",
+          'jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}={.spec.suspend}{"\n"}{end}',
+        ).stdout;
       const before = backups();
+      const suspendedBefore = suspensions();
 
       await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
 
@@ -506,10 +542,58 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         }
       });
 
+      await record("A schedule offers exactly one of Suspend and Resume, by what it declares (SPEC-0021)", async () => {
+        await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+
+        for (const [name, offered, absent] of [
+          ["e2e-suspended", "resume", "suspend"],
+          ["e2e-nightly", "suspend", "resume"],
+        ]) {
+          await cluster.openRowMenu(frame, name);
+          await frame
+            .locator(`.Menu [data-testid="cnpg-schedule-${offered}-menu-item"]`)
+            .first()
+            .waitFor({ state: "visible", timeout: 60_000 });
+
+          const other = await frame.locator(`.Menu [data-testid="cnpg-schedule-${absent}-menu-item"]`).count();
+          const runNow = await frame.locator('.Menu [data-testid="cnpg-schedule-run-now-menu-item"]').count();
+
+          await cluster.closeRowMenu(frame);
+          if (other !== 0) throw new Error(`${name} offers "${absent}" next to "${offered}"`);
+          if (runNow !== 1) throw new Error(`${name} should offer "Run now" once, found ${runNow}`);
+        }
+      });
+
+      await record("The dialog of a resume says what the operator will do about the next run (SPEC-0021)", async () => {
+        await cluster.openRowMenu(frame, "e2e-suspended");
+        await frame.locator('.Menu [data-testid="cnpg-schedule-resume-menu-item"]').first().click();
+
+        const dialog = frame.locator('[data-testid="cnpg-schedule-resume-dialog"]');
+
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+        const subject = await dialog.locator('[data-testid="cnpg-action-subject"]').innerText();
+        const writes = await dialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts();
+        const text = await dialog.innerText();
+
+        await cluster.cancelDialog(frame);
+        if (subject !== `ScheduledBackup ${cluster.E2E_NAMESPACE}/e2e-suspended`) {
+          throw new Error(`unexpected subject "${subject}"`);
+        }
+        if (writes.length !== 1 || !writes[0].endsWith("spec.suspend true -> false")) {
+          throw new Error(`unexpected writes ${JSON.stringify(writes)}`);
+        }
+        if (!/next run/i.test(text)) throw new Error("the dialog does not speak of the next run");
+      });
+
       await record("Looking at the dialogs wrote nothing (W8)", () => {
         const after = backups();
+        const suspendedAfter = suspensions();
 
         if (after !== before) throw new Error(`the backups changed during the pass: "${before}" then "${after}"`);
+        if (suspendedAfter !== suspendedBefore) {
+          throw new Error(`the schedules changed during the pass: "${suspendedBefore}" then "${suspendedAfter}"`);
+        }
       });
     },
     TIMEOUT,

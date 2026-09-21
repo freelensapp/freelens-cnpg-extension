@@ -160,6 +160,48 @@ describe("buildHistory", () => {
     expect(onlyPaused.hasActiveSchedule).toBe(false);
   });
 
+  it("puts a backup requested by hand on the axis, marked, and keeps it out of the figures (SPEC-0021)", () => {
+    const history = buildHistory(
+      [makeBackup("run-1", "completed", 3 * DAY_MS), makeBackup("run-2", "completed", 2 * DAY_MS)],
+      [],
+      NOW,
+      { manual: [makeBackup("weekly-manual-1", "completed", HOUR_MS)] },
+    );
+
+    expect(history.marks.map((mark) => [mark.names, mark.manual])).toEqual([
+      [["run-1"], false],
+      [["run-2"], false],
+      [["weekly-manual-1"], true],
+    ]);
+    expect(history.manualCount).toBe(1);
+    // The schedule did not run it: the last success and the gap are the schedule's own.
+    expect(history.lastSuccessful?.toISOString()).toBe(ago(2 * DAY_MS));
+    expect(history.longestGapMs).toBe(2 * DAY_MS);
+  });
+
+  it("never merges a backup requested by hand with a run of the schedule", () => {
+    const history = buildHistory([makeBackup("run", "completed", HOUR_MS)], [], NOW, {
+      manual: [makeBackup("by-hand", "failed", HOUR_MS)],
+    });
+
+    expect(history.marks).toHaveLength(2);
+    expect(history.marks.find((mark) => mark.manual)).toMatchObject({ state: "Failed", names: ["by-hand"] });
+    expect(history.marks.find((mark) => !mark.manual)).toMatchObject({ state: "Completed", names: ["run"] });
+  });
+
+  it("shows the backups requested by hand of a schedule that never ran, and chooses the window without them", () => {
+    const history = buildHistory([], [], NOW, {
+      manual: [makeBackup("by-hand-1", "completed", HOUR_MS), makeBackup("by-hand-2", "completed", 2 * HOUR_MS)],
+    });
+
+    expect(history.windowDays).toBe(LONG_WINDOW_DAYS);
+    expect(history.marks.every((mark) => mark.manual)).toBe(true);
+    expect(history.manualCount).toBe(2);
+    expect(buildHistory([makeBackup("run", "completed", HOUR_MS)], [], NOW).manualCount).toBe(0);
+    expect(history.lastSuccessful).toBeUndefined();
+    expect(history.recoverableFrom).toBeUndefined();
+  });
+
   it("ignores a backup dated in the future", () => {
     expect(buildHistory([makeBackup("clock-skew", "completed", -HOUR_MS)], [], NOW).marks).toEqual([]);
   });
