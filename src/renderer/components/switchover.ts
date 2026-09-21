@@ -214,16 +214,16 @@ export function lagWords(candidate: SwitchoverCandidate, replication: PrimaryRep
 function delayWords(cluster: SwitchoverClusterFacts): string {
   const delay = cluster.spec?.switchoverDelay;
   return delay === undefined
-    ? "a fast shutdown, with the operator's default time limit"
-    : `a fast shutdown, then an immediate one after ${delay} s (.spec.switchoverDelay)`;
+    ? "The shutdown is a fast one, within the operator's default time limit."
+    : `The shutdown is a fast one; after ${delay} s (.spec.switchoverDelay) it becomes an immediate one.`;
 }
 
 export function switchoverNotes(cluster: SwitchoverClusterFacts, target: string | undefined): string[] {
   const current = cluster.status?.currentPrimary ?? "the primary";
   const notes = [
-    `In order: the primary ${current} is shut down first (${delayWords(cluster)}) and comes back as a standby, then ${
+    `In order: the primary ${current} is shut down first and comes back as a standby, then ${
       target ?? "the chosen standby"
-    } is promoted. Clients of the read-write service are disconnected and reconnect to the new primary.`,
+    } is promoted. ${delayWords(cluster)} Clients of the read-write service are disconnected and reconnect to the new primary.`,
   ];
   if (cluster.status?.phase === WAITING_FOR_USER_PHASE) {
     notes.push(

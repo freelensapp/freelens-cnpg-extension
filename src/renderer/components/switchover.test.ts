@@ -242,10 +242,10 @@ describe("the dialog", () => {
 
   it("says what happens in order, with the cluster's own switchover delay", () => {
     expect(switchoverNotes(cluster(), "pg-2")).toEqual([
-      "In order: the primary pg-1 is shut down first (a fast shutdown, with the operator's default time limit) and comes back as a standby, then pg-2 is promoted. Clients of the read-write service are disconnected and reconnect to the new primary.",
+      "In order: the primary pg-1 is shut down first and comes back as a standby, then pg-2 is promoted. The shutdown is a fast one, within the operator's default time limit. Clients of the read-write service are disconnected and reconnect to the new primary.",
     ]);
     expect(switchoverNotes(cluster({ spec: { instances: 3, switchoverDelay: 40 } }), "pg-2")[0]).toContain(
-      "then an immediate one after 40 s (.spec.switchoverDelay)",
+      "after 40 s (.spec.switchoverDelay) it becomes an immediate one.",
     );
   });
 
