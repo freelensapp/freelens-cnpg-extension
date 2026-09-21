@@ -93,7 +93,24 @@ extension follows that filter.
    per controller right now, the plugin and the kinds.
 8. Row menu of `e2e-main`: **Open psql**. It opens a session as the
    `postgres` superuser on the primary, under your own kubeconfig.
-9. Switch the theme in the Freelens preferences and look again.
+9. **The write actions**, on the cluster made for them: set the namespace
+   filter to `cnpg-e2e-actions`. Open the row menu of `e2e-actions` and read
+   a dialog before you confirm anything: every one names the cluster and the
+   Kubernetes context and lists the exact API calls. **Back up now**, then
+   follow the backup in the Backups list. **Switchover**: the table of the
+   standbys with their state and replay lag, read from the primary every five
+   seconds; type the name and confirm, then watch the Timeline. **Restart**:
+   the rollout in order, with what happens to the primary under this
+   cluster's own settings. In the drawer, Instances table: **Promote**,
+   **Restart** (a standby is recreated, the primary restarts PostgreSQL in
+   place) and **Fence**, then lift the fence from the "Fenced instances" row.
+   **Hibernate**: the dialog lists what is attached to the cluster and what
+   happens to it; the "Hibernation" row of the drawer follows the operator,
+   and **Resume** is on that row. Under Backups, Scheduled Backups:
+   **Suspend**, **Run now** (the hollow mark in the history of the schedule)
+   and **Resume**. On the other namespace, look at what is refused and why:
+   the menus of `e2e-hibernated`, `e2e-single` and `e2e-fenced`.
+10. Switch the theme in the Freelens preferences and look again.
 
 For every view the question of the review is the same: is this the best
 possible view for the task?
