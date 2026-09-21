@@ -174,6 +174,11 @@ Two annotations, written with values the extension builds itself: `on`,
   some instances fenced by name, fencing the rest is one click per row. This
   keeps the toolbar of the drawer, which renders every registration, at two
   icons for this spec instead of four.
+- The actions of one instance (Restart, Fence or Lift the fence, Promote)
+  share one "Actions" column of the Instances table: with a column each the
+  table had eleven and every header was truncated at the width of the drawer.
+  Promote comes last, so the other two line up on the row of the primary,
+  which has no Promote.
 - The control of the "Fenced instances" row is "Lift all fences". Under the
   star the row of an instance offers "Lift the fence" refused, with the reason
   that points there.

@@ -160,7 +160,8 @@ itself.
   done. The guard of a standby does not refuse while the pods are loading;
   the delete itself reads the pod again and checks its labels, and refuses
   with "Nothing was deleted" when they are not the cluster's.
-- "Restart" is a column of the Instances table next to "Promote" (SPEC-0022).
+- "Restart" is in the row of each instance in the Instances table, next to
+  "Promote" (SPEC-0022).
   The readers of the host stores the cluster actions share (`liveCluster`,
   `instancePods`, `podsKnown`, `loadPods`) moved to `menus/cluster-live.ts`.
 - The synchronous warning of a standby restart counts the other standbys that
