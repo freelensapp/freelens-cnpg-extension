@@ -1,6 +1,6 @@
 # SPEC-0023: Restart and reload
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -139,3 +139,30 @@ itself.
 - Approved on 2026-09-20 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M6 at the
   milestone review.
+- Implemented on 2026-09-21.
+- The E2E case of the primary restarted in place does not assert the phase
+  reason "Primary instance restarted in-place": the instance manager writes
+  it and the operator clears it at its next reconciliation, a few seconds
+  later (observed on 1.30.0). The case asserts what stays: the same pod UID,
+  the same restart count of the `postgres` container, and a
+  `pg_postmaster_start_time()` that moved.
+- The restart annotation is written in UTC (`...Z`). The upstream tooling
+  writes the client's local zone; the operator compares the value with the
+  pods' copy as a string, so only a difference matters, and UTC keeps the
+  value independent of the machine Freelens runs on.
+- `primaryRestartPatch` is `primaryRestartBody` of the status subresource
+  module of SPEC-0020 (W7), with its unit cases there. The write goes through
+  `writeWithConflictRetry` (SPEC-0022); when the object changed under it the
+  action reports that nothing was written instead of reopening: its dialog
+  has no choice to make again.
+- The guard of a cluster restart does not refuse a rollout that is already
+  running: the dialog warns that the new value restarts again what was already
+  done. The guard of a standby does not refuse while the pods are loading;
+  the delete itself reads the pod again and checks its labels, and refuses
+  with "Nothing was deleted" when they are not the cluster's.
+- "Restart" is a column of the Instances table next to "Promote" (SPEC-0022).
+  The readers of the host stores the cluster actions share (`liveCluster`,
+  `instancePods`, `podsKnown`, `loadPods`) moved to `menus/cluster-live.ts`.
+- The synchronous warning of a standby restart counts the other standbys that
+  can acknowledge a write right now (ready, healthy, not fenced, labelled as
+  instances of this cluster) against `number`.

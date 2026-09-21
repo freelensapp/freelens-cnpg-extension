@@ -23,5 +23,6 @@ declare const classNames: {
   readonly chosen: "chosen";
   readonly ineligible: "ineligible";
   readonly reason: "reason";
+  readonly plan: "plan";
 };
 export = classNames;

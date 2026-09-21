@@ -95,6 +95,16 @@ list, which write only after a dialog has listed the exact API calls:
   dialog with that standby chosen. It needs `patch` on `clusters/status`,
   which an account that may edit clusters does not necessarily have: when it
   is missing the action says so instead of failing.
+- **Restart** of a cluster: the dialog lists what will happen in order, from
+  the cluster's own settings: every standby in turn, the fenced ones skipped,
+  then the primary, which is switched over, recreated without a switchover or
+  left waiting for you, depending on `primaryUpdateStrategy` and
+  `primaryUpdateMethod`. **Restart** of one instance from its row in the
+  drawer: the pod of a standby is deleted and the operator recreates it on its
+  volumes (only after its labels say it is an instance of this cluster), the
+  primary restarts PostgreSQL in place inside the same pod. **Reload**, told
+  honestly: the operator and the instance managers reconcile now, and nothing
+  reports when they are done.
 - **Suspend, Resume and Run now** on a scheduled backup. The dialog of a
   resume says whether the operator will take one backup right away (it does
   when the next run is already in the past) or when the next one is due. "Run

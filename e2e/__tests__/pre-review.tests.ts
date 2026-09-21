@@ -320,6 +320,47 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await shot(`${theme}-action-switchover-typed`);
       await cluster.cancelDialog(frame);
 
+      // SPEC-0023: the plan of a cluster restart, the reload, and the two restarts of one instance from the drawer.
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-restart-menu-item"]').first().click();
+      await frame.locator('[data-testid="cnpg-restart-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-restart-cluster`);
+      await cluster.cancelDialog(frame);
+
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-reload-menu-item"]').first().click();
+      await frame.locator('[data-testid="cnpg-reload-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-reload`);
+      await cluster.cancelDialog(frame);
+
+      const actionsPrimary = cluster.kubectlActionsField(
+        "clusters.postgresql.cnpg.io",
+        cluster.E2E_ACTIONS_CLUSTER,
+        "{.status.currentPrimary}",
+      );
+      const actionsStandby =
+        actionsPrimary === `${cluster.E2E_ACTIONS_CLUSTER}-1`
+          ? `${cluster.E2E_ACTIONS_CLUSTER}-2`
+          : `${cluster.E2E_ACTIONS_CLUSTER}-1`;
+
+      await table(frame, cluster.E2E_ACTIONS_CLUSTER).click();
+      await frame
+        .locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-restart-${actionsStandby}"]`)
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await frame
+        .locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-restart-${actionsStandby}"]`)
+        .scrollIntoViewIfNeeded();
+      await shot(`${theme}-cluster-drawer-instance-actions`);
+      await frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-restart-${actionsStandby}"]`).click();
+      await frame.locator('[data-testid="cnpg-restart-standby-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-restart-standby`);
+      await cluster.cancelDialog(frame);
+      await frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-restart-${actionsPrimary}"]`).click();
+      await frame.locator('[data-testid="cnpg-restart-primary-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-restart-primary`);
+      await cluster.cancelDialog(frame);
+      await cluster.closeDetails(frame);
+
       // SPEC-0021: the two dialogs of a schedule that is not suspended.
       await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
       await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_SCHEDULE);
@@ -477,7 +518,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
   );
 
   it(
-    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020 to SPEC-0022)",
+    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020 to SPEC-0023)",
     async () => {
       const backups = () =>
         cluster.kubectlE2E("get", "backups.postgresql.cnpg.io", "--all-namespaces", "-o", "name").stdout;
@@ -497,9 +538,29 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           "-o",
           'jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}={.status.targetPrimary}{"\n"}{end}',
         ).stdout;
+      const restarts = () =>
+        cluster.kubectlE2E(
+          "get",
+          "clusters.postgresql.cnpg.io",
+          "--all-namespaces",
+          "-o",
+          'jsonpath={range .items[*]}{.metadata.name}={.metadata.annotations.kubectl\\.kubernetes\\.io/restartedAt}|{.metadata.annotations.cnpg\\.io/reloadedAt}{"\n"}{end}',
+        ).stdout;
+      const pods = () =>
+        cluster.kubectlE2E(
+          "get",
+          "pods",
+          "--all-namespaces",
+          "--selector",
+          "cnpg.io/podRole=instance",
+          "-o",
+          'jsonpath={range .items[*]}{.metadata.name}={.metadata.uid}{"\n"}{end}',
+        ).stdout;
       const before = backups();
       const suspendedBefore = suspensions();
       const primariesBefore = primaries();
+      const restartsBefore = restarts();
+      const podsBefore = pods();
 
       await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
 
@@ -618,6 +679,65 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         },
       );
 
+      await record("Restart and Reload are refused on a hibernated cluster, with the reason (SPEC-0023)", async () => {
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await cluster.openRowMenu(frame, "e2e-hibernated");
+
+        const titles: string[] = [];
+
+        for (const action of ["restart", "reload"]) {
+          const item = frame.locator(`.Menu [data-testid="cnpg-cluster-${action}-menu-item"]`).first();
+
+          await item.waitFor({ state: "visible", timeout: 60_000 });
+          titles.push(`${(await item.getAttribute("class")) ?? ""}|${(await item.getAttribute("title")) ?? ""}`);
+        }
+        await cluster.closeRowMenu(frame);
+        for (const title of titles) {
+          if (!title.includes("disabled") || !title.includes("hibernated")) {
+            throw new Error(`a refusal that names the hibernation was expected, got "${title}"`);
+          }
+        }
+      });
+
+      await record("The restart of a fenced instance is refused, and points at the fence (SPEC-0023)", async () => {
+        await table(frame, "e2e-fenced").click();
+
+        const button = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-instance-restart-e2e-fenced-1"]');
+
+        await button.waitFor({ state: "visible", timeout: 60_000 });
+
+        const title = (await button.getAttribute("title")) ?? "";
+        const disabled = await button.getAttribute("aria-disabled");
+
+        await cluster.closeDetails(frame);
+        if (disabled !== "true") throw new Error("the restart of the fenced instance should be refused");
+        if (!title.includes("lift the fence")) throw new Error(`the reason should point at the fence, got "${title}"`);
+      });
+
+      await record(
+        "The dialog of a cluster restart lists the rollout in order, the primary last (SPEC-0023)",
+        async () => {
+          await cluster.openRowMenu(frame, "e2e-main");
+          await frame.locator('.Menu [data-testid="cnpg-cluster-restart-menu-item"]').first().click();
+
+          const dialog = frame.locator('[data-testid="cnpg-restart-dialog"]');
+
+          await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+          const steps = await dialog.locator('[data-testid="cnpg-restart-plan"] li').allInnerTexts();
+          const kinds = await dialog
+            .locator('[data-testid="cnpg-restart-plan"] li')
+            .evaluateAll((items) => items.map((item) => item.getAttribute("data-kind")));
+          const ok = await frame.locator('[data-testid="confirm"]').isDisabled();
+
+          await cluster.cancelDialog(frame);
+          if (steps.length !== 3)
+            throw new Error(`three steps were expected for e2e-main, got ${JSON.stringify(steps)}`);
+          if (kinds.join(",") !== "standby,standby,primary") throw new Error(`unexpected order ${kinds.join(",")}`);
+          if (!ok) throw new Error("OK is enabled before the name is typed");
+        },
+      );
+
       await record("A schedule offers exactly one of Suspend and Resume, by what it declares (SPEC-0021)", async () => {
         await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
 
@@ -670,6 +790,9 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         if (suspendedAfter !== suspendedBefore) {
           throw new Error(`the schedules changed during the pass: "${suspendedBefore}" then "${suspendedAfter}"`);
         }
+
+        if (restarts() !== restartsBefore) throw new Error("a restart or a reload annotation changed during the pass");
+        if (pods() !== podsBefore) throw new Error("an instance pod was replaced during the pass");
 
         const primariesAfter = primaries();
 

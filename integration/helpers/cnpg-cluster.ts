@@ -158,6 +158,30 @@ export function kubectlActions(...args: string[]): { status: number; stdout: str
   return kubectlE2E(...args, "--namespace", E2E_ACTIONS_NAMESPACE);
 }
 
+/**
+ * One SQL statement on an instance of the write namespace, through the local
+ * socket of its container. The namespace goes first: after `--` every word
+ * belongs to the command.
+ */
+export function psqlActions(pod: string, sql: string): string {
+  const { status, stdout } = kubectlE2E(
+    "--namespace",
+    E2E_ACTIONS_NAMESPACE,
+    "exec",
+    pod,
+    "--container",
+    "postgres",
+    "--",
+    "psql",
+    "-U",
+    "postgres",
+    "-tAc",
+    sql,
+  );
+
+  return status === 0 ? stdout.trim() : "";
+}
+
 /** One field of one object of the write namespace. Empty when the object or the field is not there. */
 export function kubectlActionsField(resource: string, name: string, jsonPath: string): string {
   const { status, stdout } = kubectlActions("get", resource, name, "--output", `jsonpath=${jsonPath}`);
