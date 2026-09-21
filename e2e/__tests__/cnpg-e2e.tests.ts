@@ -2000,6 +2000,129 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "moves the primary to the standby the user chose, and the cluster follows (SPEC-0022)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const name = cluster.E2E_ACTIONS_CLUSTER;
+      const healthy = "Cluster in healthy state";
+      const settled = async () =>
+        waitUntil(
+          async () =>
+            [
+              cluster.kubectlActionsField(clusters, name, "{.status.phase}"),
+              cluster.kubectlActionsField(clusters, name, "{.status.currentPrimary}"),
+              cluster.kubectlActionsField(clusters, name, "{.status.targetPrimary}"),
+              cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}"),
+            ].join("|"),
+          (facts) => {
+            const [phase, current, target, ready] = facts.split("|");
+
+            return phase === healthy && current === target && ready === "2";
+          },
+          5 * 60_000,
+        );
+
+      // The case does not care which instance is the primary today: the standby is the other one.
+      const before = (await settled()).split("|")[1];
+      const standby = before === `${name}-1` ? `${name}-2` : `${name}-1`;
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+
+      // One instance: there is nothing to promote, and the entry says so.
+      await cluster.selectNamespace(frame);
+      await cluster.openRowMenu(frame, "e2e-single");
+
+      const refused = frame.locator('.Menu [data-testid="cnpg-cluster-switchover-menu-item"]').first();
+
+      await refused.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await refused.getAttribute("class")).toContain("disabled");
+      expect(await refused.getAttribute("title")).toBe("Switchover: There is no standby to promote");
+      await cluster.closeRowMenu(frame);
+
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await cluster.openRowMenu(frame, name);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-switchover-menu-item"]').first().click();
+
+      const dialog = frame.locator('[data-testid="cnpg-switchover-dialog"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await dialog.locator('[data-testid="cnpg-action-subject"]').innerText()).toBe(
+        `Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-context"]').innerText()).toContain(
+        cluster.E2E_KUBE_CONTEXT,
+      );
+
+      // The candidates: the one standby, eligible, proposed, with a state and a lag read from the primary.
+      const rows = dialog.locator('[data-testid^="cnpg-switchover-candidate-"]');
+
+      expect(await rows.count()).toBe(1);
+
+      const row = dialog.locator(`[data-testid="cnpg-switchover-candidate-${standby}"]`);
+
+      expect(await row.getAttribute("data-eligible")).toBe("true");
+      expect(await row.locator('input[type="radio"]').isChecked()).toBe(true);
+      expect(await row.innerText()).toContain("streaming");
+      expect(await dialog.locator(`[data-testid="cnpg-switchover-lag-${standby}"]`).innerText()).toMatch(
+        /^(none|\d+(\.\d+)? (B|KiB|MiB))$/,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name} (status): targetPrimary ${before} -> ${standby}, targetPrimaryTimestamp now, phase "${healthy}" -> "Switchover in progress", phaseReason "Switching over to ${standby}"`,
+      ]);
+
+      // W5: OK stays disabled until the name of the cluster is typed.
+      const ok = frame.locator('[data-testid="confirm"]');
+
+      expect(await ok.isDisabled()).toBe(true);
+      await cluster.captureScreenshot(frame, "switchover-dialog-dark");
+      await dialog.locator('[data-testid="cnpg-action-typed-name"]').fill("e2e-action");
+      expect(await ok.isDisabled()).toBe(true);
+      await dialog.locator('[data-testid="cnpg-action-typed-name"]').fill(name);
+      await waitUntil(
+        async () => ok.isDisabled(),
+        (disabled) => !disabled,
+        30_000,
+      );
+      await cluster.captureScreenshot(frame, "switchover-dialog-typed-dark");
+      // W8: nothing is written until the user confirms.
+      expect(cluster.kubectlActionsField(clusters, name, "{.status.targetPrimary}")).toBe(before);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Switchover of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} to`);
+
+      // W12: read back from the cluster: the request, then the operator's own completion.
+      expect(cluster.kubectlActionsField(clusters, name, "{.status.targetPrimary}")).toBe(standby);
+      expect((await settled()).split("|")[1]).toBe(standby);
+      await cluster.clearNotifications(frame);
+
+      // "Promote" on the row of the new standby (the old primary): the same dialog, with that row chosen. Closed without writing.
+      await frame.locator(".TableRow", { hasText: name }).locator(".TableCell", { hasText: name }).first().click();
+
+      const promote = frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-promote-${before}"]`);
+
+      await promote.waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-promote-${standby}"]`).count(),
+      ).toBe(0);
+      await waitUntil(
+        async () => promote.getAttribute("aria-disabled"),
+        (disabled) => disabled === "false",
+        3 * 60_000,
+      );
+      await promote.click();
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await dialog.locator(`[data-testid="cnpg-switchover-candidate-${before}"] input[type="radio"]`).isChecked(),
+      ).toBe(true);
+      await cluster.cancelDialog(frame);
+      expect(cluster.kubectlActionsField(clusters, name, "{.status.targetPrimary}")).toBe(standby);
+
+      await cluster.closeDetails(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);

@@ -86,6 +86,15 @@ list, which write only after a dialog has listed the exact API calls:
   never preselected), the instance it will be taken from and what is ahead of
   it in the queue. An action that makes no sense on a cluster, or that your
   account may not perform, is shown disabled with the reason.
+- **Switchover**: the primary moves to the standby you choose, and you choose
+  it from a table of the standbys as they are right now: which ones can be
+  promoted and why the others cannot, the state, the sync state and the
+  replay lag read from the primary every five seconds, the node. The dialog
+  says what happens in order and what it costs, and asks for the name of the
+  cluster. "Promote" on the row of a standby in the drawer opens the same
+  dialog with that standby chosen. It needs `patch` on `clusters/status`,
+  which an account that may edit clusters does not necessarily have: when it
+  is missing the action says so instead of failing.
 - **Suspend, Resume and Run now** on a scheduled backup. The dialog of a
   resume says whether the operator will take one backup right away (it does
   when the next run is already in the past) or when the next one is due. "Run
