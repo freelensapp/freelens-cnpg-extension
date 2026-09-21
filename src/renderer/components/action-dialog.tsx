@@ -22,12 +22,11 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as Mobx from "mobx";
 import * as MobxReact from "mobx-react";
+import React from "react";
 import { maybe } from "../../common/utils";
 import styles from "./action-dialog.module.scss";
 import stylesInline from "./action-dialog.module.scss?inline";
 import { DIALOG_REOPEN_DELAY_MS, typedNameMatches } from "./write-actions";
-
-import type React from "react";
 
 import type { ActionDialogFacts } from "./write-actions";
 
@@ -81,12 +80,21 @@ interface MessageProps {
 }
 
 const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
+  const body = React.useRef<HTMLDivElement>(null);
+
+  // The typed name takes the focus as it mounts, and the browser scrolls a long
+  // dialog down to it: the user would start reading a dangerous action from its
+  // last line. The dialog opens at its first one.
+  React.useEffect(() => {
+    if (body.current) body.current.scrollTop = 0;
+  }, []);
+
   const facts = params.facts();
   const cluster = kubernetesClusterWords();
   const blocked = params.blockReason?.();
 
   return (
-    <div className={styles.dialog} data-testid={params.testId}>
+    <div className={styles.dialog} data-testid={params.testId} ref={body}>
       <style>{stylesInline}</style>
       <p className={styles.lead}>
         {`${params.title} `}

@@ -168,8 +168,9 @@ labels, which the upstream tooling does not do.
 - The candidates are a plain table with one native radio per row: the host's
   `RadioGroup` takes its radios as direct children and cannot be laid out as
   the rows of a table.
-- "Promote" is a column of the Instances table of the drawer, empty on the row
-  of the primary. It runs the guard of the action, the eligibility of its own
+- "Promote" is in the row of each standby in the Instances table of the drawer
+  (since SPEC-0024 in the one "Actions" column the instance actions share),
+  absent on the row of the primary. It runs the guard of the action, the eligibility of its own
   row and W3, at render and again on the click.
 - The API server defaults `.spec.switchoverDelay` to 3600, so the note always
   quotes a number on a real cluster; the wording without it is for an object

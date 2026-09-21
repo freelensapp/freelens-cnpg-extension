@@ -82,5 +82,27 @@
     &.psql {
       flex-grow: 0.35;
     }
+
+    // The write actions of one instance (SPEC-0022 to SPEC-0024) share one
+    // column: three more columns would truncate every header of the table.
+    &.actions {
+      flex-grow: 0.9;
+    }
+
+    // "Timeline" does not fit the width the certificates table gives a version.
+    &.timeline {
+      flex-grow: 0.6;
+    }
   }
+}
+
+.instanceActions {
+  display: inline-flex;
+  gap: $unit;
+  align-items: center;
+}
+
+// SPEC-0024: a fencing annotation that does not parse fences nobody, and says so.
+.fencingError {
+  color: var(--colorError);
 }

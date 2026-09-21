@@ -2319,6 +2319,244 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "fences a standby and lifts the fence from where the drawer shows it (SPEC-0024)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const name = cluster.E2E_ACTIONS_CLUSTER;
+      const annotation = "{.metadata.annotations.cnpg\\.io/fencedInstances}";
+      const ready = "{.status.conditions[?(@.type=='Ready')].status}";
+      const primary = cluster.kubectlActionsField(clusters, name, "{.status.currentPrimary}");
+      const standby = primary === `${name}-1` ? `${name}-2` : `${name}-1`;
+
+      // On the fixtures: the way back is offered where the state is, opened and closed without writing.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await frame
+        .locator(".TableRow", { hasText: "e2e-fenced" })
+        .locator(".TableCell", { hasText: "e2e-fenced" })
+        .first()
+        .click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const liftFixture = drawer.locator('[data-testid="cnpg-instance-lift-fence-e2e-fenced-1"]');
+
+      await liftFixture.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await liftFixture.getAttribute("aria-disabled")).toBe("false");
+      expect(await drawer.locator('[data-testid="cnpg-fenced-instances"]').innerText()).toBe("e2e-fenced-1");
+      await liftFixture.click();
+
+      const lift = frame.locator('[data-testid="cnpg-lift-fence-dialog"]');
+
+      await lift.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await lift.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_NAMESPACE}/e2e-fenced: annotation cnpg.io/fencedInstances ["e2e-fenced-1"] -> (unset)`,
+      ]);
+      await cluster.cancelDialog(frame);
+      expect(cluster.kubectlField(clusters, "e2e-fenced", annotation)).toBe('["e2e-fenced-1"]');
+      await cluster.closeDetails(frame);
+
+      // The write case: the standby of e2e-actions, from its row, with the name typed.
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".TableRow", { hasText: name }).locator(".TableCell", { hasText: name }).first().click();
+
+      const fenceStandby = drawer.locator(`[data-testid="cnpg-instance-fence-${standby}"]`);
+
+      await fenceStandby.waitFor({ state: "visible", timeout: 60_000 });
+      await fenceStandby.click();
+
+      const fence = frame.locator('[data-testid="cnpg-fence-dialog"]');
+
+      await fence.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await fence.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: annotation cnpg.io/fencedInstances (unset) -> ["${standby}"]`,
+      ]);
+      // A standby: no warning about the primary.
+      expect(await fence.locator('[data-testid="cnpg-action-warning"]').count()).toBe(0);
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await fence.locator('[data-testid="cnpg-action-typed-name"]').fill(name);
+      await waitUntil(
+        async () => frame.locator('[data-testid="confirm"]').isDisabled(),
+        (disabled) => !disabled,
+        30_000,
+      );
+      await cluster.captureScreenshot(frame, "fence-dialog-dark");
+      expect(cluster.kubectlActionsField(clusters, name, annotation)).toBe("");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Fencing of ${standby}`);
+
+      // W12: exactly that name, and PostgreSQL really stops: the pod stays and turns not ready.
+      expect(cluster.kubectlActionsField(clusters, name, annotation)).toBe(`["${standby}"]`);
+      await waitUntil(
+        async () => cluster.kubectlActionsField("pods", standby, ready),
+        (status) => status === "False",
+        3 * 60_000,
+      );
+      await cluster.clearNotifications(frame);
+
+      // The drawer says who is fenced, and the row of that fact lifts it.
+      const fencedRow = drawer.locator('[data-testid="cnpg-fenced-instances"]');
+
+      await fencedRow.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await fencedRow.innerText()).toBe(standby);
+      await cluster.captureScreenshot(frame, "cluster-drawer-fenced-dark");
+      await drawer.locator('[data-testid="cnpg-fenced-lift-all"]').click();
+      await lift.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await lift.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: annotation cnpg.io/fencedInstances ["${standby}"] -> (unset)`,
+      ]);
+      // Bringing things back is one click (W5).
+      expect(await lift.locator('[data-testid="cnpg-action-typed-name"]').count()).toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", "Lift of every fence");
+      expect(cluster.kubectlActionsField(clusters, name, annotation)).toBe("");
+      await waitUntil(
+        async () =>
+          `${cluster.kubectlActionsField("pods", standby, ready)}|${cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}")}`,
+        (facts) => facts === "True|2",
+        5 * 60_000,
+      );
+
+      await cluster.clearNotifications(frame);
+      await cluster.closeDetails(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "puts a cluster to sleep with its consequences listed, and wakes it from the drawer (SPEC-0024)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const name = cluster.E2E_ACTIONS_CLUSTER;
+      const annotation = "{.metadata.annotations.cnpg\\.io/hibernation}";
+      const condition = "{.status.conditions[?(@.type=='cnpg.io/hibernation')].reason}";
+      const pods = () =>
+        cluster
+          .kubectlActions("get", "pods", "--selector", `cnpg.io/cluster=${name},cnpg.io/podRole=instance`, "-o", "name")
+          .stdout.trim();
+      const volumes = () =>
+        cluster
+          .kubectlActions("get", "persistentvolumeclaims", "--selector", `cnpg.io/cluster=${name}`, "-o", "name")
+          .stdout.trim();
+
+      // On the fixtures: a hibernated cluster offers Resume, in its menu and next to the state. Closed without writing.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await cluster.openRowMenu(frame, "e2e-hibernated");
+      await frame.locator('.Menu [data-testid="cnpg-cluster-resume-menu-item"]').first().waitFor({
+        state: "visible",
+        timeout: 60_000,
+      });
+      expect(await frame.locator('.Menu [data-testid="cnpg-cluster-hibernate-menu-item"]').count()).toBe(0);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-resume-menu-item"]').first().click();
+
+      const resume = frame.locator('[data-testid="cnpg-resume-cluster-dialog"]');
+
+      await resume.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await resume.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_NAMESPACE}/e2e-hibernated: annotation cnpg.io/hibernation on -> off`,
+      ]);
+      await cluster.cancelDialog(frame);
+      expect(cluster.kubectlField(clusters, "e2e-hibernated", annotation)).toBe("on");
+
+      // The write case.
+      const volumesBefore = volumes();
+
+      expect(volumesBefore).not.toBe("");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await cluster.openRowMenu(frame, name);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-hibernate-menu-item"]').first().click();
+
+      const hibernate = frame.locator('[data-testid="cnpg-hibernate-dialog"]');
+
+      await hibernate.waitFor({ state: "visible", timeout: 60_000 });
+      // A cluster that was resumed before carries the explicit `off`: the write spells the value it replaces.
+      const before = cluster.kubectlActionsField(clusters, name, annotation);
+
+      expect(await hibernate.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: annotation cnpg.io/hibernation ${before || "(unset)"} -> on`,
+      ]);
+
+      // The consequences, from what is attached to this cluster: its two pods, the primary first, its volumes, its schedule.
+      const primary = cluster.kubectlActionsField(clusters, name, "{.status.currentPrimary}");
+      const podLines = await hibernate.locator('[data-testid="cnpg-hibernation-pods"] li').allInnerTexts();
+
+      expect(podLines).toHaveLength(2);
+      expect(podLines[0]).toBe(`${primary} (primary, first: no switchover happens)`);
+      expect(await hibernate.locator('[data-testid="cnpg-hibernation-volumes"] li').count()).toBe(
+        volumesBefore.split("\n").length,
+      );
+      expect(await hibernate.locator('[data-testid="cnpg-hibernation-schedules"] li').allInnerTexts()).toEqual([
+        `${cluster.E2E_ACTIONS_SCHEDULE}: suspend it from its own menu`,
+      ]);
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await hibernate.locator('[data-testid="cnpg-action-typed-name"]').fill(name);
+      await waitUntil(
+        async () => frame.locator('[data-testid="confirm"]').isDisabled(),
+        (disabled) => !disabled,
+        30_000,
+      );
+      await cluster.captureScreenshot(frame, "hibernate-dialog-dark");
+      expect(cluster.kubectlActionsField(clusters, name, annotation)).toBe(before);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Hibernation of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} requested`,
+      );
+
+      // W12: the annotation, then the operator's own completion: no pod, the condition, every volume still there.
+      expect(cluster.kubectlActionsField(clusters, name, annotation)).toBe("on");
+      await waitUntil(
+        async () => `${pods()}|${cluster.kubectlActionsField(clusters, name, condition)}`,
+        (facts) => facts === "|Hibernated",
+        5 * 60_000,
+      );
+      expect(volumes()).toBe(volumesBefore);
+      await cluster.clearNotifications(frame);
+
+      // The drawer shows the state from the condition, and the row of the state wakes the cluster.
+      await frame.locator(".TableRow", { hasText: name }).locator(".TableCell", { hasText: name }).first().click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const state = drawer.locator('[data-testid="cnpg-hibernation-state"]');
+
+      await state.waitFor({ state: "visible", timeout: 60_000 });
+      await waitUntil(
+        async () => state.innerText(),
+        (words) => words === "Hibernated: no pod runs, every volume is kept",
+        60_000,
+      );
+      await cluster.captureScreenshot(frame, "cluster-drawer-hibernated-dark");
+      await drawer.locator('[data-testid="cnpg-hibernation-resume"]').click();
+      await resume.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await resume.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: annotation cnpg.io/hibernation on -> off`,
+      ]);
+      expect(await resume.locator('[data-testid="cnpg-action-typed-name"]').count()).toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Resume of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} requested`);
+      expect(cluster.kubectlActionsField(clusters, name, annotation)).toBe("off");
+      await waitUntil(
+        async () =>
+          [
+            cluster.kubectlActionsField(clusters, name, "{.status.phase}"),
+            cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}"),
+            cluster.kubectlActionsField(clusters, name, condition),
+          ].join("|"),
+        (facts) => facts === "Cluster in healthy state|2|",
+        8 * 60_000,
+      );
+      expect(volumes()).toBe(volumesBefore);
+
+      await cluster.clearNotifications(frame);
+      await cluster.closeDetails(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);
