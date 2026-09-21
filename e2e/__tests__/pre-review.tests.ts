@@ -308,6 +308,18 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await shot(`${theme}-action-backup-now`);
       await cluster.cancelDialog(frame);
 
+      // SPEC-0022: the candidates, with OK disabled until the name is typed, then with the name typed.
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-switchover-menu-item"]').first().click();
+
+      const switchover = frame.locator('[data-testid="cnpg-switchover-dialog"]');
+
+      await switchover.waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-switchover`);
+      await switchover.locator('[data-testid="cnpg-action-typed-name"]').fill(cluster.E2E_ACTIONS_CLUSTER);
+      await shot(`${theme}-action-switchover-typed`);
+      await cluster.cancelDialog(frame);
+
       // SPEC-0021: the two dialogs of a schedule that is not suspended.
       await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
       await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_SCHEDULE);
@@ -465,7 +477,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
   );
 
   it(
-    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020, SPEC-0021)",
+    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020 to SPEC-0022)",
     async () => {
       const backups = () =>
         cluster.kubectlE2E("get", "backups.postgresql.cnpg.io", "--all-namespaces", "-o", "name").stdout;
@@ -477,8 +489,17 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           "-o",
           'jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}={.spec.suspend}{"\n"}{end}',
         ).stdout;
+      const primaries = () =>
+        cluster.kubectlE2E(
+          "get",
+          "clusters.postgresql.cnpg.io",
+          "--all-namespaces",
+          "-o",
+          'jsonpath={range .items[*]}{.metadata.namespace}/{.metadata.name}={.status.targetPrimary}{"\n"}{end}',
+        ).stdout;
       const before = backups();
       const suspendedBefore = suspensions();
+      const primariesBefore = primaries();
 
       await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
 
@@ -542,6 +563,61 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         }
       });
 
+      await record(
+        "A switchover is refused, with the reason, where there is nothing to promote (SPEC-0022)",
+        async () => {
+          await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+
+          for (const [name, expected] of [
+            ["e2e-single", "There is no standby to promote"],
+            ["e2e-hibernated", "hibernated"],
+          ]) {
+            await cluster.openRowMenu(frame, name);
+
+            const item = frame.locator('.Menu [data-testid="cnpg-cluster-switchover-menu-item"]').first();
+
+            await item.waitFor({ state: "visible", timeout: 60_000 });
+
+            const title = (await item.getAttribute("title")) ?? "";
+            const classes = (await item.getAttribute("class")) ?? "";
+
+            await cluster.closeRowMenu(frame);
+            if (!classes.includes("disabled")) throw new Error(`"Switchover" of ${name} should be refused`);
+            if (!title.includes(expected))
+              throw new Error(`the reason of ${name} should say "${expected}", got "${title}"`);
+          }
+        },
+      );
+
+      await record(
+        "The dialog of a switchover keeps OK disabled until the name of the cluster is typed (W5)",
+        async () => {
+          await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+          try {
+            await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+            await frame.locator('.Menu [data-testid="cnpg-cluster-switchover-menu-item"]').first().click();
+
+            const dialog = frame.locator('[data-testid="cnpg-switchover-dialog"]');
+
+            await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+            const ok = frame.locator('[data-testid="confirm"]');
+            const before = await ok.isDisabled();
+            const eligible = await dialog.locator('[data-eligible="true"] input[type="radio"]:checked').count();
+            const writes = await dialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts();
+
+            await cluster.cancelDialog(frame);
+            if (!before) throw new Error("OK is enabled before the name is typed");
+            if (eligible !== 1) throw new Error(`one eligible standby should be proposed, found ${eligible}`);
+            if (writes.length !== 1 || !writes[0].includes("(status): targetPrimary ")) {
+              throw new Error(`unexpected writes ${JSON.stringify(writes)}`);
+            }
+          } finally {
+            await cluster.selectNamespace(frame);
+          }
+        },
+      );
+
       await record("A schedule offers exactly one of Suspend and Resume, by what it declares (SPEC-0021)", async () => {
         await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
 
@@ -593,6 +669,12 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         if (after !== before) throw new Error(`the backups changed during the pass: "${before}" then "${after}"`);
         if (suspendedAfter !== suspendedBefore) {
           throw new Error(`the schedules changed during the pass: "${suspendedBefore}" then "${suspendedAfter}"`);
+        }
+
+        const primariesAfter = primaries();
+
+        if (primariesAfter !== primariesBefore) {
+          throw new Error(`a target primary changed during the pass: "${primariesBefore}" then "${primariesAfter}"`);
         }
       });
     },

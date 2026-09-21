@@ -1,6 +1,6 @@
 # SPEC-0022: Switchover, with the candidates in front of the user
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -143,3 +143,34 @@ labels, which the upstream tooling does not do.
 - Approved on 2026-09-20 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M6 at the
   milestone review.
+- Implemented on 2026-09-21.
+- `switchoverPatch` is not in the pure module: the body is `switchoverBody`
+  of the status subresource module of SPEC-0020 (W7), which is the only place
+  allowed to express it and where its unit cases already are (six fractional
+  digits, UTC, no conditions, resource version).
+- W6 became one function, `writeWithConflictRetry` in `write-actions.ts`, with
+  its own unit cases: it sends, and on `409` reads the object again, runs the
+  guard again and compares the lines with the ones the user confirmed. It is
+  what SPEC-0023 and SPEC-0024 use too. The line of this write quotes the
+  current primary and the phase, so a status the operator rewrote without
+  changing either is retried, and a primary that moved reopens the dialog.
+- The guard counts the candidates only once the pod of the primary is in the
+  host's pod store: the store's own `isLoaded` says nothing about one
+  namespace, and the list of the clusters does not load the pods by itself,
+  so the entry asks for them. Until then the entry is offered and the dialog,
+  which loads the pods before it opens, decides on facts.
+- The dialog opens after one read of the primary (bounded by the five second
+  timeout of the pod proxy client), so the proposed standby is the one with
+  the least lag from the first frame; afterwards the user's choice is never
+  moved by a refresh.
+- The shared dialog gained `onClose`, called once whether the dialog is
+  confirmed or cancelled: it is where the five second refresh stops.
+- The candidates are a plain table with one native radio per row: the host's
+  `RadioGroup` takes its radios as direct children and cannot be laid out as
+  the rows of a table.
+- "Promote" is a column of the Instances table of the drawer, empty on the row
+  of the primary. It runs the guard of the action, the eligibility of its own
+  row and W3, at render and again on the click.
+- The API server defaults `.spec.switchoverDelay` to 3600, so the note always
+  quotes a number on a real cluster; the wording without it is for an object
+  that has none.
