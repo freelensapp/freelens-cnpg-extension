@@ -32,6 +32,8 @@ import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/sc
 import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscription-details-v1";
 import { CnpgIcon } from "./icons";
 import { ClusterBackupNowMenuItem } from "./menus/cluster-backup-now-menu-item";
+import { ClusterFencingMenuItem } from "./menus/cluster-fencing-menu-item";
+import { ClusterHibernationMenuItem } from "./menus/cluster-hibernation-menu-item";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
 import { ClusterReloadMenuItem, ClusterRestartMenuItem } from "./menus/cluster-restart-menu-item";
@@ -327,6 +329,23 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterReloadMenuItem {...props} />,
+      },
+    },
+    // SPEC-0024: one of "Fence all instances" and "Lift all fences", then one of "Hibernate" and "Resume".
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterFencingMenuItem {...props} extension={this} />,
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => (
+          <ClusterHibernationMenuItem {...props} extension={this} />
+        ),
       },
     },
     // SPEC-0021: exactly one of Suspend and Resume, then the backup with the settings of the schedule.

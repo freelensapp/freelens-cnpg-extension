@@ -84,3 +84,8 @@
     }
   }
 }
+
+// SPEC-0024: a fencing annotation that does not parse fences nobody, and says so.
+.fencingError {
+  color: var(--colorError);
+}

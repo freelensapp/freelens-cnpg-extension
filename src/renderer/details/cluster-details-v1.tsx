@@ -29,11 +29,15 @@ import {
 } from "../components/cluster-health";
 import { withErrorPage } from "../components/error-page";
 import { quorumFacts } from "../components/failover-quorum";
+import { FENCED_INSTANCES_ANNOTATION, parseFenced, UNPARSEABLE_FENCING } from "../components/fencing";
+import { hibernationState, hibernationWords } from "../components/hibernation";
 import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
 import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
+import { FencingButton } from "../menus/cluster-fencing-menu-item";
+import { hibernationFacts, ResumeButton } from "../menus/cluster-hibernation-menu-item";
 import { RestartInstanceButton } from "../menus/cluster-restart-menu-item";
 import { PromoteButton } from "../menus/cluster-switchover-menu-item";
 import { PsqlButton } from "../menus/open-psql";
@@ -167,6 +171,8 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const certificates = certificateFacts(object);
     const fenced = Cluster.getFencedInstances(object);
     const hibernated = Cluster.getHibernation(object);
+    const hibernation = hibernationState(hibernationFacts(object));
+    const fencedSet = parseFenced(object.metadata?.annotations?.[FENCED_INSTANCES_ANNOTATION]);
     const conditions = status?.conditions ?? [];
     const declared = Cluster.getInstances(object);
     const ready = Cluster.getReadyInstances(object);
@@ -299,11 +305,22 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerItem name="Phase" hidden={!status?.phase}>
           <WithTooltip tooltip={status?.phaseReason}>{status?.phase}</WithTooltip>
         </DrawerItem>
-        <DrawerItem name="Hibernation" hidden={!hibernated}>
-          On
+        {/* SPEC-0024: the state of the hibernation from the condition, never the bare annotation, with the way back next to it. */}
+        <DrawerItem name="Hibernation" hidden={hibernation.kind === "off"}>
+          <span data-testid="cnpg-hibernation-state">{hibernationWords(hibernation)}</span>{" "}
+          {hibernated ? <ResumeButton cluster={object} extension={props.extension} /> : null}
         </DrawerItem>
-        <DrawerItem name="Fenced instances" hidden={fenced.length === 0}>
-          <WithTooltip>{fenced.join(", ")}</WithTooltip>
+        <DrawerItem name="Fenced instances" hidden={fencedSet.kind === "none"}>
+          {fencedSet.kind === "unparseable" ? (
+            <span className={styles.fencingError} data-testid="cnpg-fenced-unparseable">
+              {UNPARSEABLE_FENCING}
+            </span>
+          ) : (
+            <span data-testid="cnpg-fenced-instances">
+              {fencedSet.kind === "all" ? `All of them (${fenced.join(", ")})` : fenced.join(", ")}
+            </span>
+          )}{" "}
+          <FencingButton cluster={object} instanceName="*" extension={props.extension} />
         </DrawerItem>
         {conditions.length > 0 ? (
           <Table scrollable={false} sortSyncWithUrl={false} className={styles.conditions}>
@@ -380,6 +397,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
               <TableCell className={styles.psql}>Logs</TableCell>
               <TableCell className={styles.psql}>Promote</TableCell>
               <TableCell className={styles.psql}>Restart</TableCell>
+              <TableCell className={styles.psql}>Fence</TableCell>
             </TableHead>
             {instances.map((instance) => {
               const node = nodeOf(instance);
@@ -441,6 +459,9 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                   </TableCell>
                   <TableCell className={styles.psql}>
                     <RestartInstanceButton cluster={object} instanceName={instance.name} extension={props.extension} />
+                  </TableCell>
+                  <TableCell className={styles.psql}>
+                    <FencingButton cluster={object} instanceName={instance.name} extension={props.extension} />
                   </TableCell>
                 </TableRow>
               );

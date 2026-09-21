@@ -25,5 +25,6 @@ declare const classNames: {
   readonly message: "message";
   readonly capabilities: "capabilities";
   readonly psql: "psql";
+  readonly fencingError: "fencingError";
 };
 export = classNames;
