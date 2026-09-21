@@ -34,6 +34,7 @@ import { CnpgIcon } from "./icons";
 import { ClusterBackupNowMenuItem } from "./menus/cluster-backup-now-menu-item";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
+import { ClusterReloadMenuItem, ClusterRestartMenuItem } from "./menus/cluster-restart-menu-item";
 import { ClusterSwitchoverMenuItem } from "./menus/cluster-switchover-menu-item";
 import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
@@ -312,6 +313,20 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         MenuItem: (props: { object: any; toolbar?: boolean }) => (
           <ClusterSwitchoverMenuItem {...props} extension={this} />
         ),
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterRestartMenuItem {...props} extension={this} />,
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterReloadMenuItem {...props} />,
       },
     },
     // SPEC-0021: exactly one of Suspend and Resume, then the backup with the settings of the schedule.

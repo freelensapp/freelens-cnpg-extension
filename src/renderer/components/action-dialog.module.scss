@@ -189,3 +189,23 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
   display: block;
   font-size: 0.9em;
 }
+
+// The plan of a rollout (SPEC-0023): the order is what the user confirms, so
+// the numbers are declared here as they are for the writes.
+.plan {
+  margin: 0;
+  padding-left: calc($unit * 2.5);
+  list-style: decimal outside;
+
+  li + li {
+    margin-top: calc($unit / 2);
+  }
+
+  li[data-kind="skipped"] {
+    color: $ink-secondary;
+  }
+
+  li[data-kind="primary"] {
+    font-weight: 500;
+  }
+}

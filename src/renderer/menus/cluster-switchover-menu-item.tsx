@@ -33,15 +33,11 @@ import { failureSentence, firstRefusal, rfc3339Micro, writeWithConflictRetry } f
 import { timelineUrl } from "../navigation";
 import { ActionIcon } from "./action-icon";
 import { ActionMenuItem } from "./action-menu-item";
+import { instancePods, liveCluster, loadPods, podsKnown } from "./cluster-live";
 
 import type { AccessQuestion } from "../components/access-review";
 import type { ActionDialogModel } from "../components/action-dialog";
-import type {
-  InstancePodFacts,
-  PrimaryReplicationFacts,
-  SwitchoverCandidate,
-  SwitchoverClusterFacts,
-} from "../components/switchover";
+import type { PrimaryReplicationFacts, SwitchoverCandidate, SwitchoverClusterFacts } from "../components/switchover";
 import type { ActionGuard } from "../components/write-actions";
 
 const { observer } = MobxReact;
@@ -74,12 +70,6 @@ export function switchoverClusterFacts(object: Cluster): SwitchoverClusterFacts 
   };
 }
 
-function liveCluster(object: Cluster): Cluster {
-  const store = maybe(() => Cluster.getStore<Cluster>());
-  const selfLink = object.metadata?.selfLink;
-  return (selfLink ? store?.getByPath(selfLink) : undefined) ?? object;
-}
-
 function access(object: Cluster): AccessQuestion[] {
   return [
     {
@@ -92,32 +82,8 @@ function access(object: Cluster): AccessQuestion[] {
   ];
 }
 
-interface PodShape {
-  metadata?: { name?: string; namespace?: string; labels?: Record<string, string | undefined> };
-  spec?: { nodeName?: string };
-  status?: { conditions?: Array<{ type?: string; status?: string }> };
-}
-
-/** The pods of the namespace, read as plain data: eligibility asks for the labels, the node and the Ready condition. */
-function instancePods(namespace: string): InstancePodFacts[] {
-  return ((maybe(() => podsStore.items) ?? []) as PodShape[])
-    .filter((pod) => pod.metadata?.namespace === namespace)
-    .map((pod) => ({
-      name: pod.metadata?.name ?? "",
-      labels: pod.metadata?.labels,
-      nodeName: pod.spec?.nodeName,
-      ready:
-        pod.status?.conditions?.some((condition) => condition.type === "Ready" && condition.status === "True") ?? false,
-    }));
-}
-
-/**
- * The pods of this cluster are known once the pod of its primary is in the
- * store: the store's own `isLoaded` says nothing about this namespace.
- */
-function podsKnown(cluster: SwitchoverClusterFacts): boolean {
-  const primary = cluster.status?.currentPrimary;
-  return Boolean(primary && maybe(() => podsStore.getByName(primary, cluster.namespace)));
+function known(cluster: SwitchoverClusterFacts): boolean {
+  return podsKnown(cluster.namespace, cluster.status?.currentPrimary);
 }
 
 function candidatesOf(
@@ -130,7 +96,7 @@ function candidatesOf(
 /** The guard of the entry and of the row button: the candidates count only once the pods are known. */
 export function switchoverGuard(object: Cluster): ActionGuard {
   const cluster = switchoverClusterFacts(object);
-  return canSwitchover(cluster, podsKnown(cluster) ? candidatesOf(cluster, undefined) : undefined);
+  return canSwitchover(cluster, known(cluster) ? candidatesOf(cluster, undefined) : undefined);
 }
 
 const proxy = createPodProxyClient();
@@ -246,9 +212,7 @@ export async function openSwitchover(
 
   // The pods first, so eligibility is decided on facts; then one read of the
   // primary, so the proposed standby is the one with the least lag.
-  await maybe(() =>
-    podsStore.loadAll({ namespaces: [opened.namespace], merge: true, onLoadFailure: () => undefined }),
-  )?.catch(() => undefined);
+  await loadPods(opened.namespace);
 
   const state: SwitchoverModel = model ?? Mobx.observable({ target: undefined, replication: undefined });
   const first = await readReplication(opened);
@@ -402,7 +366,7 @@ export interface PromoteButtonProps {
 export const PromoteButton = observer(({ cluster, instanceName, extension }: PromoteButtonProps) => {
   const live = liveCluster(cluster);
   const facts = switchoverClusterFacts(live);
-  const row = podsKnown(facts)
+  const row = known(facts)
     ? candidatesOf(facts, undefined).find((candidate) => candidate.name === instanceName)
     : undefined;
   const accessVerdict = useAccessGuard(access(cluster));
