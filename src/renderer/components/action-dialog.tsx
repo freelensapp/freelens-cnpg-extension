@@ -71,6 +71,8 @@ export interface ActionDialogParams {
   changedNotice?: string;
   /** Performs the writes and reports the outcome. Owns its own failures (W9). */
   run: () => Promise<void>;
+  /** Called once when the dialog goes away, confirmed or not: where an action stops what it started on open. */
+  onClose?: () => void;
 }
 
 interface MessageProps {
@@ -183,14 +185,21 @@ export function openActionDialog(params: ActionDialogParams, model?: ActionDialo
       message: <ActionDialogMessage params={params} model={state} />,
       ok: async () => {
         stopSync();
-        // The disabled OK button is what stops the click; this is the same
-        // check on the write path itself, so nothing is ever sent unconfirmed.
-        if (!typedNameMatches(state.typed, params.facts().typedName) || isBlocked(params)) {
-          return;
+        try {
+          // The disabled OK button is what stops the click; this is the same
+          // check on the write path itself, so nothing is ever sent unconfirmed.
+          if (!typedNameMatches(state.typed, params.facts().typedName) || isBlocked(params)) {
+            return;
+          }
+          await params.run();
+        } finally {
+          params.onClose?.();
         }
-        await params.run();
       },
-      cancel: () => stopSync(),
+      cancel: () => {
+        stopSync();
+        params.onClose?.();
+      },
     });
   };
 

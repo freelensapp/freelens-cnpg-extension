@@ -6,6 +6,7 @@
 import { describe, expect, it } from "vitest";
 import {
   apiFailureFacts,
+  CONFLICT_ATTEMPTS,
   compactTimestamp,
   disabledGuard,
   enabledGuard,
@@ -20,6 +21,7 @@ import {
   sameWrites,
   subjectOf,
   typedNameMatches,
+  writeWithConflictRetry,
 } from "./write-actions";
 
 import type { ActionWrite, AttemptedWrite } from "./write-actions";
@@ -196,5 +198,124 @@ describe("dialog helpers", () => {
     expect(typedNameMatches("E2E-main", "e2e-main")).toBe(false);
     expect(typedNameMatches("", "e2e-main")).toBe(false);
     expect(typedNameMatches("", undefined)).toBe(true);
+  });
+});
+
+describe("writeWithConflictRetry", () => {
+  const confirmed = [{ verb: "patch" as const, text: "patch Cluster db/pg (status): targetPrimary pg-1 -> pg-2" }];
+  const conflict = { code: 409, reason: "Conflict", message: "the object has been modified" };
+
+  it("writes once when nothing is in the way", async () => {
+    let sent = 0;
+    const outcome = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        sent += 1;
+      },
+      refresh: async () => ({ guard: enabledGuard, writes: [...confirmed] }),
+    });
+
+    expect(outcome).toEqual({ kind: "written" });
+    expect(sent).toBe(1);
+  });
+
+  it("retries a conflict while the lines are the ones the user confirmed", async () => {
+    let sent = 0;
+    let refreshed = 0;
+    const outcome = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        sent += 1;
+        if (sent < 3) throw conflict;
+      },
+      refresh: async () => {
+        refreshed += 1;
+        return { guard: enabledGuard, writes: [...confirmed] };
+      },
+    });
+
+    expect(outcome).toEqual({ kind: "written" });
+    expect(sent).toBe(3);
+    expect(refreshed).toBe(2);
+  });
+
+  it("gives up after the attempts of W6 and reports the conflict", async () => {
+    let sent = 0;
+    const outcome = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        sent += 1;
+        throw conflict;
+      },
+      refresh: async () => ({ guard: enabledGuard, writes: [...confirmed] }),
+    });
+
+    expect(sent).toBe(CONFLICT_ATTEMPTS);
+    expect(outcome).toMatchObject({ kind: "failed", failure: { code: 409 } });
+  });
+
+  it("never sends a write the user did not read", async () => {
+    let sent = 0;
+    const other = [{ verb: "patch" as const, text: "patch Cluster db/pg (status): targetPrimary pg-3 -> pg-2" }];
+    const outcome = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        sent += 1;
+        throw conflict;
+      },
+      refresh: async () => ({ guard: enabledGuard, writes: other }),
+    });
+
+    expect(outcome).toEqual({ kind: "changed", writes: other });
+    expect(sent).toBe(1);
+  });
+
+  it("stops when the guard refuses the object as it is now", async () => {
+    const outcome = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        throw conflict;
+      },
+      refresh: async () => ({ guard: disabledGuard("The cluster is hibernated"), writes: [...confirmed] }),
+    });
+
+    expect(outcome).toEqual({ kind: "refused", reason: "The cluster is hibernated" });
+  });
+
+  it("retries nothing but a conflict, and reports a refresh that fails", async () => {
+    let sent = 0;
+    const forbidden = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        sent += 1;
+        throw { code: 403, message: "forbidden" };
+      },
+      refresh: async () => ({ guard: enabledGuard, writes: [...confirmed] }),
+    });
+
+    expect(sent).toBe(1);
+    expect(forbidden).toMatchObject({ kind: "failed", failure: { code: 403 } });
+
+    const exists = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        throw { code: 409, reason: "AlreadyExists" };
+      },
+      refresh: async () => ({ guard: enabledGuard, writes: [...confirmed] }),
+    });
+
+    expect(exists).toMatchObject({ kind: "failed", failure: { reason: "AlreadyExists" } });
+
+    const gone = await writeWithConflictRetry({
+      confirmed,
+      send: async () => {
+        throw conflict;
+      },
+      refresh: async () => {
+        throw { code: 404, message: "not found" };
+      },
+    });
+
+    expect(gone).toMatchObject({ kind: "failed", failure: { code: 404 } });
   });
 });

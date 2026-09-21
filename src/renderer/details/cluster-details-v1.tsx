@@ -34,6 +34,7 @@ import { objectExists } from "../components/object-existence";
 import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
+import { PromoteButton } from "../menus/cluster-switchover-menu-item";
 import { PsqlButton } from "../menus/open-psql";
 import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
@@ -376,6 +377,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
               <TableCell className={styles.timeline}>Timeline</TableCell>
               <TableCell className={styles.psql}>psql</TableCell>
               <TableCell className={styles.psql}>Logs</TableCell>
+              <TableCell className={styles.psql}>Promote</TableCell>
             </TableHead>
             {instances.map((instance) => {
               const node = nodeOf(instance);
@@ -428,6 +430,12 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                     >
                       <Icon small material="subject" tooltip={`The logs of ${instance.name}, made readable`} />
                     </MaybeLink>
+                  </TableCell>
+                  <TableCell className={styles.psql}>
+                    {/* W1: an action about one instance lives in the row of that instance. The primary has nothing to be promoted to. */}
+                    {instance.name === primary ? null : (
+                      <PromoteButton cluster={object} instanceName={instance.name} extension={props.extension} />
+                    )}
                   </TableCell>
                 </TableRow>
               );

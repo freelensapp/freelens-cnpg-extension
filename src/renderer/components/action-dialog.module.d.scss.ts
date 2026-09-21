@@ -18,5 +18,10 @@ declare const classNames: {
   readonly hint: "hint";
   readonly error: "error";
   readonly list: "list";
+  readonly candidates: "candidates";
+  readonly candidate: "candidate";
+  readonly chosen: "chosen";
+  readonly ineligible: "ineligible";
+  readonly reason: "reason";
 };
 export = classNames;

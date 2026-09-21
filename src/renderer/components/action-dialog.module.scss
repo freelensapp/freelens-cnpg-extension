@@ -139,3 +139,53 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
   margin: 0;
   padding-left: calc($unit * 2.5);
 }
+
+// The candidates of a switchover (SPEC-0022): a small table with a radio per
+// row. A row that cannot be promoted stays visible, dimmed, with its reason.
+.candidates {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95em;
+
+  th {
+    padding: calc($unit / 2) $unit;
+    color: $ink-secondary;
+    font-size: 0.85em;
+    font-weight: 600;
+    text-align: left;
+  }
+
+  td {
+    padding: calc($unit / 2) $unit;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    vertical-align: top;
+  }
+
+  input[type="radio"] {
+    margin: 0;
+    accent-color: var(--primary);
+    cursor: pointer;
+  }
+}
+
+.candidate {
+  cursor: pointer;
+
+  &.chosen {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  &.ineligible {
+    color: $ink-secondary;
+    cursor: default;
+
+    input[type="radio"] {
+      cursor: not-allowed;
+    }
+  }
+}
+
+.reason {
+  display: block;
+  font-size: 0.9em;
+}

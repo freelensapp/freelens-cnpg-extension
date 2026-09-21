@@ -235,3 +235,53 @@ export function subjectOf(kind: string, namespace: string, name: string): string
 export function typedNameMatches(typed: string, expected: string | undefined): boolean {
   return expected === undefined || typed.trim() === expected;
 }
+
+/** How a write that may meet a conflict ended (W6). */
+export type ConflictOutcome =
+  | { kind: "written" }
+  /** The object changed and the write the user confirmed is not the write that would be sent anymore. */
+  | { kind: "changed"; writes: ActionWrite[] }
+  /** The object changed and the action makes no sense on it anymore. */
+  | { kind: "refused"; reason: string }
+  | { kind: "failed"; failure: ApiFailureFacts };
+
+export interface ConflictRetryOptions {
+  /** The lines the user read and confirmed. */
+  confirmed: readonly ActionWrite[];
+  /** Sends the write, computed from the object as it is known right now. */
+  send: () => Promise<void>;
+  /** Reads the object again, runs the guard again and rebuilds the lines. */
+  refresh: () => Promise<{ guard: ActionGuard; writes: ActionWrite[] }>;
+  attempts?: number;
+}
+
+/**
+ * W6 as one function: on `409` the object is read again; the write is retried
+ * only while the guard still allows it and the lines are the ones the user
+ * confirmed. Anything else comes back to the caller, which reopens the dialog
+ * or reports the failure. Nothing else is ever retried.
+ */
+export async function writeWithConflictRetry({
+  confirmed,
+  send,
+  refresh,
+  attempts = CONFLICT_ATTEMPTS,
+}: ConflictRetryOptions): Promise<ConflictOutcome> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await send();
+      return { kind: "written" };
+    } catch (error) {
+      const failure = apiFailureFacts(error);
+      if (!isConflict(failure) || attempt >= attempts) return { kind: "failed", failure };
+    }
+    let fresh: { guard: ActionGuard; writes: ActionWrite[] };
+    try {
+      fresh = await refresh();
+    } catch (error) {
+      return { kind: "failed", failure: apiFailureFacts(error) };
+    }
+    if (!fresh.guard.enabled) return { kind: "refused", reason: fresh.guard.reason };
+    if (!sameWrites(confirmed, fresh.writes)) return { kind: "changed", writes: fresh.writes };
+  }
+}
