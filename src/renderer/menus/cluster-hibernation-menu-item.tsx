@@ -180,7 +180,7 @@ const Consequences = observer(({ object }: ConsequencesProps) => {
   const schedules = maybe(() => ScheduledBackup.getStore<ScheduledBackup>());
 
   return (
-    <div data-testid="cnpg-hibernation-consequences">
+    <div className={styles.consequences} data-testid="cnpg-hibernation-consequences">
       {lists.map((list) => (
         <div key={list.id} className={styles.field} data-testid={`cnpg-hibernation-${list.id}`}>
           <span className={styles.label}>{list.heading}</span>

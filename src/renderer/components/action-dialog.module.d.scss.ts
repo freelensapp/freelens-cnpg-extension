@@ -24,5 +24,6 @@ declare const classNames: {
   readonly ineligible: "ineligible";
   readonly reason: "reason";
   readonly plan: "plan";
+  readonly consequences: "consequences";
 };
 export = classNames;

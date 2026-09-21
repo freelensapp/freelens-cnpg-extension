@@ -209,3 +209,15 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
     font-weight: 500;
   }
 }
+
+// The consequences of a hibernation (SPEC-0024): short lists under their own
+// headings, apart from each other so each heading reads as one.
+.consequences {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+
+  .label {
+    font-weight: 600;
+  }
+}
