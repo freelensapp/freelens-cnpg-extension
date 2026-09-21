@@ -1848,6 +1848,158 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "suspends and resumes a schedule, and requests a backup with its settings (SPEC-0021)",
+    async () => {
+      const schedules = "scheduledbackups.postgresql.cnpg.io";
+      const backups = "backups.postgresql.cnpg.io";
+      const schedule = cluster.E2E_ACTIONS_SCHEDULE;
+      const subject = `ScheduledBackup ${cluster.E2E_ACTIONS_NAMESPACE}/${schedule}`;
+
+      // Whatever an interrupted run left behind, the case starts from a schedule that is not suspended.
+      cluster.kubectlActions("patch", schedules, schedule, "--type", "merge", "--patch", '{"spec":{"suspend":false}}');
+
+      await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+
+      // Suspend: exactly one of the two entries, one patch, one click.
+      await cluster.openRowMenu(frame, schedule);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-suspend-menu-item"]').first().waitFor({
+        state: "visible",
+        timeout: 60_000,
+      });
+      expect(await frame.locator('.Menu [data-testid="cnpg-schedule-resume-menu-item"]').count()).toBe(0);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-suspend-menu-item"]').first().click();
+
+      const suspend = frame.locator('[data-testid="cnpg-schedule-suspend-dialog"]');
+
+      await suspend.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await suspend.locator('[data-testid="cnpg-action-subject"]').innerText()).toBe(subject);
+      expect(await suspend.locator('[data-testid="cnpg-action-context"]').innerText()).toContain(
+        cluster.E2E_KUBE_CONTEXT,
+      );
+      expect(await suspend.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch ScheduledBackup ${cluster.E2E_ACTIONS_NAMESPACE}/${schedule}: spec.suspend false -> true`,
+      ]);
+      await cluster.captureScreenshot(frame, "schedule-suspend-dialog-dark");
+      // W8: nothing is written until the user confirms.
+      expect(cluster.kubectlActionsField(schedules, schedule, "{.spec.suspend}")).toBe("false");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", "Suspend requested");
+      expect(cluster.kubectlActionsField(schedules, schedule, "{.spec.suspend}")).toBe("true");
+      await cluster.clearNotifications(frame);
+
+      // The entry has become Resume, and a suspended schedule can still be run by hand.
+      const lastScheduleTime = cluster.kubectlActionsField(schedules, schedule, "{.status.lastScheduleTime}");
+
+      await cluster.openRowMenu(frame, schedule);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-resume-menu-item"]').first().waitFor({
+        state: "visible",
+        timeout: 60_000,
+      });
+      expect(await frame.locator('.Menu [data-testid="cnpg-schedule-suspend-menu-item"]').count()).toBe(0);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-run-now-menu-item"]').first().click();
+
+      const runNow = frame.locator('[data-testid="cnpg-schedule-run-now-dialog"]');
+
+      await runNow.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await runNow.locator('[data-testid="cnpg-action-subject"]').innerText()).toBe(subject);
+
+      const writes = await runNow.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts();
+
+      expect(writes).toHaveLength(1);
+
+      const name = /^create Backup [^/]+\/(\S+):/.exec(writes[0])?.[1] ?? "";
+
+      expect(name).toMatch(new RegExp(`^${schedule}-manual-\\d{14}$`));
+      expect(writes[0]).toBe(
+        `create Backup ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: cluster e2e-actions, method plugin (barman-cloud.cloudnative-pg.io), label cnpg.io/cluster=e2e-actions, annotation cnpg-extension.freelens.app/scheduled-backup=${schedule}`,
+      );
+      expect(await runNow.innerText()).toContain("The schedule is suspended and stays suspended");
+      await cluster.captureScreenshot(frame, "schedule-run-now-dialog-dark");
+      expect(cluster.kubectlActions("get", backups, name).status).not.toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Backup ${name}`);
+
+      // W12: read back from the cluster. The labels of the operator are not there, the owner neither.
+      expect(cluster.kubectlActionsField(backups, name, "{.metadata.labels}")).toBe(
+        '{"cnpg.io/cluster":"e2e-actions"}',
+      );
+      expect(
+        cluster.kubectlActionsField(
+          backups,
+          name,
+          "{.metadata.annotations.cnpg-extension\\.freelens\\.app/scheduled-backup}",
+        ),
+      ).toBe(schedule);
+      expect(cluster.kubectlActionsField(backups, name, "{.metadata.ownerReferences}")).toBe("");
+      expect(cluster.kubectlActionsField(backups, name, "{.spec.method}")).toBe("plugin");
+      expect(cluster.kubectlActionsField(backups, name, "{.spec.pluginConfiguration.name}")).toBe(
+        "barman-cloud.cloudnative-pg.io",
+      );
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(backups, name, "{.status.phase}"),
+          (phase) => phase === "completed" || phase === "failed",
+          5 * 60_000,
+        ),
+      ).toBe("completed");
+      // It was not a run of the schedule: the schedule still says what it said, and is still suspended.
+      expect(cluster.kubectlActionsField(schedules, schedule, "{.status.lastScheduleTime}")).toBe(lastScheduleTime);
+      expect(cluster.kubectlActionsField(schedules, schedule, "{.spec.suspend}")).toBe("true");
+      await cluster.clearNotifications(frame);
+
+      // The drawer of the schedule shows it on the axis of the schedule, as requested by hand.
+      await frame
+        .locator(".TableRow", { hasText: schedule })
+        .locator(".TableCell", { hasText: schedule })
+        .first()
+        .click();
+      await frame
+        .locator(".Drawer.KubeObjectDetails", { hasText: "Backup template" })
+        .waitFor({ state: "visible", timeout: 60_000 });
+
+      const mark = frame
+        .locator('.Drawer.KubeObjectDetails [data-testid="cnpg-backup-history"] [data-manual="true"]')
+        .first();
+
+      await mark.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await mark.getAttribute("title")).toContain("requested by hand");
+      expect(
+        await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-backup-history-by-hand"]').innerText(),
+      ).toMatch(/^Requested by hand: \d+$/);
+      await mark.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "schedule-drawer-by-hand-dark");
+      await cluster.closeDetails(frame);
+
+      // Resume: the explicit false, and the next run is still in the future, so nothing is created.
+      await cluster.openRowMenu(frame, schedule);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-resume-menu-item"]').first().click();
+
+      const resume = frame.locator('[data-testid="cnpg-schedule-resume-dialog"]');
+
+      await resume.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await resume.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch ScheduledBackup ${cluster.E2E_ACTIONS_NAMESPACE}/${schedule}: spec.suspend true -> false`,
+      ]);
+      await cluster.captureScreenshot(frame, "schedule-resume-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", "Resume requested");
+      expect(cluster.kubectlActionsField(schedules, schedule, "{.spec.suspend}")).toBe("false");
+
+      await cluster.openRowMenu(frame, schedule);
+      await frame.locator('.Menu [data-testid="cnpg-schedule-suspend-menu-item"]').first().waitFor({
+        state: "visible",
+        timeout: 60_000,
+      });
+      await cluster.closeRowMenu(frame);
+
+      await cluster.clearNotifications(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);

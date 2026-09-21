@@ -86,6 +86,13 @@ list, which write only after a dialog has listed the exact API calls:
   never preselected), the instance it will be taken from and what is ahead of
   it in the queue. An action that makes no sense on a cluster, or that your
   account may not perform, is shown disabled with the reason.
+- **Suspend, Resume and Run now** on a scheduled backup. The dialog of a
+  resume says whether the operator will take one backup right away (it does
+  when the next run is already in the past) or when the next one is due. "Run
+  now" requests an ordinary backup with the settings of the schedule: it is
+  not a run of the schedule, it never delays or replaces one, and the history
+  of the schedule shows it with a hollow mark, outside the figures of the
+  schedule.
 
 ### What the psql session is
 

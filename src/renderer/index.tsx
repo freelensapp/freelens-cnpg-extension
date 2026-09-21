@@ -36,6 +36,8 @@ import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
 import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
+import { ScheduledBackupRunNowMenuItem } from "./menus/scheduled-backup-run-now-menu-item";
+import { ScheduledBackupSuspendMenuItem } from "./menus/scheduled-backup-suspend-menu-item";
 import {
   BACKUPS_GROUP_ID,
   BACKUPS_PAGE_ID,
@@ -300,6 +302,21 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterBackupNowMenuItem {...props} />,
+      },
+    },
+    // SPEC-0021: exactly one of Suspend and Resume, then the backup with the settings of the schedule.
+    {
+      kind: ScheduledBackupV1.kind,
+      apiVersions: ScheduledBackupV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ScheduledBackupSuspendMenuItem {...props} />,
+      },
+    },
+    {
+      kind: ScheduledBackupV1.kind,
+      apiVersions: ScheduledBackupV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ScheduledBackupRunNowMenuItem {...props} />,
       },
     },
   ];

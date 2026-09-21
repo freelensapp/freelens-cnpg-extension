@@ -150,6 +150,8 @@ export function kubectlE2E(...args: string[]): { status: number; stdout: string;
 /** The namespace of the cluster the write cases run against (SPEC-0020), apart from the read-only fixtures. */
 export const E2E_ACTIONS_NAMESPACE = process.env.E2E_ACTIONS_NAMESPACE || "cnpg-e2e-actions";
 export const E2E_ACTIONS_CLUSTER = "e2e-actions";
+/** The weekly schedule of that cluster: it never fires during a run (SPEC-0021). */
+export const E2E_ACTIONS_SCHEDULE = "e2e-actions-weekly";
 
 /** `kubectl` in the namespace of the write cases: the readback half of every write assert. */
 export function kubectlActions(...args: string[]): { status: number; stdout: string; stderr: string } {

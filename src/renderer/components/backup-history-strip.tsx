@@ -38,12 +38,14 @@ const STATE_CLASS: Record<HistoryMark["state"], string> = {
 
 function markTitle(mark: HistoryMark): string {
   const when = mark.time.toISOString();
-  if (mark.names.length === 1) return `${mark.names[0]}: ${mark.state}, ${when}`;
-  return `${mark.names.length} backups (${mark.names.join(", ")}): latest ${when}; opens the list`;
+  const byHand = mark.manual ? ", requested by hand: not a run of the schedule" : "";
+  if (mark.names.length === 1) return `${mark.names[0]}: ${mark.state}, ${when}${byHand}`;
+  return `${mark.names.length} backups (${mark.names.join(", ")}): latest ${when}${byHand}; opens the list`;
 }
 
 export function BackupHistoryStrip({ history, now, backupUrl, listUrl }: BackupHistoryStripProps) {
-  const { marks, recoverableFrom, lastSuccessful, longestGapMs, nextRun, windowDays, hasActiveSchedule } = history;
+  const { marks, recoverableFrom, lastSuccessful, longestGapMs, nextRun, windowDays, hasActiveSchedule, manualCount } =
+    history;
 
   return (
     <div className={styles.history} data-testid="cnpg-backup-history">
@@ -68,13 +70,14 @@ export function BackupHistoryStrip({ history, now, backupUrl, listUrl }: BackupH
             ) : null}
             {marks.map((mark) => (
               <MaybeLink
-                key={`${mark.position}-${mark.names[0]}`}
+                key={`${mark.manual ? "manual" : "run"}-${mark.position}-${mark.names[0]}`}
                 to={mark.names.length === 1 ? (backupUrl(mark.names[0]) ?? listUrl) : listUrl}
-                className={`${styles.mark} ${STATE_CLASS[mark.state]}`}
+                className={`${styles.mark} ${STATE_CLASS[mark.state]}${mark.manual ? ` ${styles.manual}` : ""}`}
                 style={{ left: `${mark.position * 100}%` }}
                 title={markTitle(mark)}
                 aria-label={markTitle(mark)}
                 data-state={mark.state}
+                data-manual={mark.manual ? "true" : undefined}
                 onClick={(event) => event.stopPropagation()}
               >
                 {mark.names.length > 1 ? <span className={styles.count}>{mark.names.length}</span> : null}
@@ -108,6 +111,14 @@ export function BackupHistoryStrip({ history, now, backupUrl, listUrl }: BackupH
             title={`${Math.round(longestGapMs / 1000)} s without a successful backup, in the last ${windowDays} days`}
           >
             Longest gap: {humanizeDuration(longestGapMs)}
+          </span>
+        ) : null}
+        {manualCount > 0 ? (
+          <span
+            title="The hollow marks: backups requested with the settings of the schedule. The schedule did not run them, so they are not in its figures"
+            data-testid="cnpg-backup-history-by-hand"
+          >
+            Requested by hand: {manualCount}
           </span>
         ) : null}
         <span title={nextRun?.toISOString()} className={!nextRun && !hasActiveSchedule ? styles.warning : undefined}>

@@ -10,6 +10,7 @@ declare const classNames: {
   readonly running: "running";
   readonly pending: "pending";
   readonly unknown: "unknown";
+  readonly manual: "manual";
   readonly count: "count";
   readonly now: "now";
   readonly next: "next";
