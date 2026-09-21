@@ -2123,6 +2123,202 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "reloads a cluster and restarts one instance, each in its own way (SPEC-0023)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const name = cluster.E2E_ACTIONS_CLUSTER;
+      const settled = async () =>
+        waitUntil(
+          async () =>
+            [
+              cluster.kubectlActionsField(clusters, name, "{.status.phase}"),
+              cluster.kubectlActionsField(clusters, name, "{.status.currentPrimary}"),
+              cluster.kubectlActionsField(clusters, name, "{.status.targetPrimary}"),
+              cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}"),
+            ].join("|"),
+          (facts) => {
+            const [phase, current, target, ready] = facts.split("|");
+
+            return phase === "Cluster in healthy state" && current === target && ready === "2";
+          },
+          5 * 60_000,
+        );
+      const primary = (await settled()).split("|")[1];
+      const standby = primary === `${name}-1` ? `${name}-2` : `${name}-1`;
+      const started = new Date();
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+
+      // Reload: one annotation, one click, and the honest note.
+      await cluster.openRowMenu(frame, name);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-reload-menu-item"]').first().click();
+
+      const reload = frame.locator('[data-testid="cnpg-reload-dialog"]');
+
+      await reload.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await reload.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: annotation cnpg.io/reloadedAt = now (RFC 3339, six fractional digits)`,
+      ]);
+      expect(await reload.innerText()).toContain("Nothing reports the completion of a reload");
+      await cluster.captureScreenshot(frame, "reload-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Reload of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} requested`);
+
+      const reloadedAt = cluster.kubectlActionsField(clusters, name, "{.metadata.annotations.cnpg\\.io/reloadedAt}");
+
+      expect(reloadedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/);
+      expect(new Date(reloadedAt).getTime()).toBeGreaterThanOrEqual(started.getTime() - 1000);
+      await cluster.clearNotifications(frame);
+
+      // The standby, from its row: its pod is deleted and comes back with another UID.
+      await frame.locator(".TableRow", { hasText: name }).locator(".TableCell", { hasText: name }).first().click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const standbyUid = cluster.kubectlActionsField("pods", standby, "{.metadata.uid}");
+      const restartStandby = drawer.locator(`[data-testid="cnpg-instance-restart-${standby}"]`);
+
+      await restartStandby.waitFor({ state: "visible", timeout: 60_000 });
+      await waitUntil(
+        async () => restartStandby.getAttribute("aria-disabled"),
+        (disabled) => disabled === "false",
+        60_000,
+      );
+      await restartStandby.click();
+
+      const standbyDialog = frame.locator('[data-testid="cnpg-restart-standby-dialog"]');
+
+      await standbyDialog.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await standbyDialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `delete Pod ${cluster.E2E_ACTIONS_NAMESPACE}/${standby}`,
+      ]);
+      // One click: a standby interrupts nothing that writes (W5).
+      expect(await standbyDialog.locator('[data-testid="cnpg-action-typed-name"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "restart-standby-dialog-dark");
+      expect(cluster.kubectlActionsField("pods", standby, "{.metadata.uid}")).toBe(standbyUid);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Restart of the standby ${standby}`);
+      await waitUntil(
+        async () => cluster.kubectlActionsField("pods", standby, "{.metadata.uid}"),
+        (uid) => uid !== "" && uid !== standbyUid,
+        5 * 60_000,
+      );
+      expect((await settled()).split("|")[1]).toBe(primary);
+      await cluster.clearNotifications(frame);
+
+      // The primary, in place: the same pod, a PostgreSQL that started later.
+      const primaryUid = cluster.kubectlActionsField("pods", primary, "{.metadata.uid}");
+      const postmasterBefore = cluster.psqlActions(primary, "select pg_postmaster_start_time()");
+      const containerRestarts = "{.status.containerStatuses[?(@.name=='postgres')].restartCount}";
+      const restartsBefore = cluster.kubectlActionsField("pods", primary, containerRestarts);
+      const restartPrimary = drawer.locator(`[data-testid="cnpg-instance-restart-${primary}"]`);
+
+      expect(postmasterBefore).not.toBe("");
+      await waitUntil(
+        async () => restartPrimary.getAttribute("aria-disabled"),
+        (disabled) => disabled === "false",
+        3 * 60_000,
+      );
+      await restartPrimary.click();
+
+      const primaryDialog = frame.locator('[data-testid="cnpg-restart-primary-dialog"]');
+
+      await primaryDialog.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await primaryDialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name} (status): phase "Cluster in healthy state" -> "Primary instance is being restarted in-place", phaseReason "Requested by the user"`,
+      ]);
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await primaryDialog.locator('[data-testid="cnpg-action-typed-name"]').fill(name);
+      await waitUntil(
+        async () => frame.locator('[data-testid="confirm"]').isDisabled(),
+        (disabled) => !disabled,
+        30_000,
+      );
+      await cluster.captureScreenshot(frame, "restart-primary-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Restart in place of the primary ${primary}`);
+      await waitUntil(
+        async () => cluster.psqlActions(primary, "select pg_postmaster_start_time()"),
+        (value) => value !== "" && value !== postmasterBefore,
+        5 * 60_000,
+      );
+      await settled();
+      // In place: the same pod, the same container, a PostgreSQL that started later. The reason the instance
+      // manager writes ("Primary instance restarted in-place") is gone at the operator's next reconciliation.
+      expect(cluster.kubectlActionsField("pods", primary, "{.metadata.uid}")).toBe(primaryUid);
+      expect(cluster.kubectlActionsField("pods", primary, containerRestarts)).toBe(restartsBefore);
+      expect(cluster.kubectlActionsField(clusters, name, "{.status.currentPrimary}")).toBe(primary);
+
+      await cluster.clearNotifications(frame);
+      await cluster.closeDetails(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "restarts a whole cluster in the order its dialog listed (SPEC-0023)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const name = cluster.E2E_ACTIONS_CLUSTER;
+      const annotation = "{.metadata.annotations.kubectl\\.kubernetes\\.io/restartedAt}";
+      const primary = cluster.kubectlActionsField(clusters, name, "{.status.currentPrimary}");
+      const standby = primary === `${name}-1` ? `${name}-2` : `${name}-1`;
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await cluster.openRowMenu(frame, name);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-restart-menu-item"]').first().click();
+
+      const dialog = frame.locator('[data-testid="cnpg-restart-dialog"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      // The plan: the standby first, then the primary by the cluster's own method (the default: without a switchover).
+      expect(await dialog.locator('[data-testid="cnpg-restart-plan"] li').allInnerTexts()).toEqual([
+        `${standby} (standby): its pod is deleted and recreated on its volumes`,
+        `${primary} (primary): its pod is deleted and recreated without a switchover (primaryUpdateMethod: restart). Writes are down until it is back`,
+      ]);
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts()).toEqual([
+        `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: annotation kubectl.kubernetes.io/restartedAt = now (RFC 3339, to the second)`,
+      ]);
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await dialog.locator('[data-testid="cnpg-action-typed-name"]').fill(name);
+      await waitUntil(
+        async () => frame.locator('[data-testid="confirm"]').isDisabled(),
+        (disabled) => !disabled,
+        30_000,
+      );
+      await cluster.captureScreenshot(frame, "restart-cluster-dialog-dark");
+
+      const before = cluster.kubectlActionsField(clusters, name, annotation);
+
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Restart of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} requested`);
+
+      const requested = cluster.kubectlActionsField(clusters, name, annotation);
+
+      expect(requested).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/);
+      expect(requested).not.toBe(before);
+      // The operator's own completion: both pods carry the value, and the cluster is healthy again.
+      await waitUntil(
+        async () =>
+          [
+            cluster.kubectlActionsField("pods", `${name}-1`, annotation),
+            cluster.kubectlActionsField("pods", `${name}-2`, annotation),
+            cluster.kubectlActionsField(clusters, name, "{.status.phase}"),
+            cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}"),
+          ].join("|"),
+        (facts) => facts === `${requested}|${requested}|Cluster in healthy state|2`,
+        8 * 60_000,
+      );
+
+      await cluster.clearNotifications(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);
