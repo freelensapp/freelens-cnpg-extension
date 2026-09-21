@@ -23,7 +23,8 @@ do, on PostgreSQL clusters managed by the operator, from the Kubernetes
 resources down to the live state of the databases, inside the Freelens desktop
 application and across every cluster it manages.
 
-What is there today, all of it read-only:
+What is there today. Everything reads, except the actions at the end of the
+list, which write only after a dialog has listed the exact API calls:
 
 - **Overview**: the health of every PostgreSQL cluster at a glance, with every
   tile and counter leading to the list or the drawer behind it.
@@ -80,6 +81,11 @@ What is there today, all of it read-only:
   runs next to the image the catalog offers.
 - **Open psql**: a `psql` session on the primary, or on the instance you pick,
   in a Freelens terminal tab.
+- **Back up now**: a backup of a cluster requested from its menu, with the
+  method the cluster really has (plugin first, the deprecated in-tree method
+  never preselected), the instance it will be taken from and what is ahead of
+  it in the queue. An action that makes no sense on a cluster, or that your
+  account may not perform, is shown disabled with the reason.
 
 ### What the psql session is
 
@@ -114,8 +120,9 @@ no code is copied from them.
 
 ## Supported APIs
 
-Every kind below has its list and its drawer, read-only. The actions and the
-creation forms come with the later milestones of the
+Every kind below has its list and its drawer. The write actions arrive with
+milestone M6, one at a time, and the creation forms with the last milestone of
+the
 [roadmap](docs/development/ROADMAP.md).
 
 ### postgresql.cnpg.io/v1

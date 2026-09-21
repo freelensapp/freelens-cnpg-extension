@@ -83,6 +83,12 @@ certificate), and every such fixture says so in a comment.
   failed with each kind of reason, waiting for a primary, without its
   cluster), including a logical replication that really runs from the
   three-instance cluster to the single-instance one.
+  `35-actions.yaml` is apart from all of that: a namespace of its own with a
+  two-instance cluster, its object store and a weekly schedule, which
+  receives every write of the suite (SPEC-0020), so no write case can change
+  what a read-only case asserts. The write cases run last, read every result
+  back with `kubectl`, and the pre-review pass opens every dialog and closes
+  it without confirming.
   `fixtures/status/` holds the few status patches for states the operator
   cannot produce on demand. Each fixture is chosen to cover a state its
   views distinguish, so the suite can assert both branches.

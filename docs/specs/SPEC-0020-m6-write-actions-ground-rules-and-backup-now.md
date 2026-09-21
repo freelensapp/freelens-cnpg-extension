@@ -1,6 +1,6 @@
 # SPEC-0020: Write actions, the ground rules, and the on-demand backup
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -196,9 +196,11 @@ this cluster that decide what the write will do to it.
 ### E2E fixture for the writes
 
 A dedicated cluster `e2e-actions` (two instances, the working object store,
-a weekly schedule of its own) receives every write of the M6 suite, so the
-clusters the read-only cases assert stay as their fixtures left them. The
-write cases run last and in a fixed order that ends with the hibernation.
+a weekly schedule of its own), in a namespace of its own
+(`cnpg-e2e-actions`), receives every write of the M6 suite, so the clusters,
+the counters and the lists the read-only cases assert stay as their fixtures
+left them. The write cases run last and in a fixed order that ends with the
+hibernation.
 
 ### Non-happy states
 
@@ -263,3 +265,37 @@ addition to M1 to M5: one access review per namespace and minute.
 - Approved on 2026-09-20 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M6 at the
   milestone review.
+- Implementation notes. The pure halves are `components/write-actions.ts`,
+  `components/access-review.ts`, `components/backup-now.ts` and
+  `api/writes/cluster-status-writes.ts`; the shell of every action is
+  `menus/action-menu-item.tsx` with `menus/action-icon.tsx`, the dialog is
+  `components/action-dialog.tsx`. The Kubernetes cluster and its context in
+  the dialog come from the host's `Catalog.getActiveCluster()`.
+- Facts of the host (Freelens 1.10.3) the implementation rests on: the box of
+  `ConfirmDialog` is white in both themes, so the dialog carries its own ink
+  instead of the theme tokens; the host resets the markers of every list, so
+  the numbering of the writes is declared; a disabled toolbar item is dimmed
+  too little on the title bar of the drawer, so the icon of a refused action
+  is dimmed further there; the host toasts every `403` of its Kubernetes
+  client itself and marks the error, so the extension does not add a second
+  notification for it; the test id of a host `Input` lands on the input
+  element itself.
+- The status of a cluster does not say which plugin can take a backup (the
+  Barman Cloud plugin 0.15.0 reports no backup capability there), so every
+  enabled entry of `.spec.plugins` is offered as a method, the WAL archiver
+  first.
+- The fixture lives in its own namespace rather than next to the others: the
+  Overview counts clusters and instances of the selected namespace, and a
+  fifth cluster there would have changed what ten read-only cases assert. The
+  namespace filter helper of the suite now clicks the option by its exact
+  name: the host lists the selected namespaces first, so moving from
+  `cnpg-e2e-actions` back to `cnpg-e2e` with Enter selected the first one
+  again.
+- Seen live on the E2E cluster (operator 1.30.0, plugin 0.15.0): the backup
+  requested from the row menu of `e2e-actions` completed in under a minute
+  and the "Last backup" column of the list followed; the entry of the
+  hibernated cluster is refused with its reason in the row menu and in the
+  toolbar of the drawer. Covered by unit tests only: a cluster with several
+  methods, the deprecated method alone, the name collision with a run of a
+  schedule, the `409` on the name, a denied access review, a webhook that
+  does not answer.

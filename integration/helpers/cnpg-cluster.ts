@@ -147,6 +147,22 @@ export function kubectlE2E(...args: string[]): { status: number; stdout: string;
   return { status: status ?? 1, stdout: (stdout ?? "").trim(), stderr: (stderr ?? "").trim() };
 }
 
+/** The namespace of the cluster the write cases run against (SPEC-0020), apart from the read-only fixtures. */
+export const E2E_ACTIONS_NAMESPACE = process.env.E2E_ACTIONS_NAMESPACE || "cnpg-e2e-actions";
+export const E2E_ACTIONS_CLUSTER = "e2e-actions";
+
+/** `kubectl` in the namespace of the write cases: the readback half of every write assert. */
+export function kubectlActions(...args: string[]): { status: number; stdout: string; stderr: string } {
+  return kubectlE2E(...args, "--namespace", E2E_ACTIONS_NAMESPACE);
+}
+
+/** One field of one object of the write namespace. Empty when the object or the field is not there. */
+export function kubectlActionsField(resource: string, name: string, jsonPath: string): string {
+  const { status, stdout } = kubectlActions("get", resource, name, "--output", `jsonpath=${jsonPath}`);
+
+  return status === 0 ? stdout : "";
+}
+
 /** One field of one object, read with a jsonpath. Throws when the object is not there. */
 export function kubectlField(resource: string, name: string, jsonPath: string): string {
   const { status, stdout, stderr } = kubectlE2E("get", resource, name, "--output", `jsonpath=${jsonPath}`);
@@ -389,9 +405,22 @@ export async function selectNamespace(frame: Frame, namespace = E2E_NAMESPACE): 
 
   await select.click();
   await select.type(namespace);
-  await select.press("Enter");
+
+  // The option is clicked by its exact name rather than taken with Enter: the
+  // host lists the selected namespaces first, so when the filter moves from
+  // "cnpg-e2e-actions" back to "cnpg-e2e" both match what was typed, the
+  // selected one is on top and Enter would select it again (SPEC-0020).
+  const option = frame.locator(".Select__option").filter({ has: frame.locator(`span:text-is("${namespace}")`) });
+
+  if ((await option.count()) > 0) {
+    await option.first().click();
+  } else {
+    await select.press("Enter");
+  }
   // The menu does not close on select, and would cover the table underneath.
-  await select.click();
+  if ((await frame.locator(".Select__menu").count()) > 0) {
+    await select.click();
+  }
 
   // The filter renders its selection as "Namespace: <name>", so waiting for
   // that both settles the change and fails loudly if it never happened,

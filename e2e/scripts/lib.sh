@@ -60,6 +60,10 @@ CERT_MANAGER_NAMESPACE="cert-manager"
 # states the readback assertions expect. Every view spec adds the objects it
 # needs to the fixtures and their expected state here.
 E2E_CLUSTERS=(e2e-main e2e-single e2e-hibernated e2e-fenced)
+# The namespace and the cluster the write cases run against (SPEC-0020): apart
+# from the read-only fixtures, so a write never changes what those cases assert.
+E2E_ACTIONS_NAMESPACE="cnpg-e2e-actions"
+E2E_ACTIONS_CLUSTER="e2e-actions"
 E2E_HEALTHY_PHASE="Cluster in healthy state"
 
 # Timeouts. The first bring-up pulls the PostgreSQL, PgBouncer, MinIO,
