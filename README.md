@@ -105,6 +105,23 @@ list, which write only after a dialog has listed the exact API calls:
   primary restarts PostgreSQL in place inside the same pod. **Reload**, told
   honestly: the operator and the instance managers reconcile now, and nothing
   reports when they are done.
+- **Fencing**: PostgreSQL is stopped on one instance, from its row, or on all
+  of them, from the menu of the cluster, and the pod stays. The dialog spells
+  the old and the new value of the annotation and warns when the primary is
+  involved (writes stop and no failover happens: that is what fencing is for)
+  or when required synchronous replication needs that standby. The fence is
+  lifted from the same row and from the "Fenced instances" row of the drawer.
+  An annotation that does not parse, which the operator reads as nobody
+  fenced, is shown as the error it is and can be removed.
+- **Hibernate and Resume**: the dialog lists, from what is attached to this
+  cluster, the pods that are deleted (the primary first), the volumes that
+  are kept with their sizes, the poolers that lose their backend, the
+  schedules that are not suspended and will produce failed backups (each with
+  a door to its own Suspend), the declared objects that stop being reconciled
+  and the subscriptions of other clusters that stall. The "Hibernation" row
+  of the drawer shows the state from the operator's condition (requested,
+  waiting for a healthy cluster, in progress with the pod it waits for,
+  hibernated, resuming), with Resume next to it.
 - **Suspend, Resume and Run now** on a scheduled backup. The dialog of a
   resume says whether the operator will take one backup right away (it does
   when the next run is already in the past) or when the next one is due. "Run

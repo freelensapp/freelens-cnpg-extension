@@ -1,6 +1,6 @@
 # SPEC-0024: Fencing and hibernation
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -166,3 +166,36 @@ Two annotations, written with values the extension builds itself: `on`,
 - Approved on 2026-09-20 under the lead maintainer's standing delegation for
   the work inside a milestone; it is reviewed with the rest of M6 at the
   milestone review.
+- Implemented on 2026-09-21.
+- The menu of the cluster renders one of "Fence all instances" and "Lift all
+  fences", and one of "Hibernate" and "Resume", like Suspend and Resume of
+  SPEC-0021: the way back while anything is fenced (or the value does not
+  parse, which only "Lift all fences" can remove), the way in otherwise. With
+  some instances fenced by name, fencing the rest is one click per row. This
+  keeps the toolbar of the drawer, which renders every registration, at two
+  icons for this spec instead of four.
+- The control of the "Fenced instances" row is "Lift all fences". Under the
+  star the row of an instance offers "Lift the fence" refused, with the reason
+  that points there.
+- The fenced set is parsed by `parseFenced`, stricter than the reader of the
+  health model (SPEC-0003), which keeps treating a malformed value as nobody
+  fenced, as the operator does. The drawer shows the value that does not
+  parse as an error; the Health badge does not change.
+- On a conflict the fencing write is retried by `writeWithConflictRetry`
+  (SPEC-0022). The line quotes the old value, so a fenced set that changed in
+  between always reopens the dialog: a set is never written from a stale read.
+  The merge patch carries `null` to remove the key; the host's type for a
+  patch knows only values, so the call casts it.
+- `resuming` is reported only while the annotation says `off`: a cluster
+  that never slept and lost an instance is not resuming. A cluster whose
+  annotation was removed by hand while it slept shows no row until it is back,
+  as before this spec.
+- A phase that is not the healthy one warns in the dialog of a hibernation and
+  does not refuse it, as the spec asks; the state then reads "Waiting".
+- The consequences read the stores the extension already has, loaded for the
+  namespace of the cluster before the dialog opens; the subscriptions of other
+  clusters are the ones of the namespaces the user has selected, resolved to
+  this cluster with the resolver of SPEC-0015.
+- The E2E case spells the value the hibernation annotation replaces from what
+  `kubectl` reads, because a cluster that was resumed once carries the
+  explicit `off`.

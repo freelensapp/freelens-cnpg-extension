@@ -359,7 +359,20 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await frame.locator('[data-testid="cnpg-restart-primary-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
       await shot(`${theme}-action-restart-primary`);
       await cluster.cancelDialog(frame);
+
+      // SPEC-0024: fencing one instance from its row, then every instance from the menu.
+      await frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-instance-fence-${actionsStandby}"]`).click();
+      await frame.locator('[data-testid="cnpg-fence-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-fence-instance`);
+      await cluster.cancelDialog(frame);
       await cluster.closeDetails(frame);
+
+      await cluster.openRowMenu(frame, cluster.E2E_ACTIONS_CLUSTER);
+      await shot(`${theme}-cluster-row-menu-all-actions`);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-fence-all-menu-item"]').first().click();
+      await frame.locator('[data-testid="cnpg-fence-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+      await shot(`${theme}-action-fence-all`);
+      await cluster.cancelDialog(frame);
 
       // SPEC-0021: the two dialogs of a schedule that is not suspended.
       await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
@@ -382,6 +395,37 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     } finally {
       await cluster.selectNamespace(frame);
     }
+
+    // SPEC-0024, on the read-only fixtures, looked at and never confirmed: the hibernation of the cluster that has
+    // the most attached to it, the way back of the hibernated one, the lift of the fenced one.
+    await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+    await cluster.openRowMenu(frame, "e2e-main");
+    await frame.locator('.Menu [data-testid="cnpg-cluster-hibernate-menu-item"]').first().click();
+    await frame.locator('[data-testid="cnpg-hibernate-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+    await shot(`${theme}-action-hibernate`);
+    await cluster.cancelDialog(frame);
+
+    await table(frame, "e2e-hibernated").click();
+    await frame
+      .locator('.Drawer.KubeObjectDetails [data-testid="cnpg-hibernation-state"]')
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await shot(`${theme}-cluster-drawer-hibernation-row`);
+    await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-hibernation-resume"]').click();
+    await frame.locator('[data-testid="cnpg-resume-cluster-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+    await shot(`${theme}-action-resume-cluster`);
+    await cluster.cancelDialog(frame);
+    await cluster.closeDetails(frame);
+
+    await table(frame, "e2e-fenced").click();
+    await frame
+      .locator('.Drawer.KubeObjectDetails [data-testid="cnpg-fenced-lift-all"]')
+      .waitFor({ state: "visible", timeout: 60_000 });
+    await shot(`${theme}-cluster-drawer-fenced-row`);
+    await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-fenced-lift-all"]').click();
+    await frame.locator('[data-testid="cnpg-lift-fence-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+    await shot(`${theme}-action-lift-fences`);
+    await cluster.cancelDialog(frame);
+    await cluster.closeDetails(frame);
 
     // The dialog of a resume, on the schedule the fixtures keep suspended.
     await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
@@ -518,7 +562,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
   );
 
   it(
-    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020 to SPEC-0023)",
+    "offers the write actions only where they make sense, and says why where they do not (SPEC-0020 to SPEC-0024)",
     async () => {
       const backups = () =>
         cluster.kubectlE2E("get", "backups.postgresql.cnpg.io", "--all-namespaces", "-o", "name").stdout;
@@ -544,7 +588,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           "clusters.postgresql.cnpg.io",
           "--all-namespaces",
           "-o",
-          'jsonpath={range .items[*]}{.metadata.name}={.metadata.annotations.kubectl\\.kubernetes\\.io/restartedAt}|{.metadata.annotations.cnpg\\.io/reloadedAt}{"\n"}{end}',
+          'jsonpath={range .items[*]}{.metadata.name}={.metadata.annotations.kubectl\\.kubernetes\\.io/restartedAt}|{.metadata.annotations.cnpg\\.io/reloadedAt}|{.metadata.annotations.cnpg\\.io/fencedInstances}|{.metadata.annotations.cnpg\\.io/hibernation}{"\n"}{end}',
         ).stdout;
       const pods = () =>
         cluster.kubectlE2E(
@@ -738,6 +782,79 @@ describe("pre-review pass of the CloudNativePG extension", () => {
         },
       );
 
+      await record(
+        "A cluster offers the way back where it sleeps or is fenced, and not the way in (SPEC-0024)",
+        async () => {
+          await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+
+          for (const [name, offered, absent] of [
+            ["e2e-hibernated", "cnpg-cluster-resume-menu-item", "cnpg-cluster-hibernate-menu-item"],
+            ["e2e-fenced", "cnpg-cluster-lift-all-menu-item", "cnpg-cluster-fence-all-menu-item"],
+            ["e2e-main", "cnpg-cluster-hibernate-menu-item", "cnpg-cluster-resume-menu-item"],
+            ["e2e-main", "cnpg-cluster-fence-all-menu-item", "cnpg-cluster-lift-all-menu-item"],
+          ]) {
+            await cluster.openRowMenu(frame, name);
+            await frame
+              .locator(`.Menu [data-testid="${offered}"]`)
+              .first()
+              .waitFor({ state: "visible", timeout: 60_000 });
+
+            const other = await frame.locator(`.Menu [data-testid="${absent}"]`).count();
+
+            await cluster.closeRowMenu(frame);
+            if (other !== 0) throw new Error(`${name} offers ${absent} next to ${offered}`);
+          }
+        },
+      );
+
+      await record("Fencing is refused on a hibernated cluster, with the reason (SPEC-0024)", async () => {
+        await cluster.openRowMenu(frame, "e2e-hibernated");
+
+        const item = frame.locator('.Menu [data-testid="cnpg-cluster-fence-all-menu-item"]').first();
+
+        await item.waitFor({ state: "visible", timeout: 60_000 });
+
+        const title = (await item.getAttribute("title")) ?? "";
+        const classes = (await item.getAttribute("class")) ?? "";
+
+        await cluster.closeRowMenu(frame);
+        if (!classes.includes("disabled") || !title.includes("hibernated")) {
+          throw new Error(`a refusal that names the hibernation was expected, got "${classes}" and "${title}"`);
+        }
+      });
+
+      await record("The dialog of a hibernation lists what is attached to the cluster (SPEC-0024)", async () => {
+        const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", "e2e-main", "{.status.currentPrimary}");
+
+        await cluster.openRowMenu(frame, "e2e-main");
+        await frame.locator('.Menu [data-testid="cnpg-cluster-hibernate-menu-item"]').first().click();
+
+        const dialog = frame.locator('[data-testid="cnpg-hibernate-dialog"]');
+
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+        const pods = await dialog.locator('[data-testid="cnpg-hibernation-pods"] li').allInnerTexts();
+        const volumes = await dialog.locator('[data-testid="cnpg-hibernation-volumes"] li').count();
+        const schedules = await dialog.locator('[data-testid="cnpg-hibernation-schedules"] li').allInnerTexts();
+        const declared = await dialog.locator('[data-testid="cnpg-hibernation-declared"] li').count();
+        const ok = await frame.locator('[data-testid="confirm"]').isDisabled();
+        // The typed name takes the focus at the bottom of a long dialog: it must still open at its first line.
+        const scrolled = await dialog.evaluate((element) => element.scrollTop);
+
+        await cluster.cancelDialog(frame);
+        if (pods.length !== 3 || !pods[0].startsWith(`${primary} (primary, first`)) {
+          throw new Error(`three pods with the primary ${primary} first were expected, got ${JSON.stringify(pods)}`);
+        }
+        if (volumes < 3) throw new Error(`the volumes of three instances were expected, got ${volumes}`);
+        if (!schedules.some((line) => line.startsWith("e2e-nightly"))) {
+          throw new Error(`the schedule e2e-nightly was expected, got ${JSON.stringify(schedules)}`);
+        }
+        if (declared === 0) throw new Error("the declared objects of e2e-main were expected");
+        if (scrolled !== 0)
+          throw new Error(`the dialog opened scrolled by ${scrolled} px: its subject is out of sight`);
+        if (!ok) throw new Error("OK is enabled before the name is typed");
+      });
+
       await record("A schedule offers exactly one of Suspend and Resume, by what it declares (SPEC-0021)", async () => {
         await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
 
@@ -791,7 +908,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           throw new Error(`the schedules changed during the pass: "${suspendedBefore}" then "${suspendedAfter}"`);
         }
 
-        if (restarts() !== restartsBefore) throw new Error("a restart or a reload annotation changed during the pass");
+        if (restarts() !== restartsBefore) throw new Error("an annotation of an action changed during the pass");
         if (pods() !== podsBefore) throw new Error("an instance pod was replaced during the pass");
 
         const primariesAfter = primaries();
