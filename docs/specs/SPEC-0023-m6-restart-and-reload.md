@@ -1,6 +1,6 @@
 # SPEC-0023: Restart and reload
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -167,3 +167,11 @@ itself.
 - The synchronous warning of a standby restart counts the other standbys that
   can acknowledge a write right now (ready, healthy, not fenced, labelled as
   instances of this cluster) against `number`.
+- M6 milestone review: 2026-09-22, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.
+- Under the same write load as the verification of SPEC-0022 (2026-09-22),
+  the reload, the restart of one instance and the restart of the whole
+  cluster refused 63 inserts between 18:28:08 and 18:28:45 UTC and lost none
+  of the acknowledged ones.

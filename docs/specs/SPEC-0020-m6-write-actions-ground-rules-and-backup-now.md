@@ -1,6 +1,6 @@
 # SPEC-0020: Write actions, the ground rules, and the on-demand backup
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -299,3 +299,7 @@ addition to M1 to M5: one access review per namespace and minute.
   methods, the deprecated method alone, the name collision with a run of a
   schedule, the `409` on the name, a denied access review, a webhook that
   does not answer.
+- M6 milestone review: 2026-09-22, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.

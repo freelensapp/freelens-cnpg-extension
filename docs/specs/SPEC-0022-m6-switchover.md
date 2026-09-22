@@ -1,6 +1,6 @@
 # SPEC-0022: Switchover, with the candidates in front of the user
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -175,3 +175,17 @@ labels, which the upstream tooling does not do.
 - The API server defaults `.spec.switchoverDelay` to 3600, so the note always
   quotes a number on a real cluster; the wording without it is for an object
   that has none.
+- M6 milestone review: 2026-09-22, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.
+- Manual verification under write load: 2026-09-22, agent pass on the E2E
+  cluster (operator 1.30.0). A throwaway pod ran two `psql` loops that
+  inserted one row each every 50 ms through the `rw` service of
+  `e2e-actions`, one connection per insert, during the whole E2E suite (41
+  cases, all green under load). The switchover case moved the primary from
+  `e2e-actions-1` to `e2e-actions-2` with the lag figures of the dialog read
+  under load; the client saw 29 refused inserts in the 13 seconds of the
+  switchover (18:27:18 to 18:27:31 UTC) and none outside the windows of the
+  write cases; every one of the 4,592 acknowledged inserts was in the table
+  afterwards, and no insert the client saw fail had been committed.

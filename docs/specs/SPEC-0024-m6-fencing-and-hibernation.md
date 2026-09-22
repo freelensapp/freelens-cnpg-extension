@@ -1,6 +1,6 @@
 # SPEC-0024: Fencing and hibernation
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -204,3 +204,14 @@ Two annotations, written with values the extension builds itself: `on`,
 - The E2E case spells the value the hibernation annotation replaces from what
   `kubectl` reads, because a cluster that was resumed once carries the
   explicit `off`.
+- M6 milestone review: 2026-09-22, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.
+- Manual verification under load: 2026-09-22, the same run as the
+  verification of SPEC-0022. The hibernation case put `e2e-actions` to sleep
+  and woke it from the drawer while the load ran: the client saw 65 refused
+  inserts between 18:29:26 and 18:29:52 UTC (the fence of a standby, the
+  sleep and the wake), the cluster came back healthy with both instances on
+  the volumes they had, and every acknowledged insert was in the table
+  afterwards.
