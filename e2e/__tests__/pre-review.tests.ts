@@ -319,6 +319,13 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await storePicker.press("Enter");
       await frame.waitForTimeout(500);
       await shot(`${theme}-form-create-cluster`);
+      // F12: the pane is the body, so the editor must fill its box; the host editor sizes itself from the
+      // line count of the value it mounted with unless the dialog gives it a height, and the body grows.
+      await record("Create Cluster: the YAML pane fills its box (F12)", async () => {
+        const box = await dialog.locator('[data-test-id="monaco-editor"]').boundingBox();
+
+        if (!box || box.height < 400) throw new Error(`the editor is ${box?.height ?? 0} px tall in a box of 440 px`);
+      });
 
       await dialog.locator('[data-testid="cnpg-create-cluster-replication-section-toggle"]').click();
       await dialog.locator('[data-testid="cnpg-create-cluster-sync-enabled"]').check();
