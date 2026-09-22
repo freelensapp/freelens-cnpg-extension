@@ -1,6 +1,6 @@
 # SPEC-0025: Creation forms, the ground rules, and the Create Cluster form
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -341,4 +341,33 @@ section 14 ("Creation forms"), next to the write actions.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- The host's `Select` accepts an `isCreatable` prop that is deprecated and
+  does nothing (Freelens 1.10.3): "type a name" is a last option of every
+  picker ("Type a name...") that turns the control into a text input, with
+  a link back to the list; the choice lives in the model so a reopen keeps
+  it.
+- The dependency for the YAML pane, `js-yaml`, is a devDependency like
+  every other library the bundle carries (`cronstrue`, `mobx`, `react`):
+  the extension ships bundled and its package declares no runtime
+  dependency, which is what the production check of `knip` enforces.
+- The operator's default image is read from the `POSTGRES_IMAGE_NAME`
+  variable of the operator deployment when the account may list
+  deployments and the variable is set; the release manifest sets it only
+  when the default is overridden, so on a default install the effective
+  value reads "the operator's default image" and the E2E case proves the
+  stamp by reading `spec.imageName` back after the create.
+- A refusal of the API server does not close the form: the dialog comes
+  back after the host's leave animation with the sentence of W9 at its
+  top and every value kept, and no notification is raised beside it. On
+  `AlreadyExists` the sentence says that a cluster with that name appeared
+  in the meantime.
+- Radios and checkboxes are native inputs with the host's accent color:
+  the host's `RadioGroup` cannot carry a line per option and its `Button`
+  is painted for a dark surface (DESIGN.md section 14).
+- The two recovery bootstraps are covered by the unit cases of the body
+  and the rules; the E2E case creates by `initdb`, since a recovery on the
+  E2E cluster would take minutes of WAL replay for what the body already
+  proves.
+- The width rule of F3 is a global rule shipped with the dialog's
+  stylesheet, scoped by `:has` to the host's box while it holds a creation
+  form; the action dialogs of M6 keep their width.

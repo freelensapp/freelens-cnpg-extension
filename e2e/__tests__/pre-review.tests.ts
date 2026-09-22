@@ -291,6 +291,59 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     await cluster.closeDetails(frame);
 
     await walkActionDialogs(theme);
+    await walkCreateForms(theme);
+  }
+
+  /**
+   * The creation forms (M7), filled with valid values on the write namespace
+   * and closed without creating: the pass looks at the form and its YAML
+   * pane, it never writes.
+   */
+  async function walkCreateForms(theme: string): Promise<void> {
+    await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+    await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+    try {
+      // SPEC-0025: the Create Cluster form, its YAML pane, and its collapsed sections opened.
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-cluster"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill("review-cluster");
+      await dialog.locator('[data-testid="cnpg-create-cluster-storage-size"]').fill("10Gi");
+
+      const storePicker = frame.locator("#cnpg-create-cluster-object-store");
+
+      await storePicker.waitFor({ state: "visible", timeout: 60_000 });
+      await storePicker.fill("actions-store");
+      await storePicker.press("Enter");
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-cluster`);
+
+      await dialog.locator('[data-testid="cnpg-create-cluster-replication-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-sync-enabled"]').check();
+      await dialog.locator('[data-testid="cnpg-create-cluster-resources-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-requests-cpu"]').fill("500m");
+      await dialog.locator('[data-testid="cnpg-create-cluster-requests-memory"]').fill("1Gi");
+      await dialog.locator('[data-testid="cnpg-create-cluster-limits-cpu"]').fill("500m");
+      await dialog.locator('[data-testid="cnpg-create-cluster-limits-memory"]').fill("1Gi");
+      await dialog.locator('[data-testid="cnpg-create-cluster-updates-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-parameters-add"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-parameters-0-key"]').fill("shared_buffers");
+      await dialog.locator('[data-testid="cnpg-create-cluster-parameters-0-value"]').fill("256MB");
+      await dialog.locator('[data-testid="cnpg-create-cluster-updates-section"]').scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-cluster-sections`);
+
+      // The recovery bootstrap, with the backups of the write namespace to pick from.
+      await dialog.locator('[data-testid="cnpg-create-cluster-bootstrap-recovery"]').check();
+      await dialog.locator('[data-testid="cnpg-create-cluster-bootstrap-radios"]').scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-cluster-recovery`);
+      await cluster.cancelDialog(frame);
+    } finally {
+      await cluster.selectNamespace(frame);
+    }
   }
 
   /**
@@ -667,6 +720,49 @@ describe("pre-review pass of the CloudNativePG extension", () => {
           await cluster.selectNamespace(frame);
         }
       });
+
+      await record(
+        "Create Cluster form: OK carries the first reason, the YAML pane is the body, looking creates nothing (SPEC-0025)",
+        async () => {
+          await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+          await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+          try {
+            await frame.locator(".AddRemoveButtons .add-button").click();
+
+            const dialog = frame.locator('[data-testid="cnpg-create-cluster"]');
+
+            await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+            const blocked = await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText();
+
+            if (blocked !== "A name is required") throw new Error(`unexpected reason "${blocked}"`);
+            if (!(await frame.locator('[data-testid="confirm"]').isDisabled())) throw new Error("OK is enabled");
+            await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill("review-cluster");
+            await dialog.locator('[data-testid="cnpg-create-cluster-storage-size"]').fill("10Gi");
+
+            const yaml =
+              (await dialog.locator('[data-testid="cnpg-create-cluster-yaml"]').getAttribute("data-yaml")) ?? "";
+            const writes = await dialog.locator('[data-testid="cnpg-action-writes"] li').allInnerTexts();
+
+            if (!yaml.includes("  name: review-cluster\n") || !yaml.includes("    size: 10Gi\n")) {
+              throw new Error(`the YAML pane does not carry the form: ${JSON.stringify(yaml)}`);
+            }
+            if (
+              writes.length !== 1 ||
+              !writes[0].startsWith("create Cluster cnpg-e2e-actions/review-cluster: 3 instances")
+            ) {
+              throw new Error(`unexpected writes ${JSON.stringify(writes)}`);
+            }
+            await checks.expectNoAuthoredColors(frame, "Create Cluster form");
+            await cluster.cancelDialog(frame);
+            if (cluster.kubectlActions("get", "clusters.postgresql.cnpg.io", "review-cluster").status === 0) {
+              throw new Error("looking created a cluster");
+            }
+          } finally {
+            await cluster.selectNamespace(frame);
+          }
+        },
+      );
 
       await record(
         "A switchover is refused, with the reason, where there is nothing to promote (SPEC-0022)",

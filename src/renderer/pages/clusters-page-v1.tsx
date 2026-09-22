@@ -13,6 +13,7 @@ import { maybe } from "../../common/utils";
 import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster, type ClusterApi } from "../api/cnpg/cluster-v1";
+import { openCreateClusterDialog } from "../components/cluster-create-dialog";
 import { archivingState, backupFacts, classifyCluster, instanceFacts } from "../components/cluster-health";
 import { withErrorPage } from "../components/error-page";
 import { InstanceBricks } from "../components/instance-bricks";
@@ -107,6 +108,7 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
           sortingCallbacks={sortingCallbacks}
           searchFilters={[(object: KubeObject) => object.getSearchFields(), healthSearchFields]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreateClusterDialog(), addTooltip: "Create PostgreSQL cluster" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const health = classifyCluster(object);
