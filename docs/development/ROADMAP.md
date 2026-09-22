@@ -89,7 +89,7 @@ the cluster.
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Creation forms ground rules and shared machinery, Create Cluster form with live YAML preview (plugin-based backups by default) | [SPEC-0025](../specs/SPEC-0025-m7-creation-forms-ground-rules-and-create-cluster.md) | Planned |
+| Creation forms ground rules and shared machinery, Create Cluster form with live YAML preview (plugin-based backups by default) | [SPEC-0025](../specs/SPEC-0025-m7-creation-forms-ground-rules-and-create-cluster.md) | In PR |
 | Create ScheduledBackup (cron editor), Pooler, ObjectStore | [SPEC-0026](../specs/SPEC-0026-m7-create-scheduled-backup-pooler-and-object-store.md) | Planned |
 | Create Database, DatabaseRole, Publication, Subscription | [SPEC-0027](../specs/SPEC-0027-m7-create-declarative-objects.md) | Planned |
 | Metrics charts (host chart components over the live view data) | [SPEC-0028](../specs/SPEC-0028-m7-metrics-charts.md) | Planned |

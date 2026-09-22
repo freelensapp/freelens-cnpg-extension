@@ -72,6 +72,8 @@ export interface ActionDialogParams {
   run: () => Promise<void>;
   /** Called once when the dialog goes away, confirmed or not: where an action stops what it started on open. */
   onClose?: () => void;
+  /** A message of its own (the creation forms of SPEC-0025), over the same model and machinery. */
+  message?: (params: ActionDialogParams, model: ActionDialogModel) => React.ReactNode;
 }
 
 interface MessageProps {
@@ -116,26 +118,7 @@ const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
           {blocked}
         </p>
       ) : null}
-      <div className={styles.heading}>{facts.writes.length === 1 ? "The one write" : "The writes, in order"}</div>
-      <ol
-        className={facts.writes.length === 1 ? `${styles.writes} ${styles.single}` : styles.writes}
-        data-testid="cnpg-action-writes"
-      >
-        {facts.writes.map((write) => (
-          <li key={write.text}>
-            <code>{write.text}</code>
-          </li>
-        ))}
-      </ol>
-      {facts.notes.map((note) => (
-        <p key={note}>{note}</p>
-      ))}
-      {facts.warnings.map((warning) => (
-        <p key={warning} className={styles.warning} data-testid="cnpg-action-warning">
-          <Icon small material="warning" />
-          <span>{warning}</span>
-        </p>
-      ))}
+      <ActionFactsBlock facts={facts} />
       {facts.typedName ? (
         <div className={styles.field}>
           <span className={styles.label}>
@@ -159,6 +142,34 @@ const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
     </div>
   );
 });
+
+/** The writes in order, what they mean and what they cost (W4): the block every dialog of the extension ends with. */
+export function ActionFactsBlock({ facts }: { facts: ActionDialogFacts }) {
+  return (
+    <>
+      <div className={styles.heading}>{facts.writes.length === 1 ? "The one write" : "The writes, in order"}</div>
+      <ol
+        className={facts.writes.length === 1 ? `${styles.writes} ${styles.single}` : styles.writes}
+        data-testid="cnpg-action-writes"
+      >
+        {facts.writes.map((write) => (
+          <li key={write.text}>
+            <code>{write.text}</code>
+          </li>
+        ))}
+      </ol>
+      {facts.notes.map((note) => (
+        <p key={note}>{note}</p>
+      ))}
+      {facts.warnings.map((warning) => (
+        <p key={warning} className={styles.warning} data-testid="cnpg-action-warning">
+          <Icon small material="warning" />
+          <span>{warning}</span>
+        </p>
+      ))}
+    </>
+  );
+}
 
 function isBlocked(params: ActionDialogParams): boolean {
   return Boolean(params.blockReason?.()) || Boolean(params.okBlocked?.());
@@ -190,7 +201,7 @@ export function openActionDialog(params: ActionDialogParams, model?: ActionDialo
       // says nothing. What is dangerous says so in the warning lines.
       icon: null,
       okButtonProps: state.okButtonProps,
-      message: <ActionDialogMessage params={params} model={state} />,
+      message: params.message ? params.message(params, state) : <ActionDialogMessage params={params} model={state} />,
       ok: async () => {
         stopSync();
         try {

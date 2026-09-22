@@ -2557,6 +2557,168 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "creates a cluster from the form, with the YAML it showed, and the operator brings it up (SPEC-0025)",
+    async () => {
+      const name = "e2e-created";
+      const clusters = "clusters.postgresql.cnpg.io";
+
+      // A leftover of an interrupted run must not make the create collide.
+      if (cluster.kubectlActions("get", clusters, name).status === 0) {
+        cluster.kubectlActions("delete", clusters, name, "--wait=true", "--timeout=180s");
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+
+      // F1: the host's floating add button of the list.
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-cluster"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      // F4: the one namespace the filter names is the default of the form.
+      expect(await dialog.locator('[data-testid="cnpg-action-subject"]').innerText()).toBe(
+        `Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/<name>`,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-context"]').innerText()).toContain(
+        cluster.E2E_KUBE_CONTEXT,
+      );
+      // F2: OK is disabled with the first reason in reading order, never mute.
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe("A name is required");
+
+      await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill(name);
+      await dialog.locator('[data-testid="cnpg-create-cluster-instances"]').fill("1");
+      await dialog.locator('[data-testid="cnpg-create-cluster-storage-size"]').fill("1Gi");
+
+      // F7: the object store of the write namespace, picked from what the read on open found.
+      const storePicker = frame.locator("#cnpg-create-cluster-object-store");
+
+      await storePicker.waitFor({ state: "visible", timeout: 60_000 });
+      await storePicker.fill("actions-store");
+      await storePicker.press("Enter");
+
+      expect(await dialog.locator('[data-testid="cnpg-action-subject"]').innerText()).toBe(
+        `Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+
+      // F12: the YAML pane is the body, byte for byte.
+      const expectedYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: Cluster",
+        "metadata:",
+        `  name: ${name}`,
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  instances: 1",
+        "  storage:",
+        "    size: 1Gi",
+        "  bootstrap:",
+        "    initdb:",
+        "      database: app",
+        "      owner: app",
+        "  plugins:",
+        "    - name: barman-cloud.cloudnative-pg.io",
+        "      isWALArchiver: true",
+        "      parameters:",
+        "        barmanObjectName: actions-store",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-cluster-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+
+      const writes = dialog.locator('[data-testid="cnpg-action-writes"] li');
+
+      expect(await writes.count()).toBe(1);
+      expect(await writes.first().innerText()).toMatch(
+        new RegExp(
+          `^create Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: 1 instance, image .+, storage 1Gi, a new database app owned by app, WAL archiving to actions-store$`,
+        ),
+      );
+      // The summary says what it costs: one instance, and no resource requests.
+      const warnings = await dialog.locator('[data-testid="cnpg-action-warning"]').allInnerTexts();
+
+      expect(warnings.some((warning) => warning.includes("One instance"))).toBe(true);
+      expect(warnings.some((warning) => warning.includes("No resource requests"))).toBe(true);
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(false);
+      await cluster.captureScreenshot(frame, "create-cluster-dialog-dark");
+
+      // W8: nothing exists until the user confirms.
+      expect(cluster.kubectlActions("get", clusters, name).status).not.toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the PostgreSQL cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+
+      // F14: read back from the cluster, then what the operator stamped (the image the form never sent).
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.instances}")).toBe("1");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.storage.size}")).toBe("1Gi");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.bootstrap.initdb.database}")).toBe("app");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.plugins[0].name}")).toBe(
+        "barman-cloud.cloudnative-pg.io",
+      );
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.plugins[0].isWALArchiver}")).toBe("true");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.plugins[0].parameters.barmanObjectName}")).toBe(
+        "actions-store",
+      );
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.imageName}")).not.toBe("");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.backup}")).toBe("");
+
+      // The row appears when the store sees it, and the operator creates the first instance.
+      await cluster.expectRow(frame, name);
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActions("get", "pods", `${name}-1`, "-o", "name").status,
+          (status) => status === 0,
+          4 * 60_000,
+        ),
+      ).toBe(0);
+
+      cluster.kubectlActions("delete", clusters, name, "--wait=true", "--timeout=180s");
+      expect(cluster.kubectlActions("get", clusters, name).status).not.toBe(0);
+      await cluster.clearNotifications(frame);
+
+      // F5 and F6, on a second form: a collision warns and never blocks, a rule of the operator refuses at the field.
+      await frame.locator(".AddRemoveButtons .add-button").click();
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill(cluster.E2E_ACTIONS_CLUSTER);
+      await dialog.locator('[data-testid="cnpg-create-cluster-storage-size"]').fill("1Gi");
+      expect(await dialog.locator('[data-testid="cnpg-create-cluster-name-field-warning"]').innerText()).toContain(
+        "already exists",
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+
+      await dialog.locator('[data-testid="cnpg-create-cluster-instances"]').fill("2");
+      await dialog.locator('[data-testid="cnpg-create-cluster-replication-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-sync-enabled"]').check();
+      await dialog.locator('[data-testid="cnpg-create-cluster-sync-number"]').fill("2");
+      expect(await dialog.locator('[data-testid="cnpg-create-cluster-sync-number-field-error"]').innerText()).toBe(
+        "The number of synchronous replicas must be below the instances (2)",
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe(
+        "The number of synchronous replicas must be below the instances (2)",
+      );
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await cluster.cancelDialog(frame);
+      expect(cluster.kubectlActions("get", clusters, cluster.E2E_ACTIONS_CLUSTER, "-o", "name").stdout.trim()).toBe(
+        `cluster.postgresql.cnpg.io/${cluster.E2E_ACTIONS_CLUSTER}`,
+      );
+
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);

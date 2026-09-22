@@ -1,0 +1,300 @@
+@use "../vars" as *;
+
+// The body of every creation dialog (SPEC-0025, F2 and F3): the form on the
+// left, the YAML the create will send on the right, the write summary under
+// the form. Like the action dialog, it lives on the host's confirmation box,
+// which is white in both themes, so it carries its own ink.
+$ink: rgba(0, 0, 0, 0.87);
+$ink-secondary: rgba(0, 0, 0, 0.6);
+$line: rgba(0, 0, 0, 0.12);
+
+// F3, the one declared deviation: the host's box stops at half the window,
+// which is too narrow for a form and its preview side by side. The rule
+// widens the box only while it holds a creation form (`:has`), and the panes
+// stack under 900 px.
+:global(.ConfirmDialog .box:has(.cnpgCreateDialog)) {
+  width: min(1100px, 90vw);
+  max-width: min(1100px, 90vw);
+}
+
+.dialog {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  max-height: 80vh;
+  overflow-y: auto;
+  color: $ink;
+  text-align: left;
+
+  p {
+    margin: 0;
+  }
+
+  code {
+    color: $ink;
+    overflow-wrap: anywhere;
+  }
+
+  :global(.Select__single-value) {
+    color: inherit;
+  }
+
+  // The host's global `label` rule paints every label with the theme's
+  // secondary text color, a light grey on this white box in the dark theme:
+  // the native radios and checkboxes of the form take the dialog's ink.
+  label,
+  :global(.Input) label {
+    color: inherit;
+  }
+
+  :global(.Input) input::placeholder,
+  :global(.Input) textarea::placeholder {
+    color: $ink-secondary;
+    opacity: 0.75;
+  }
+
+  :global(.Radio),
+  :global(.Checkbox),
+  :global(.Radio.checked .label) {
+    color: inherit;
+  }
+
+  :global(.Checkbox) {
+    --checkbox-color: #{$ink-secondary};
+    --checkbox-color-active: var(--blue);
+    --checkbox-bgc-active: none;
+  }
+
+  :global(.Radio.disabled),
+  :global(.Checkbox.disabled) {
+    opacity: 1;
+    color: $ink-secondary;
+  }
+}
+
+.selectMenu {
+  color: $ink;
+}
+
+.lead {
+  font-size: 1.1em;
+}
+
+.context {
+  color: $ink-secondary;
+}
+
+.panes {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: $unit * 2;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .panes {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.formPane {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  min-width: 0;
+}
+
+.yamlPane {
+  position: sticky;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+  min-width: 0;
+}
+
+.yamlHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $unit;
+}
+
+.editor {
+  height: 440px;
+  border: 1px solid $line;
+  border-radius: calc($unit / 2);
+  overflow: hidden;
+
+  > * {
+    height: 100%;
+  }
+}
+
+.heading {
+  color: $ink-secondary;
+  font-size: 0.85em;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.label {
+  font-weight: 500;
+}
+
+.hint {
+  color: $ink-secondary;
+  font-size: 0.9em;
+}
+
+// `--colorError` is the one semantic token whose value reads on white in both themes.
+.error {
+  color: var(--colorError);
+  font-size: 0.9em;
+}
+
+.warning {
+  font-size: 0.9em;
+  font-weight: 500;
+}
+
+.effective {
+  color: $ink-secondary;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.fact {
+  padding: calc($unit / 2) $unit;
+  border-radius: calc($unit / 2);
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.inline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $unit;
+  align-items: flex-start;
+
+  > * {
+    flex: 1 1 160px;
+    min-width: 0;
+  }
+}
+
+.section {
+  border-top: 1px solid $line;
+  padding-top: calc($unit / 2);
+}
+
+.sectionHeader {
+  display: flex;
+  gap: calc($unit / 2);
+  align-items: center;
+  width: 100%;
+  padding: calc($unit / 2) 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sectionCaret {
+  display: inline-block;
+  width: 1em;
+  color: $ink-secondary;
+  font-family: monospace;
+}
+
+.sectionBody {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  padding: calc($unit / 2) 0 $unit;
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
+  gap: calc($unit / 2);
+  align-items: start;
+}
+
+.rowMessage {
+  grid-column: 1 / -1;
+}
+
+// Plain buttons: the host's `Button` paints itself from tokens chosen for a
+// dark surface, illegible on this white box.
+.button {
+  padding: calc($unit / 2) $unit;
+  border: 1px solid $line;
+  border-radius: calc($unit / 2);
+  background: rgba(0, 0, 0, 0.03);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9em;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.07);
+  }
+
+  &:disabled {
+    color: $ink-secondary;
+    cursor: default;
+  }
+}
+
+.link {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--blue);
+  font: inherit;
+  font-size: 0.9em;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.radios {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.radioLine {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  :global(.Radio) {
+    margin: 0;
+  }
+}
+
+.choiceHint {
+  margin-left: calc($unit * 3);
+  color: $ink-secondary;
+  font-size: 0.9em;
+}
+
+.copied {
+  color: $ink-secondary;
+  font-size: 0.9em;
+}

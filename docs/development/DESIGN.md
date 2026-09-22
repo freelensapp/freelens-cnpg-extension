@@ -399,3 +399,63 @@ outage.
   resume) confirm with one click.
 - The full rules, W1 to W12, are in
   [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md).
+
+## 14. Creation forms
+
+Binding from M7 on, for every form that creates an object. A form is a
+write (section 13 applies) that needs input first, so it has rules of its
+own on top of the write rules.
+
+- **The form is the confirmation.** One dialog per kind, through
+  `ConfirmDialog.open({ ok })` with the machinery of the action dialogs:
+  the fields in reading order on the left, the YAML of the exact body the
+  create will send on the right (a read only `MonacoEditor` with a copy
+  button, for those who commit it to git instead), the write summary of
+  section 13 under the fields. Nothing is stacked on top of a form: no
+  second confirmation, no nested dialog (a missing object store is a door
+  to its page, not a form inside the form).
+- **Width, the one declared deviation.** The host's confirmation box stops
+  at half the window: a creation dialog widens it, only while it holds a
+  form (`:has`), to `min(1100px, 90vw)`, and stacks its panes under
+  900 px. The box is white in both themes, so the form carries its own
+  ink, like every dialog of the extension.
+- **Validation before the submit.** Every rule of the operator's admission
+  the form can express is enforced inline, with the reason at the field,
+  before the submit; the OK button carries the verb and is disabled with
+  the first reason in reading order, never mute. What the API server
+  refuses anyway comes back at the top of the reopened form, values kept,
+  in the API server's own words (rule W9).
+- **Effective values, never sent.** A value the API server or the operator
+  stamps when a field is left out is shown next to the control ("Left
+  empty: unsupervised") and is not in the YAML: the pane shows only what
+  the user decided.
+- **The recommended shape is the default and no deprecated field is ever
+  generated** (the in-tree `barmanObjectStore`, `backup.retentionPolicy`,
+  the legacy synchronous pair, `enablePodMonitor`).
+- **Pickers never block a name.** A reference is a picker over what a
+  read on open found (the host's stores for secrets, storage classes and
+  namespaces, the extension's for its kinds), degrading to a text input
+  when the read failed or found nothing, with "Type a name..." always
+  offered; a name the read did not see warns and never blocks, a
+  collision with the store warns and never blocks (the store may be
+  partial).
+- **Names.** A Kubernetes name is checked as the API server checks it, and
+  as the operator derives things from it: a cluster name is a DNS label of
+  50 characters at most because it prefixes pods, services and secrets.
+- **Immutable fields say so** in their hint, and a section that the
+  operator reads once (the bootstrap of a cluster) says that too.
+- **Access.** The `create` verb is asked as in W3 when the form opens; a
+  denial disables OK with the verb and the resource in the reason, and the
+  form stays readable so the YAML can still be copied.
+- **Native controls on the white box.** Radios and checkboxes are native
+  inputs with the host's accent color and one sentence per option: the
+  host's `RadioGroup` takes its radios as direct children and cannot carry
+  a line each, and the host's `Button` paints itself for a dark surface.
+- **Tests.** Every rule, every message and every body is a unit case of
+  the pure module of the kind; every form has an E2E case that fills it in
+  the real Freelens, compares the YAML pane with the body, creates the
+  object in the write namespace, reads it back with `kubectl` and deletes
+  it; the pre-review pass opens every form on both themes, filled, and
+  closes it without creating.
+- The full rules, F1 to F14, are in
+  [SPEC-0025](../specs/SPEC-0025-m7-creation-forms-ground-rules-and-create-cluster.md).

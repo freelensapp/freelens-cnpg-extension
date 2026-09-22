@@ -1,6 +1,13 @@
 @use "../vars" as *;
 
 .page {
+  // The host's floating create button (SPEC-0025, F1) sits over the bottom
+  // right corner of the list, where the row menu of the last row is: the
+  // list ends with room for it.
+  :global(.VirtualList .list) {
+    padding-bottom: 80px;
+  }
+
   :global(.TableCell) {
     &.instances {
       flex-grow: 0.9;
