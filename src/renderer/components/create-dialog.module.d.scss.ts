@@ -26,6 +26,7 @@ declare const classNames: {
   readonly effective: "effective";
   readonly fact: "fact";
   readonly inline: "inline";
+  readonly select: "select";
   readonly section: "section";
   readonly sectionHeader: "sectionHeader";
   readonly sectionCaret: "sectionCaret";

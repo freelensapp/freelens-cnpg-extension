@@ -1,6 +1,6 @@
 # SPEC-0028: Metrics charts on the Live View (ad hoc, read-only)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -215,4 +215,23 @@ click loses its tooltip.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- The exporter says when its cache was last refreshed
+  (`cnpg_last_update_timestamp`, epoch seconds): the memory keeps one
+  snapshot per cache generation and stamps it with that time, so a cached
+  reading read twice makes one point and the rates are taken over the real
+  interval between two refreshes, never over a poll that returned the same
+  numbers. Without the marker (an exporter that does not export it) the
+  time of the read is used and a snapshot equal in time is dropped.
+- The metrics snapshots are taken after every round of the poller, status
+  rounds included: the marker makes the extra rounds free.
+- The lines are drawn with the host's `Chart` in its line kind, since the
+  host's `BarChart` decides bars or stepped lines by the width of the
+  range on its own; the bars use `BarChart` as planned, with its zebra
+  stripes and its time axis. The second axis of the contention card is
+  appended to the host's axes through its `options` merge.
+- The cards say "Waiting for the next sample" below two points, and "Needs
+  `<metric>`" when the primary exports none of the series of the card.
+- The range control is the host's `RadioGroup` as buttons, reachable and
+  operable from the keyboard as DESIGN.md section 12 asks.
+- The poller's own memory of the sparklines grew from 120 to 720 points as
+  the spec asked (an hour at five seconds).
