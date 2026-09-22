@@ -1,6 +1,6 @@
 # SPEC-0021: Scheduled backups, suspend, resume and run now
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M6` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-20
@@ -149,3 +149,7 @@ replace a run of the schedule.
   next run is reported yet. The warning about the backup taken right away is
   covered by the unit cases: making it happen in the E2E suite would need a
   schedule left suspended across one of its runs.
+- M6 milestone review: 2026-09-22, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.
