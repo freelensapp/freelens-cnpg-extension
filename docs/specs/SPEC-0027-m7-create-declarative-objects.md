@@ -1,6 +1,6 @@
 # SPEC-0027: Create Database, DatabaseRole, Publication and Subscription
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -255,4 +255,29 @@ As SPEC-0025; no new deviation.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- The four dialogs share one reader of the facts of a cluster
+  (`declarative-facts.ts`: whether its primary runs, whether it is a replica
+  cluster, the bootstrap owner and database, the inline managed roles, the
+  tablespaces, the external clusters) and one set of pieces
+  (`declarative-dialog.tsx`: the namespace and cluster fields, the reclaim
+  policy radio, the `WITH` clause rows, the one `create` with its
+  notification and its reopen on a refusal).
+- The owners a database can name and the groups a role can join are the
+  ones the extension knows of the cluster: the bootstrap owner, the inline
+  managed roles, the DatabaseRole objects of the namespace and, for the
+  memberships, the built in roles of PostgreSQL; a typed name is accepted
+  with the warning that a missing role fails the object. The memberships
+  are typed one at a time in the host's `EditableList`, since the host's
+  `Select` has no usable multi value on the white box of a dialog.
+- The publications offered to a subscription are the Publication objects
+  the extension can list (every namespace when the account may, the
+  subscriber's otherwise) whose cluster is the one behind the entry's host
+  (`<cluster>-rw.<namespace>.svc`); the E2E cluster reaches the publisher of
+  the logical replication fixtures that way.
+- The connection limit of a database and of a role accepts `-1` (no limit)
+  or a whole number, as PostgreSQL does; the form says so at the field.
+- The E2E case of the subscription creates the published table on the
+  subscriber with `psql` first, then subscribes with the initial copy and
+  sees the rows arrive; the role, database and publication cases create
+  their objects on the cluster of the write cases and read them back from
+  the primary with `psql` before deleting them with the delete policy.

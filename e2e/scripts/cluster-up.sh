@@ -138,6 +138,16 @@ apply_second_phase() {
 
 	log "waiting for the pooler"
 	wait_rollout "${E2E_NAMESPACE}" e2e-main-pooler
+
+	# The cluster of the write cases names e2e-main as an external cluster
+	# (SPEC-0027): its application password must exist in the write namespace,
+	# under the name the fixture references.
+	log "copying the application secret of e2e-main into ${E2E_ACTIONS_NAMESPACE}"
+	local password
+	password="$(kubectl_e2e get secret e2e-main-app --namespace "${E2E_NAMESPACE}" -o go-template='{{index .data "password" | base64decode}}')"
+	kubectl_e2e create secret generic e2e-main-app --namespace "${E2E_ACTIONS_NAMESPACE}" \
+		--from-literal=username=app --from-literal=password="${password}" --dry-run=client -o yaml |
+		kubectl_e2e apply -f - >/dev/null
 }
 
 hibernate_and_fence() {

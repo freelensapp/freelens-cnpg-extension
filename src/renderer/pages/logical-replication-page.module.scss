@@ -3,6 +3,11 @@
 // Shared by the Publications and the Subscriptions lists (SPEC-0015).
 
 .page {
+  // Room for the host's floating create button (SPEC-0027, F1) over the last row.
+  :global(.VirtualList .list) {
+    padding-bottom: 80px;
+  }
+
   :global(.TableCell) {
     &.cluster,
     &.database,

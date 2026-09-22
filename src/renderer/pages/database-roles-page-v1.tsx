@@ -12,6 +12,7 @@ import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { DatabaseRole, type DatabaseRoleApi } from "../api/cnpg/database-role-v1";
+import { openCreateDatabaseRoleDialog } from "../components/database-role-create-dialog";
 import { expiryWords, passwordFacts, roleAttributeWords, roleHealth } from "../components/database-roles";
 import { clusterOf } from "../components/declarative";
 import { withErrorPage } from "../components/error-page";
@@ -94,6 +95,7 @@ export const DatabaseRolesPage = observer((props: DatabaseRolesPageProps) =>
             ],
           ]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreateDatabaseRoleDialog(), addTooltip: "Create database role" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const now = new Date();

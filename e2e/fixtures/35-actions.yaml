@@ -57,6 +57,19 @@ spec:
       isWALArchiver: true
       parameters:
         barmanObjectName: actions-store
+  # The publisher of the logical replication fixtures, so that a subscription
+  # can be created for real from the form (SPEC-0027). The password secret is
+  # copied into this namespace by the second phase of cluster-up.sh, once
+  # e2e-main exists.
+  externalClusters:
+    - name: e2e-main
+      connectionParameters:
+        host: e2e-main-rw.cnpg-e2e.svc
+        user: app
+        dbname: app
+      password:
+        name: e2e-main-app
+        key: password
 ---
 apiVersion: postgresql.cnpg.io/v1
 kind: ScheduledBackup
