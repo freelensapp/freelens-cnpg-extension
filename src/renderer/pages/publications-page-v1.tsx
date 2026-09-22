@@ -15,6 +15,7 @@ import { Subscription } from "../api/cnpg/subscription-v1";
 import { clusterOf } from "../components/declarative";
 import { withErrorPage } from "../components/error-page";
 import { publicationHealth, publicationTarget, subscriptionsOfPublication } from "../components/logical-replication";
+import { openCreatePublicationDialog } from "../components/publication-create-dialog";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./logical-replication-page.module.scss";
@@ -105,6 +106,7 @@ export const PublicationsPage = observer((props: PublicationsPageProps) =>
             ],
           ]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreatePublicationDialog(), addTooltip: "Create publication" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const health = publicationHealth(object, lookup(object));

@@ -11,6 +11,7 @@ import * as MobxReact from "mobx-react";
 import { maybe } from "../../common/utils";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { Database, type DatabaseApi } from "../api/cnpg/database-v1";
+import { openCreateDatabaseDialog } from "../components/database-create-dialog";
 import { clusterOf, databaseHealth, managedObjects } from "../components/declarative";
 import { withErrorPage } from "../components/error-page";
 import { useReferenceStores } from "../components/reference-loader";
@@ -90,6 +91,7 @@ export const DatabasesPage = observer((props: DatabasesPageProps) =>
             ],
           ]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreateDatabaseDialog(), addTooltip: "Create database" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const health = databaseHealth(object, lookup(object));

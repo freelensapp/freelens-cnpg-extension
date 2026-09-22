@@ -45,6 +45,38 @@ async function fetchFromClusterFrame(frame: Frame, path: string): Promise<{ stat
 }
 
 /** The name cell of a list row: clicking it opens the drawer without hitting a link in another cell. */
+/** One SQL statement on an instance of the write namespace, in a database of the user's choosing. Empty when it failed. */
+function psqlActionsIn(pod: string, database: string, sql: string): string {
+  // The namespace goes before `--`: after it every word belongs to psql (lesson of SPEC-0022).
+  const { status, stdout } = cluster.kubectlE2E(
+    "--namespace",
+    cluster.E2E_ACTIONS_NAMESPACE,
+    "exec",
+    pod,
+    "--container",
+    "postgres",
+    "--",
+    "psql",
+    "-U",
+    "postgres",
+    "-d",
+    database,
+    "-tAc",
+    sql,
+  );
+
+  return status === 0 ? stdout.trim() : "";
+}
+
+/** Picks a value in a react-select of a form (type, then Enter). `id` is the id of the select's input. */
+async function pickInSelect(frame: Frame, id: string, value: string): Promise<void> {
+  const picker = frame.locator(`#${id}`);
+
+  await picker.waitFor({ state: "visible", timeout: 60_000 });
+  await picker.fill(value);
+  await picker.press("Enter");
+}
+
 function tableRowName(frame: Frame, name: string) {
   return frame.locator(".TableRow", { hasText: name }).first().locator(".TableCell", { hasText: name }).first();
 }
@@ -3094,6 +3126,373 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       ).toMatch(/starts with gs:\/\//);
       expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
       await cluster.cancelDialog(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "declares a role, a database it owns and a publication of it from the forms, and the primary applies them (SPEC-0027)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const roles = "databaseroles.postgresql.cnpg.io";
+      const databases = "databases.postgresql.cnpg.io";
+      const publications = "publications.postgresql.cnpg.io";
+      const primary = () =>
+        cluster.kubectlActionsField(clusters, cluster.E2E_ACTIONS_CLUSTER, "{.status.currentPrimary}");
+
+      // Leftovers of an interrupted run, in the order PostgreSQL accepts (the role last, since the database is its).
+      for (const [resource, name] of [
+        [publications, "e2e-created-pub"],
+        [databases, "e2e-created-db"],
+        [roles, "e2e-created-role"],
+      ]) {
+        if (cluster.kubectlActions("get", resource, name).status === 0) {
+          cluster.kubectlActions("delete", resource, name, "--wait=true", "--timeout=120s");
+        }
+      }
+      cluster.kubectlActions("delete", "secret", "e2e-created-role-password", "--ignore-not-found");
+      cluster.kubectlActions(
+        "create",
+        "secret",
+        "generic",
+        "e2e-created-role-password",
+        "--type=kubernetes.io/basic-auth",
+        "--from-literal=username=e2e_created",
+        "--from-literal=password=e2e-created-secret-1",
+      );
+
+      // The role, with its password from the secret, a connection limit and the delete policy.
+      await cluster.openCnpgPage(frame, "cnpg-databases-databaseroles", "Database Roles");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const role = frame.locator('[data-testid="cnpg-create-role"]');
+
+      await role.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await role.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe("Pick a cluster");
+      await pickInSelect(frame, "cnpg-create-role-cluster", cluster.E2E_ACTIONS_CLUSTER);
+      await role.locator('[data-testid="cnpg-create-role-name"]').fill("e2e-created-role");
+      await role.locator('[data-testid="cnpg-create-role-role-name"]').fill("e2e_created");
+      await pickInSelect(frame, "cnpg-create-role-password-secret", "e2e-created-role-password");
+      await role.locator('[data-testid="cnpg-create-role-privileges-section-toggle"]').click();
+      await role.locator('[data-testid="cnpg-create-role-connection-limit"]').fill("5");
+      await role.locator('[data-testid="cnpg-create-role-reclaim-delete"]').check();
+
+      const roleYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: DatabaseRole",
+        "metadata:",
+        "  name: e2e-created-role",
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  cluster:",
+        `    name: ${cluster.E2E_ACTIONS_CLUSTER}`,
+        "  name: e2e_created",
+        "  login: true",
+        "  connectionLimit: 5",
+        "  passwordSecret:",
+        "    name: e2e-created-role-password",
+        "  databaseRoleReclaimPolicy: delete",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => role.locator('[data-testid="cnpg-create-role-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === roleYaml,
+          30_000,
+        ),
+      ).toBe(roleYaml);
+      // The SQL, said before the click.
+      expect(
+        (await role.locator('[data-testid="cnpg-action-writes"] ~ p').allInnerTexts()).some((note) =>
+          note.includes("CREATE ROLE e2e_created WITH LOGIN CONNECTION LIMIT 5"),
+        ),
+      ).toBe(true);
+      await cluster.captureScreenshot(frame, "create-role-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the role object ${cluster.E2E_ACTIONS_NAMESPACE}/e2e-created-role`,
+      );
+      expect(cluster.kubectlActionsField(roles, "e2e-created-role", "{.spec.name}")).toBe("e2e_created");
+      expect(cluster.kubectlActionsField(roles, "e2e-created-role", "{.spec.passwordSecret.name}")).toBe(
+        "e2e-created-role-password",
+      );
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(roles, "e2e-created-role", "{.status.applied}"),
+          (applied) => applied === "true",
+          3 * 60_000,
+        ),
+      ).toBe("true");
+      expect(
+        psqlActionsIn(
+          primary(),
+          "postgres",
+          "SELECT rolcanlogin || ' ' || rolconnlimit FROM pg_roles WHERE rolname = 'e2e_created'",
+        ),
+      ).toBe("true 5");
+      await cluster.clearNotifications(frame);
+
+      // The database, owned by the role the form now knows, with one extension.
+      await cluster.openCnpgPage(frame, "cnpg-databases-databases", "Databases");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const database = frame.locator('[data-testid="cnpg-create-database"]');
+
+      await database.waitFor({ state: "visible", timeout: 60_000 });
+      await pickInSelect(frame, "cnpg-create-database-cluster", cluster.E2E_ACTIONS_CLUSTER);
+      await database.locator('[data-testid="cnpg-create-database-name"]').fill("e2e-created-db");
+      await database.locator('[data-testid="cnpg-create-database-dbname"]').fill("e2e_created_db");
+      await pickInSelect(frame, "cnpg-create-database-owner", "e2e_created");
+      await database.locator('[data-testid="cnpg-create-database-objects-section-toggle"]').click();
+      await database.locator('[data-testid="cnpg-create-database-extensions-add"]').click();
+      await database.locator('[data-testid="cnpg-create-database-extensions-0-name"]').fill("pg_stat_statements");
+      await database.locator('[data-testid="cnpg-create-database-reclaim-delete"]').check();
+
+      const databaseYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: Database",
+        "metadata:",
+        "  name: e2e-created-db",
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  cluster:",
+        `    name: ${cluster.E2E_ACTIONS_CLUSTER}`,
+        "  name: e2e_created_db",
+        "  owner: e2e_created",
+        "  databaseReclaimPolicy: delete",
+        "  extensions:",
+        "    - name: pg_stat_statements",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => database.locator('[data-testid="cnpg-create-database-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === databaseYaml,
+          30_000,
+        ),
+      ).toBe(databaseYaml);
+      expect(await database.locator('[data-testid="cnpg-create-database-owner-field-warning"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "create-database-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the database object ${cluster.E2E_ACTIONS_NAMESPACE}/e2e-created-db`,
+      );
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(databases, "e2e-created-db", "{.status.applied}"),
+          (applied) => applied === "true",
+          3 * 60_000,
+        ),
+      ).toBe("true");
+      expect(
+        psqlActionsIn(
+          primary(),
+          "postgres",
+          "SELECT pg_get_userbyid(datdba) FROM pg_database WHERE datname = 'e2e_created_db'",
+        ),
+      ).toBe("e2e_created");
+      expect(
+        psqlActionsIn(
+          primary(),
+          "e2e_created_db",
+          "SELECT extname FROM pg_extension WHERE extname = 'pg_stat_statements'",
+        ),
+      ).toBe("pg_stat_statements");
+      await cluster.clearNotifications(frame);
+
+      // The publication of every table of that database.
+      await cluster.openCnpgPage(frame, "cnpg-databases-publications", "Publications");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const publication = frame.locator('[data-testid="cnpg-create-publication"]');
+
+      await publication.waitFor({ state: "visible", timeout: 60_000 });
+      await pickInSelect(frame, "cnpg-create-publication-cluster", cluster.E2E_ACTIONS_CLUSTER);
+      await publication.locator('[data-testid="cnpg-create-publication-name"]').fill("e2e-created-pub");
+      await publication.locator('[data-testid="cnpg-create-publication-pub-name"]').fill("e2e_created_pub");
+      await pickInSelect(frame, "cnpg-create-publication-dbname", "e2e_created_db");
+      await publication.locator('[data-testid="cnpg-create-publication-reclaim-delete"]').check();
+      expect(
+        await waitUntil(
+          async () => publication.locator('[data-testid="cnpg-create-publication-yaml"]').getAttribute("data-yaml"),
+          (yaml) =>
+            Boolean(
+              yaml?.includes("  name: e2e_created_pub\n") &&
+                yaml.includes("    allTables: true\n") &&
+                yaml.includes("  dbname: e2e_created_db\n"),
+            ),
+          30_000,
+        ),
+      ).toContain("allTables: true");
+      await cluster.captureScreenshot(frame, "create-publication-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the publication object ${cluster.E2E_ACTIONS_NAMESPACE}/e2e-created-pub`,
+      );
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(publications, "e2e-created-pub", "{.status.applied}"),
+          (applied) => applied === "true",
+          3 * 60_000,
+        ),
+      ).toBe("true");
+      expect(
+        psqlActionsIn(
+          primary(),
+          "e2e_created_db",
+          "SELECT puballtables FROM pg_publication WHERE pubname = 'e2e_created_pub'",
+        ),
+      ).toBe("t");
+      await cluster.clearNotifications(frame);
+
+      // The delete policy: the objects go, and PostgreSQL is clean behind them.
+      cluster.kubectlActions("delete", publications, "e2e-created-pub", "--wait=true", "--timeout=120s");
+      cluster.kubectlActions("delete", databases, "e2e-created-db", "--wait=true", "--timeout=120s");
+      cluster.kubectlActions("delete", roles, "e2e-created-role", "--wait=true", "--timeout=120s");
+      cluster.kubectlActions("delete", "secret", "e2e-created-role-password", "--ignore-not-found");
+      expect(
+        await waitUntil(
+          async () =>
+            [
+              psqlActionsIn(primary(), "postgres", "SELECT count(*) FROM pg_database WHERE datname = 'e2e_created_db'"),
+              psqlActionsIn(primary(), "postgres", "SELECT count(*) FROM pg_roles WHERE rolname = 'e2e_created'"),
+            ].join(" "),
+          (counts) => counts === "0 0",
+          2 * 60_000,
+        ),
+      ).toBe("0 0");
+
+      // F6: the reserved names are refused at the field, with OK disabled.
+      await cluster.openCnpgPage(frame, "cnpg-databases-databaseroles", "Database Roles");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+      await role.waitFor({ state: "visible", timeout: 60_000 });
+      await role.locator('[data-testid="cnpg-create-role-role-name"]').fill("postgres");
+      expect(await role.locator('[data-testid="cnpg-create-role-role-name-field-error"]').innerText()).toBe(
+        "The role name postgres is reserved",
+      );
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await cluster.cancelDialog(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "subscribes to the publisher of the fixtures from the form, and the rows arrive (SPEC-0027)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const subscriptions = "subscriptions.postgresql.cnpg.io";
+      const primary = () =>
+        cluster.kubectlActionsField(clusters, cluster.E2E_ACTIONS_CLUSTER, "{.status.currentPrimary}");
+
+      if (cluster.kubectlActions("get", subscriptions, "e2e-created-sub").status === 0) {
+        cluster.kubectlActions("delete", subscriptions, "e2e-created-sub", "--wait=true", "--timeout=120s");
+      }
+      // The published table must exist on the subscriber, with the same columns, before the initial copy.
+      psqlActionsIn(primary(), "app", "DROP TABLE IF EXISTS e2e_numbers");
+      psqlActionsIn(
+        primary(),
+        "app",
+        "CREATE TABLE e2e_numbers (i integer PRIMARY KEY, m integer); ALTER TABLE e2e_numbers OWNER TO app",
+      );
+
+      await cluster.openCnpgPage(frame, "cnpg-databases-subscriptions", "Subscriptions");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-subscription"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await pickInSelect(frame, "cnpg-create-subscription-cluster", cluster.E2E_ACTIONS_CLUSTER);
+      await dialog.locator('[data-testid="cnpg-create-subscription-name"]').fill("e2e-created-sub");
+      await dialog.locator('[data-testid="cnpg-create-subscription-sub-name"]').fill("e2e_created_sub");
+      await pickInSelect(frame, "cnpg-create-subscription-dbname", "app");
+      // The entry of the subscriber's externalClusters, and the publication the extension knows behind it.
+      await pickInSelect(frame, "cnpg-create-subscription-external", "e2e-main");
+      await pickInSelect(frame, "cnpg-create-subscription-publication", "e2e_numbers_pub");
+      await dialog.locator('[data-testid="cnpg-create-subscription-reclaim-delete"]').check();
+
+      const expectedYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: Subscription",
+        "metadata:",
+        "  name: e2e-created-sub",
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  cluster:",
+        `    name: ${cluster.E2E_ACTIONS_CLUSTER}`,
+        "  dbname: app",
+        "  name: e2e_created_sub",
+        "  externalClusterName: e2e-main",
+        "  publicationName: e2e_numbers_pub",
+        "  subscriptionReclaimPolicy: delete",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-subscription-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+      expect(
+        (await dialog.locator('[data-testid="cnpg-action-writes"] ~ p').allInnerTexts()).some((note) =>
+          note.includes("CONNECTION '<e2e-main-rw.cnpg-e2e.svc, database app>' PUBLICATION e2e_numbers_pub"),
+        ),
+      ).toBe(true);
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "create-subscription-dialog-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the subscription object ${cluster.E2E_ACTIONS_NAMESPACE}/e2e-created-sub`,
+      );
+      expect(cluster.kubectlActionsField(subscriptions, "e2e-created-sub", "{.spec.externalClusterName}")).toBe(
+        "e2e-main",
+      );
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(subscriptions, "e2e-created-sub", "{.status.applied}"),
+          (applied) => applied === "true",
+          3 * 60_000,
+        ),
+      ).toBe("true");
+      // The initial copy: the thousand rows of the publisher arrive.
+      expect(
+        await waitUntil(
+          async () => psqlActionsIn(primary(), "app", "SELECT count(*) FROM e2e_numbers"),
+          (count) => count === "1000",
+          3 * 60_000,
+        ),
+      ).toBe("1000");
+      await cluster.expectRow(frame, "e2e-created-sub");
+
+      cluster.kubectlActions("delete", subscriptions, "e2e-created-sub", "--wait=true", "--timeout=120s");
+      expect(
+        await waitUntil(
+          async () =>
+            psqlActionsIn(primary(), "app", "SELECT count(*) FROM pg_subscription WHERE subname = 'e2e_created_sub'"),
+          (count) => count === "0",
+          2 * 60_000,
+        ),
+      ).toBe("0");
+      psqlActionsIn(primary(), "app", "DROP TABLE IF EXISTS e2e_numbers");
+      await cluster.clearNotifications(frame);
       await cluster.selectNamespace(frame);
     },
     TIMEOUT,

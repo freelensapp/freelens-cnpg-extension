@@ -406,9 +406,88 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await frame.waitForTimeout(500);
       await shot(`${theme}-form-create-object-store-sections`);
       await cluster.cancelDialog(frame);
+
+      // SPEC-0027: the four declarative forms, on the cluster of the write cases.
+      await cluster.openCnpgPage(frame, "cnpg-databases-databases", "Databases");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const database = frame.locator('[data-testid="cnpg-create-database"]');
+
+      await database.waitFor({ state: "visible", timeout: 60_000 });
+      await pickCluster(frame, "cnpg-create-database-cluster");
+      await database.locator('[data-testid="cnpg-create-database-name"]').fill("review-orders");
+      await database.locator('[data-testid="cnpg-create-database-dbname"]').fill("orders");
+      await database.locator('[data-testid="cnpg-create-database-objects-section-toggle"]').click();
+      await database.locator('[data-testid="cnpg-create-database-extensions-add"]').click();
+      await database.locator('[data-testid="cnpg-create-database-extensions-0-name"]').fill("pg_stat_statements");
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-database`);
+      await cluster.cancelDialog(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-databases-databaseroles", "Database Roles");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const role = frame.locator('[data-testid="cnpg-create-role"]');
+
+      await role.waitFor({ state: "visible", timeout: 60_000 });
+      await pickCluster(frame, "cnpg-create-role-cluster");
+      await role.locator('[data-testid="cnpg-create-role-name"]').fill("review-reporting");
+      await role.locator('[data-testid="cnpg-create-role-role-name"]').fill("reporting");
+      await role.locator('[data-testid="cnpg-create-role-auth-none"]').check();
+      await role.locator('[data-testid="cnpg-create-role-privileges-section-toggle"]').click();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-role`);
+      await cluster.cancelDialog(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-databases-publications", "Publications");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const publication = frame.locator('[data-testid="cnpg-create-publication"]');
+
+      await publication.waitFor({ state: "visible", timeout: 60_000 });
+      await pickCluster(frame, "cnpg-create-publication-cluster");
+      await publication.locator('[data-testid="cnpg-create-publication-name"]').fill("review-orders-pub");
+      await publication.locator('[data-testid="cnpg-create-publication-pub-name"]').fill("orders_pub");
+      await publication.locator('[data-testid="cnpg-create-publication-target-objects"]').check();
+      await publication.locator('[data-testid="cnpg-create-publication-objects-0-name"]').fill("orders");
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-publication`);
+      await cluster.cancelDialog(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-databases-subscriptions", "Subscriptions");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const subscription = frame.locator('[data-testid="cnpg-create-subscription"]');
+
+      await subscription.waitFor({ state: "visible", timeout: 60_000 });
+      await pickCluster(frame, "cnpg-create-subscription-cluster");
+      await subscription.locator('[data-testid="cnpg-create-subscription-name"]').fill("review-numbers-sub");
+      await subscription.locator('[data-testid="cnpg-create-subscription-sub-name"]').fill("numbers_sub");
+
+      const external = frame.locator("#cnpg-create-subscription-external");
+
+      await external.waitFor({ state: "visible", timeout: 60_000 });
+      await external.fill("e2e-main");
+      await external.press("Enter");
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-subscription`);
+      await cluster.cancelDialog(frame);
     } finally {
       await cluster.selectNamespace(frame);
     }
+  }
+
+  /** Picks the cluster of the write cases in the picker of a declarative form (react-select: type, then Enter). */
+  async function pickCluster(frame: Frame, id: string): Promise<void> {
+    const picker = frame.locator(`#${id}`);
+
+    await picker.waitFor({ state: "visible", timeout: 60_000 });
+    await picker.fill(cluster.E2E_ACTIONS_CLUSTER);
+    await picker.press("Enter");
   }
 
   /**
@@ -895,6 +974,63 @@ describe("pre-review pass of the CloudNativePG extension", () => {
               "objectstores.barmancloud.cnpg.io/review-store",
             ];
             for (const leftover of leftovers) {
+              const [resource, name] = leftover.split("/");
+              if (cluster.kubectlActions("get", resource, name).status === 0)
+                throw new Error(`looking created ${leftover}`);
+            }
+          } finally {
+            await cluster.selectNamespace(frame);
+          }
+        },
+      );
+
+      await record(
+        "Create Database, DatabaseRole, Publication and Subscription forms: the SQL is said before the click, looking creates nothing (SPEC-0027)",
+        async () => {
+          await cluster.openCnpgPage(frame, "cnpg-databases-databases", "Databases");
+          await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+          try {
+            await frame.locator(".AddRemoveButtons .add-button").click();
+
+            const database = frame.locator('[data-testid="cnpg-create-database"]');
+
+            await database.waitFor({ state: "visible", timeout: 60_000 });
+            await pickCluster(frame, "cnpg-create-database-cluster");
+            await database.locator('[data-testid="cnpg-create-database-name"]').fill("review-orders");
+            await database.locator('[data-testid="cnpg-create-database-dbname"]').fill("orders");
+
+            const ownerPicker = frame.locator("#cnpg-create-database-owner");
+
+            await ownerPicker.waitFor({ state: "visible", timeout: 60_000 });
+            await ownerPicker.fill("app");
+            await ownerPicker.press("Enter");
+
+            const notes = await database.locator('[data-testid="cnpg-action-writes"] ~ p').allInnerTexts();
+
+            if (!notes.some((note) => note.includes("CREATE DATABASE orders OWNER app"))) {
+              throw new Error(`the SQL is not said: ${JSON.stringify(notes)}`);
+            }
+            await checks.expectNoAuthoredColors(frame, "Create Database form");
+            await cluster.cancelDialog(frame);
+
+            await cluster.openCnpgPage(frame, "cnpg-databases-subscriptions", "Subscriptions");
+            await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+            await frame.locator(".AddRemoveButtons .add-button").click();
+
+            const subscription = frame.locator('[data-testid="cnpg-create-subscription"]');
+
+            await subscription.waitFor({ state: "visible", timeout: 60_000 });
+            await pickCluster(frame, "cnpg-create-subscription-cluster");
+
+            const reason = await subscription.locator('[data-testid="cnpg-action-blocked"]').innerText();
+
+            if (reason !== "A name is required") throw new Error(`unexpected reason "${reason}"`);
+            await checks.expectNoAuthoredColors(frame, "Create Subscription form");
+            await cluster.cancelDialog(frame);
+            for (const leftover of [
+              "databases.postgresql.cnpg.io/review-orders",
+              "subscriptions.postgresql.cnpg.io/review-numbers-sub",
+            ]) {
               const [resource, name] = leftover.split("/");
               if (cluster.kubectlActions("get", resource, name).status === 0)
                 throw new Error(`looking created ${leftover}`);

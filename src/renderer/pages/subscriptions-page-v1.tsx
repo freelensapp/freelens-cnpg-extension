@@ -17,6 +17,7 @@ import { withErrorPage } from "../components/error-page";
 import { resolvePublisher, subscriptionHealth } from "../components/logical-replication";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
+import { openCreateSubscriptionDialog } from "../components/subscription-create-dialog";
 import styles from "./logical-replication-page.module.scss";
 import stylesInline from "./logical-replication-page.module.scss?inline";
 
@@ -106,6 +107,7 @@ export const SubscriptionsPage = observer((props: SubscriptionsPageProps) =>
             ],
           ]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreateSubscriptionDialog(), addTooltip: "Create subscription" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const health = subscriptionHealth(object, lookup(object));
