@@ -19,6 +19,7 @@ import { withErrorPage } from "../components/error-page";
 import { parseGoTime } from "../components/go-time";
 import { MethodLabel } from "../components/method-label";
 import { useReferenceStores } from "../components/reference-loader";
+import { openCreateScheduledBackupDialog } from "../components/scheduled-backup-create-dialog";
 import { StoreLink } from "../components/store-link";
 import styles from "./scheduled-backups-page.module.scss";
 import stylesInline from "./scheduled-backups-page.module.scss?inline";
@@ -105,6 +106,7 @@ export const ScheduledBackupsPage = observer((props: ScheduledBackupsPageProps) 
           sortingCallbacks={sortingCallbacks}
           searchFilters={[(object: KubeObject) => object.getSearchFields(), scheduleSearchFields]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreateScheduledBackupDialog(), addTooltip: "Create scheduled backup" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const now = new Date();

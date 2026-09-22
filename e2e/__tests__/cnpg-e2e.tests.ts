@@ -2719,6 +2719,387 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "creates a scheduled backup from the door of the drawer, with a first backup right away, and its backup goes with it (SPEC-0026)",
+    async () => {
+      const name = "e2e-created-schedule";
+      const schedules = "scheduledbackups.postgresql.cnpg.io";
+
+      if (cluster.kubectlActions("get", schedules, name).status === 0) {
+        cluster.kubectlActions("delete", schedules, name, "--wait=true", "--timeout=120s");
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await tableRowName(frame, cluster.E2E_ACTIONS_CLUSTER).click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const door = drawer.locator('[data-testid="cnpg-cluster-create-schedule"]');
+
+      await door.waitFor({ state: "visible", timeout: 60_000 });
+      await door.click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-schedule"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      // F1 and F4: the cluster and its namespace travel with the door and are shown as facts.
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-namespace-fact"]').innerText()).toBe(
+        cluster.E2E_ACTIONS_NAMESPACE,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-cluster-fact"]').innerText()).toBe(
+        cluster.E2E_ACTIONS_CLUSTER,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-name"]').inputValue()).toBe(
+        `${cluster.E2E_ACTIONS_CLUSTER}-daily`,
+      );
+      // The cron editor: the default preset, its expression, its words and its next runs.
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-expression-value"]').innerText()).toBe(
+        "0 0 3 * * *",
+      );
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-expression-words"]').innerText()).toContain(
+        "At 03:00",
+      );
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-next-runs"]').innerText()).toMatch(
+        /^Next runs: \d{4}-\d{2}-\d{2} 03:00:00 UTC, \d{4}-\d{2}-\d{2} 03:00:00 UTC, \d{4}-\d{2}-\d{2} 03:00:00 UTC$/,
+      );
+
+      await dialog.locator('[data-testid="cnpg-create-schedule-name"]').fill(name);
+      await dialog.locator('[data-testid="cnpg-create-schedule-immediate"]').check();
+      await dialog.locator('[data-testid="cnpg-create-schedule-owner-self"]').check();
+
+      const expectedYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: ScheduledBackup",
+        "metadata:",
+        `  name: ${name}`,
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  cluster:",
+        `    name: ${cluster.E2E_ACTIONS_CLUSTER}`,
+        "  schedule: 0 0 3 * * *",
+        "  method: plugin",
+        "  pluginConfiguration:",
+        "    name: barman-cloud.cloudnative-pg.io",
+        "  immediate: true",
+        "  backupOwnerReference: self",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-schedule-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toBe(
+        `create ScheduledBackup ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: cluster ${cluster.E2E_ACTIONS_CLUSTER}, schedule "0 0 3 * * *", method plugin (barman-cloud.cloudnative-pg.io), owner self`,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "create-schedule-dialog-dark");
+
+      expect(cluster.kubectlActions("get", schedules, name).status).not.toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the scheduled backup ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+
+      expect(cluster.kubectlActionsField(schedules, name, "{.spec.schedule}")).toBe("0 0 3 * * *");
+      expect(cluster.kubectlActionsField(schedules, name, "{.spec.method}")).toBe("plugin");
+      expect(cluster.kubectlActionsField(schedules, name, "{.spec.pluginConfiguration.name}")).toBe(
+        "barman-cloud.cloudnative-pg.io",
+      );
+      expect(cluster.kubectlActionsField(schedules, name, "{.spec.immediate}")).toBe("true");
+      expect(cluster.kubectlActionsField(schedules, name, "{.spec.backupOwnerReference}")).toBe("self");
+
+      // The operator's first reaction: the child backup named after the schedule and the time, then the next run.
+      const childBackups = () =>
+        cluster
+          .kubectlActions(
+            "get",
+            "backups.postgresql.cnpg.io",
+            "--selector",
+            `cnpg.io/scheduled-backup=${name}`,
+            "-o",
+            "name",
+          )
+          .stdout.trim();
+
+      expect(
+        await waitUntil(
+          async () => childBackups(),
+          (names) => names !== "",
+          2 * 60_000,
+        ),
+      ).toMatch(new RegExp(`^backup.postgresql.cnpg.io/${name}-\\d{14}$`));
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(schedules, name, "{.status.nextScheduleTime}"),
+          (time) => time !== "",
+          60_000,
+        ),
+      ).not.toBe("");
+
+      // Deleting the schedule takes its backup with it: the owner the form sent.
+      cluster.kubectlActions("delete", schedules, name, "--wait=true", "--timeout=120s");
+      expect(cluster.kubectlActions("get", schedules, name).status).not.toBe(0);
+      expect(
+        await waitUntil(
+          async () => childBackups(),
+          (names) => names === "",
+          90_000,
+        ),
+      ).toBe("");
+      await cluster.clearNotifications(frame);
+      await cluster.closeDetails(frame);
+
+      // F6 on the page's own form: a five field expression is refused with the reason of the operator's parser.
+      await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await dialog.locator('[data-testid="cnpg-create-schedule-preset-custom"]').check();
+      await dialog.locator('[data-testid="cnpg-create-schedule-custom"]').fill("0 0 3 * *");
+      expect(await dialog.locator('[data-testid="cnpg-create-schedule-expression-error"]').innerText()).toMatch(
+        /reads five fields seconds first/,
+      );
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await cluster.cancelDialog(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "creates a pooler from the door of the drawer, and the operator brings its Deployment up (SPEC-0026)",
+    async () => {
+      const name = `${cluster.E2E_ACTIONS_CLUSTER}-pooler-rw`;
+      const poolers = "poolers.postgresql.cnpg.io";
+
+      if (cluster.kubectlActions("get", poolers, name).status === 0) {
+        cluster.kubectlActions("delete", poolers, name, "--wait=true", "--timeout=120s");
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await tableRowName(frame, cluster.E2E_ACTIONS_CLUSTER).click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const door = drawer.locator('[data-testid="cnpg-cluster-create-pooler"]');
+
+      await door.waitFor({ state: "visible", timeout: 60_000 });
+      await door.click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-pooler"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await dialog.locator('[data-testid="cnpg-create-pooler-cluster-fact"]').innerText()).toBe(
+        cluster.E2E_ACTIONS_CLUSTER,
+      );
+      // The name follows the cluster and the type until it is typed.
+      expect(await dialog.locator('[data-testid="cnpg-create-pooler-name"]').inputValue()).toBe(name);
+      await dialog.locator('[data-testid="cnpg-create-pooler-type-ro"]').check();
+      expect(await dialog.locator('[data-testid="cnpg-create-pooler-name"]').inputValue()).toBe(
+        `${cluster.E2E_ACTIONS_CLUSTER}-pooler-ro`,
+      );
+      await dialog.locator('[data-testid="cnpg-create-pooler-type-rw"]').check();
+
+      const expectedYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: Pooler",
+        "metadata:",
+        `  name: ${name}`,
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  cluster:",
+        `    name: ${cluster.E2E_ACTIONS_CLUSTER}`,
+        "  type: rw",
+        "  instances: 1",
+        "  pgbouncer:",
+        "    poolMode: session",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-pooler-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toBe(
+        `create Pooler ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: cluster ${cluster.E2E_ACTIONS_CLUSTER}, type rw, 1 instance, session mode`,
+      );
+      await cluster.captureScreenshot(frame, "create-pooler-dialog-dark");
+
+      expect(cluster.kubectlActions("get", poolers, name).status).not.toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Requested the pooler ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`);
+
+      expect(cluster.kubectlActionsField(poolers, name, "{.spec.cluster.name}")).toBe(cluster.E2E_ACTIONS_CLUSTER);
+      expect(cluster.kubectlActionsField(poolers, name, "{.spec.type}")).toBe("rw");
+      expect(cluster.kubectlActionsField(poolers, name, "{.spec.instances}")).toBe("1");
+      expect(cluster.kubectlActionsField(poolers, name, "{.spec.pgbouncer.poolMode}")).toBe("session");
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActions("get", "deployment", name, "-o", "name").status,
+          (status) => status === 0,
+          2 * 60_000,
+        ),
+      ).toBe(0);
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActions("get", "service", name, "-o", "name").status,
+          (status) => status === 0,
+          60_000,
+        ),
+      ).toBe(0);
+
+      cluster.kubectlActions("delete", poolers, name, "--wait=true", "--timeout=120s");
+      expect(cluster.kubectlActions("get", poolers, name).status).not.toBe(0);
+      await cluster.clearNotifications(frame);
+      await cluster.closeDetails(frame);
+
+      // F6 on the page's own form: the name of a service of the cluster is refused.
+      await cluster.openCnpgPage(frame, "cnpg-pooling-poolers", "Poolers");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+
+      const clusterPicker = frame.locator("#cnpg-create-pooler-cluster");
+
+      await clusterPicker.waitFor({ state: "visible", timeout: 60_000 });
+      await clusterPicker.fill(cluster.E2E_ACTIONS_CLUSTER);
+      await clusterPicker.press("Enter");
+      await dialog.locator('[data-testid="cnpg-create-pooler-name"]').fill(`${cluster.E2E_ACTIONS_CLUSTER}-rw`);
+      expect(await dialog.locator('[data-testid="cnpg-create-pooler-name-field-error"]').innerText()).toMatch(
+        /one of its services/,
+      );
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await cluster.cancelDialog(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "creates an object store on the MinIO of the fixtures, with its credentials picked from a secret, and deletes it (SPEC-0026)",
+    async () => {
+      const name = "e2e-created-store";
+      const stores = "objectstores.barmancloud.cnpg.io";
+
+      if (cluster.kubectlActions("get", stores, name).status === 0) {
+        cluster.kubectlActions("delete", stores, name, "--wait=true", "--timeout=60s");
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-backups-objectstores", "Object Stores");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-object-store"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe("A name is required");
+      await dialog.locator('[data-testid="cnpg-create-object-store-name"]').fill(name);
+      await dialog.locator('[data-testid="cnpg-create-object-store-destination"]').fill("s3://backups/e2e-created/");
+      await dialog.locator('[data-testid="cnpg-create-object-store-endpoint"]').fill("http://minio.cnpg-e2e.svc:9000");
+
+      // F7: the secret from the read on open, the key from the keys the secret carries.
+      for (const field of ["s3AccessKeyId", "s3SecretAccessKey"]) {
+        const picker = frame.locator(`#cnpg-create-object-store-${field}-secret`);
+
+        await picker.waitFor({ state: "visible", timeout: 60_000 });
+        await picker.fill("actions-store-creds");
+        await picker.press("Enter");
+      }
+
+      const expectedYaml = [
+        "apiVersion: barmancloud.cnpg.io/v1",
+        "kind: ObjectStore",
+        "metadata:",
+        `  name: ${name}`,
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  configuration:",
+        "    destinationPath: s3://backups/e2e-created/",
+        "    endpointURL: http://minio.cnpg-e2e.svc:9000",
+        "    s3Credentials:",
+        "      accessKeyId:",
+        "        name: actions-store-creds",
+        "        key: ACCESS_KEY_ID",
+        "      secretAccessKey:",
+        "        name: actions-store-creds",
+        "        key: ACCESS_SECRET_KEY",
+        "    wal:",
+        "      compression: gzip",
+        "    data:",
+        "      compression: gzip",
+        "  retentionPolicy: 30d",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-object-store-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toBe(
+        `create ObjectStore ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: S3 at s3://backups/e2e-created/, kept 30 days`,
+      );
+      const warnings = await dialog.locator('[data-testid="cnpg-action-warning"]').allInnerTexts();
+
+      expect(warnings.some((warning) => warning.includes("plaintext endpoint"))).toBe(true);
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "create-object-store-dialog-dark");
+
+      expect(cluster.kubectlActions("get", stores, name).status).not.toBe(0);
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the object store ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+
+      expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.destinationPath}")).toBe(
+        "s3://backups/e2e-created/",
+      );
+      expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.endpointURL}")).toBe(
+        "http://minio.cnpg-e2e.svc:9000",
+      );
+      expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.s3Credentials.accessKeyId.name}")).toBe(
+        "actions-store-creds",
+      );
+      expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.s3Credentials.secretAccessKey.key}")).toBe(
+        "ACCESS_SECRET_KEY",
+      );
+      expect(cluster.kubectlActionsField(stores, name, "{.spec.retentionPolicy}")).toBe("30d");
+      expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.wal.compression}")).toBe("gzip");
+      await cluster.expectRow(frame, name);
+
+      cluster.kubectlActions("delete", stores, name, "--wait=true", "--timeout=60s");
+      expect(cluster.kubectlActions("get", stores, name).status).not.toBe(0);
+      await cluster.clearNotifications(frame);
+
+      // F6: the path of another provider is refused with the scheme it wants.
+      await frame.locator(".AddRemoveButtons .add-button").click();
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await dialog.locator('[data-testid="cnpg-create-object-store-name"]').fill(name);
+      await dialog.locator('[data-testid="cnpg-create-object-store-destination"]').fill("s3://backups/");
+      await dialog.locator('[data-testid="cnpg-create-object-store-provider-google"]').check();
+      expect(
+        await dialog.locator('[data-testid="cnpg-create-object-store-destination-field-error"]').innerText(),
+      ).toMatch(/starts with gs:\/\//);
+      expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+      await cluster.cancelDialog(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);

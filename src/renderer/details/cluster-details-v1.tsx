@@ -33,8 +33,10 @@ import { FENCED_INSTANCES_ANNOTATION, parseFenced, UNPARSEABLE_FENCING } from ".
 import { hibernationState, hibernationWords } from "../components/hibernation";
 import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
+import { openCreatePoolerDialog } from "../components/pooler-create-dialog";
 import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
+import { openCreateScheduledBackupDialog } from "../components/scheduled-backup-create-dialog";
 import { StoreLink } from "../components/store-link";
 import { FencingButton } from "../menus/cluster-fencing-menu-item";
 import { hibernationFacts, ResumeButton } from "../menus/cluster-hibernation-menu-item";
@@ -74,6 +76,23 @@ const {
 } = Renderer;
 
 const notAvailable = "N/A";
+
+/** A door of a drawer row to a creation form (SPEC-0026, F1): the cluster and its namespace travel with it. */
+function CreateDoor({ label, testId, onClick }: { label: string; testId: string; onClick: () => void }) {
+  return (
+    <a
+      href="#create"
+      data-testid={testId}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        onClick();
+      }}
+    >
+      {label}
+    </a>
+  );
+}
 
 const CERTIFICATE_CLASS: Record<CertificateFact["state"], string> = {
   ok: "success",
@@ -617,20 +636,22 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         </DrawerItem>
         <BackupHistoryStrip history={history} now={now} backupUrl={backupUrl} listUrl={backupsListUrl} />
         <DrawerItem name="Scheduled backups">
-          {ownSchedules.length === 0 ? (
-            "None defined"
-          ) : (
-            <div className={styles.list}>
-              {ownSchedules.map((schedule) => (
-                <StoreLink
-                  key={schedule.getName()}
-                  store={scheduleStore}
-                  name={schedule.getName()}
-                  namespace={namespace}
-                />
-              ))}
-            </div>
-          )}
+          <div className={styles.list}>
+            {ownSchedules.length === 0 ? <span>None defined</span> : null}
+            {ownSchedules.map((schedule) => (
+              <StoreLink
+                key={schedule.getName()}
+                store={scheduleStore}
+                name={schedule.getName()}
+                namespace={namespace}
+              />
+            ))}
+            <CreateDoor
+              label="Create one"
+              testId="cnpg-cluster-create-schedule"
+              onClick={() => openCreateScheduledBackupDialog({ namespace, cluster: name })}
+            />
+          </div>
         </DrawerItem>
         <DrawerItem name="Backups" hidden={ownBackups.length === 0}>
           <MaybeLink to={backupsListUrl} onClick={(event) => event.stopPropagation()}>
@@ -702,8 +723,9 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         </Table>
 
         <DrawerTitle>Services and secrets</DrawerTitle>
-        <DrawerItem name="Poolers" hidden={poolers.length === 0}>
+        <DrawerItem name="Poolers">
           <div className={styles.list}>
+            {poolers.length === 0 ? <span>None</span> : null}
             {poolers.map((pooler) => (
               <span key={pooler.getName()} className={styles.topologyRow}>
                 <StoreLink store={poolerStore} name={pooler.getName()} namespace={namespace} />
@@ -712,6 +734,11 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                 </span>
               </span>
             ))}
+            <CreateDoor
+              label="Create one"
+              testId="cnpg-cluster-create-pooler"
+              onClick={() => openCreatePoolerDialog({ namespace, cluster: name })}
+            />
           </div>
         </DrawerItem>
         <DrawerItem name="Read-write service">

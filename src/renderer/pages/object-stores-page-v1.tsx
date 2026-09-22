@@ -13,6 +13,7 @@ import { ObjectStore, type ObjectStoreApi } from "../api/barmancloud/object-stor
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { humanizeRelative } from "../components/backup-health";
 import { withErrorPage } from "../components/error-page";
+import { openCreateObjectStoreDialog } from "../components/object-store-create-dialog";
 import {
   classifyStore,
   clustersOfStore,
@@ -99,6 +100,7 @@ export const ObjectStoresPage = observer((props: ObjectStoresPageProps) =>
           sortingCallbacks={sortingCallbacks}
           searchFilters={[(object: KubeObject) => object.getSearchFields(), storeSearchFields]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreateObjectStoreDialog(), addTooltip: "Create object store" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const all = (clusterStore?.items ?? []) as Cluster[];
