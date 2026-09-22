@@ -285,3 +285,7 @@ As SPEC-0025; no new deviation.
   deletes the schedule and sees the backup go with it; the pooler case
   waits for the Deployment and the Service the operator names after the
   pooler.
+- The host's `Select` asks for 220 px at least, more than a column of three
+  gets in the dialog: in an inline row the column wins, and the pre-review
+  pass checks the weekday select of the weekly schedule against the hour
+  field (found on the screenshots of the M7 pre-review pass, fixed in #61).

@@ -110,7 +110,29 @@ extension follows that filter.
    **Suspend**, **Run now** (the hollow mark in the history of the schedule)
    and **Resume**. On the other namespace, look at what is refused and why:
    the menus of `e2e-hibernated`, `e2e-single` and `e2e-fenced`.
-10. Switch the theme in the Freelens preferences and look again.
+10. **The creation forms**, on the same namespace: the floating button of
+    every list page opens a form whose right pane is the exact YAML the
+    create will send (copy it if you would rather commit it), and whose OK
+    button says why it is disabled until the form is complete. **PostgreSQL
+    Clusters**: a cluster with the recommended shape, WAL archived to
+    `actions-store` through the plugin, the effective values the operator
+    stamps shown and never sent; try a name of 51 characters, a synchronous
+    number equal to the instances, an image tagged `latest`. From the drawer
+    of `e2e-actions`, the "Create one" doors of the Scheduled backups and
+    Poolers rows: the cron editor with its next three runs (type five fields
+    and read why they are refused), the pooler whose name follows the cluster
+    and the type. **Object Stores**: the credentials as a secret and a key
+    inside it. **Databases**, **Database Roles**, **Publications**,
+    **Subscriptions**: each summary says the SQL the primary will run; a
+    reserved name is refused at the field, and the subscription form shows
+    the external clusters of `e2e-actions` and the publications known behind
+    the one you pick.
+11. **Clusters, Live View, Trends**: under the tiles of `e2e-main`, nine
+    cards drawn since the page opened. Wait a minute for the second sample
+    of the exporter: transactions per second, the cache hit ratio, the replay
+    lag of the standbys every five seconds, the sizes. Change the range from
+    the keyboard; hover a bar for the exact figure.
+12. Switch the theme in the Freelens preferences and look again.
 
 For every view the question of the review is the same: is this the best
 possible view for the task?

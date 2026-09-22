@@ -371,3 +371,8 @@ section 14 ("Creation forms"), next to the write actions.
 - The width rule of F3 is a global rule shipped with the dialog's
   stylesheet, scoped by `:has` to the host's box while it holds a creation
   form; the action dialogs of M6 keep their width.
+- The host's `MonacoEditor` sizes its container from the line count of the
+  value it mounted with (90, 180 or 360 px) unless a height is given, and
+  the body of a form grows with every field: the pane gives the editor the
+  height of its box, and the pre-review pass checks that the editor fills
+  it (found on the screenshots of the M7 pre-review pass, fixed in #61).
