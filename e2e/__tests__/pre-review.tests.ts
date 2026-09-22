@@ -121,6 +121,16 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     await shot(`${theme}-live-view`);
     await frame.locator('[data-testid="cnpg-live-manager"]').scrollIntoViewIfNeeded();
     await shot(`${theme}-live-view-tiles`);
+    // SPEC-0028: the trends need two samples of the exporter; the pass waits for the first point.
+    await frame
+      .locator(
+        '[data-testid="cnpg-trend-transactions"][data-points="0"], [data-testid="cnpg-trend-transactions"][data-points="1"]',
+      )
+      .waitFor({ state: "hidden", timeout: 150_000 })
+      .catch(() => undefined);
+    await frame.locator('[data-testid="cnpg-trends"]').scrollIntoViewIfNeeded();
+    await frame.waitForTimeout(500);
+    await shot(`${theme}-live-view-trends`);
 
     await cluster.openCnpgPage(frame, "cnpg-backups-backups", "Backups");
     await cluster.expectRow(frame, "e2e-backup-ok", "Completed");

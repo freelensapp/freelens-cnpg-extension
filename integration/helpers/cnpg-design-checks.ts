@@ -108,8 +108,9 @@ export async function expectNoAuthoredColors(frame: Frame, where: string): Promi
 
     for (const root of Array.from(document.querySelectorAll('[data-testid^="cnpg-"]'))) {
       for (const element of [root, ...Array.from(root.querySelectorAll("[style]"))]) {
-        // Host components style their own elements: not ours to answer for.
-        if (element.closest(".Select, .Badge, .Icon, .Tooltip")) continue;
+        // Host components style their own elements: not ours to answer for. The legend of the host
+        // chart paints its bricks with the colors of the datasets, which the trends take from the theme.
+        if (element.closest(".Select, .Badge, .Icon, .Tooltip, .LegendBadge")) continue;
 
         for (const declaration of (element.getAttribute("style") ?? "").split(";")) {
           const separator = declaration.indexOf(":");

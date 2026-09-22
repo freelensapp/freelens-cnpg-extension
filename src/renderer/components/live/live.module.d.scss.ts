@@ -18,6 +18,7 @@ declare const classNames: {
   readonly topology: "topology";
   readonly banner: "banner";
   readonly topologyGrid: "topologyGrid";
+  readonly trendCards: "trendCards";
   readonly primaryColumn: "primaryColumn";
   readonly linesCell: "linesCell";
   readonly lines: "lines";
@@ -72,5 +73,16 @@ declare const classNames: {
   readonly sizeCell: "sizeCell";
   readonly sizeBar: "sizeBar";
   readonly sizeBarFill: "sizeBarFill";
+  readonly trends: "trends";
+  readonly trendsHeader: "trendsHeader";
+  readonly trendsRange: "trendsRange";
+  readonly radioGroup: "radioGroup";
+  readonly buttonsView: "buttonsView";
+  readonly trendCard: "trendCard";
+  readonly trendHeader: "trendHeader";
+  readonly trendLast: "trendLast";
+  readonly trendChart: "trendChart";
+  readonly chart: "chart";
+  readonly trendEmpty: "trendEmpty";
 };
 export = classNames;

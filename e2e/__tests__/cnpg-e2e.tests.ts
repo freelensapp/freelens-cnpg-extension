@@ -3499,6 +3499,89 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "draws the trends of e2e-main on the Live View once two samples are in, and the range control keeps them (SPEC-0028)",
+    async () => {
+      // The Live View has no namespace filter of its own: its doors list the clusters of the namespaces
+      // selected on a list page, so the filter is set there first (the full suite has it set already).
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+
+      const tiles = frame.locator('[data-testid="cnpg-live-tiles"]');
+      const door = frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]');
+
+      await frame
+        .locator('[data-testid="cnpg-live-tiles"], [data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]')
+        .first()
+        .waitFor({
+          state: "visible",
+          timeout: 90_000,
+        });
+      if ((await tiles.count()) === 0) await door.click();
+      await tiles.waitFor({ state: "visible", timeout: 90_000 });
+
+      const trends = frame.locator('[data-testid="cnpg-trends"]');
+
+      await trends.waitFor({ state: "visible", timeout: 60_000 });
+      await trends.scrollIntoViewIfNeeded();
+      const keys = [
+        "sessions",
+        "lag",
+        "transactions",
+        "cacheHit",
+        "walArchiving",
+        "walSize",
+        "databaseSizes",
+        "checkpoints",
+        "contention",
+      ];
+
+      for (const key of keys) expect(await trends.locator(`[data-testid="cnpg-trend-${key}"]`).count()).toBe(1);
+      expect(await trends.locator('[data-testid="cnpg-trends-since"]').innerText()).toMatch(
+        /since \d{2}:\d{2}:\d{2} UTC, sampled every 5 s and every \d+ s/,
+      );
+
+      // The exporter's own queries commit transactions every cache interval: two samples give the first point.
+      const transactions = trends.locator('[data-testid="cnpg-trend-transactions"]');
+
+      expect(
+        await waitUntil(
+          async () => Number((await transactions.getAttribute("data-points")) ?? "0"),
+          (points) => points >= 2,
+          150_000,
+        ),
+      ).toBeGreaterThanOrEqual(2);
+      expect(await transactions.getAttribute("data-last")).toMatch(/^\d/);
+      expect(await transactions.locator("canvas").count()).toBe(1);
+      // The sessions and the sizes are gauges: they have a point per sample too.
+      expect(
+        Number((await trends.locator('[data-testid="cnpg-trend-sessions"]').getAttribute("data-points")) ?? "0"),
+      ).toBeGreaterThanOrEqual(2);
+      expect(await trends.locator('[data-testid="cnpg-trend-databaseSizes"]').getAttribute("data-last")).toMatch(
+        /MiB|KiB|GiB/,
+      );
+      // The replay lag of the two standbys, sampled every five seconds.
+      expect(
+        Number((await trends.locator('[data-testid="cnpg-trend-lag"]').getAttribute("data-points")) ?? "0"),
+      ).toBeGreaterThanOrEqual(2);
+      await cluster.captureScreenshot(frame, "live-trends-dark");
+
+      // The range control, from the keyboard: the cards keep their points.
+      const rangeButtons = trends.locator('[data-testid="cnpg-trends-range"] .Radio');
+
+      expect(await rangeButtons.count()).toBe(4);
+      await rangeButtons.nth(2).focus();
+      await rangeButtons.nth(2).press("Space");
+      expect(await rangeButtons.nth(2).getAttribute("class")).toContain("checked");
+      expect(Number((await transactions.getAttribute("data-points")) ?? "0")).toBeGreaterThanOrEqual(2);
+      // The doors of two cards.
+      expect(await trends.locator('[data-testid="cnpg-trend-walArchiving"] a').count()).toBe(1);
+      expect(await trends.locator('[data-testid="cnpg-trend-databaseSizes"] a').count()).toBe(1);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "activated without errors",
     async () => {
       expect(errorCollector.errors()).toEqual([]);

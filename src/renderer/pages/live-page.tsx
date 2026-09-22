@@ -9,6 +9,7 @@
 // The page owns the poller and hands the pure model to the topology and tiles.
 
 import { Renderer } from "@freelensapp/extensions";
+import * as Mobx from "mobx";
 import * as MobxReact from "mobx-react";
 import React from "react";
 import { maybe } from "../../common/utils";
@@ -39,11 +40,20 @@ import {
   WalTile,
 } from "../components/live/tiles";
 import { Topology } from "../components/live/topology";
+import { createTrendMemory, ingestLag, ingestMetrics } from "../components/live/trends";
+import { TrendsSection } from "../components/live/trends-section";
 import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { PsqlButton } from "../menus/open-psql";
-import { CLUSTERS_PAGE_ID, extensionPageUrl, LIVE_CLUSTER_PARAM, liveViewUrl } from "../navigation";
+import {
+  BACKUPS_PAGE_ID,
+  CLUSTERS_PAGE_ID,
+  DATABASES_PAGE_ID,
+  extensionPageUrl,
+  LIVE_CLUSTER_PARAM,
+  liveViewUrl,
+} from "../navigation";
 
 import type { InstanceReading, LiveInput } from "../components/live/live-model";
 import type { PollTarget } from "../components/live/live-poller";
@@ -100,12 +110,16 @@ interface LivePanelProps {
   cluster: Cluster;
 }
 
-const LivePanel = observer(({ cluster }: LivePanelProps) => {
+const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
   const namespace = cluster.getNs() ?? "";
   // The loops read the cluster and the pods of the moment, not those of the first render.
   const latest = React.useRef(cluster);
   latest.current = cluster;
 
+  const trends = React.useMemo(
+    () => Mobx.observable(createTrendMemory(Date.now()), { metrics: Mobx.observable.ref, lags: Mobx.observable.ref }),
+    [],
+  );
   const poller = React.useMemo(
     () =>
       new LivePoller({
@@ -127,6 +141,12 @@ const LivePanel = observer(({ cluster }: LivePanelProps) => {
           const view = buildLiveView(liveInput(latest.current, readings));
           const figures: Record<string, number | undefined> = { sessions: view.sessions?.total };
           for (const edge of view.edges) figures[`lag:${edge.standby}`] = edge.replayLagMs;
+          // The memory of the Trends section (SPEC-0028): a cached reading read twice makes one point.
+          Mobx.runInAction(() => {
+            const time = Date.now();
+            ingestMetrics(trends, time, view.primary, readings);
+            ingestLag(trends, time, view.edges);
+          });
           return figures;
         },
       }),
@@ -238,6 +258,17 @@ const LivePanel = observer(({ cluster }: LivePanelProps) => {
             <BasebackupsTile {...tileProps} />
             <ManagerTile {...tileProps} />
           </div>
+          <TrendsSection
+            memory={trends}
+            now={now.getTime()}
+            statusIntervalMs={poller.statusIntervalMs}
+            metricsIntervalMs={poller.metricsIntervalMs}
+            metricsFailure={metricsFailure}
+            doors={{
+              walArchiving: extensionPageUrl(extension.name, BACKUPS_PAGE_ID, cluster.getName()),
+              databaseSizes: extensionPageUrl(extension.name, DATABASES_PAGE_ID, cluster.getName()),
+            }}
+          />
         </>
       )}
     </>

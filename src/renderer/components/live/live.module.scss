@@ -501,3 +501,92 @@
   height: 100%;
   background: var(--colorInfo);
 }
+
+// The Trends section (SPEC-0028): a grid of cards over the memory of the poller.
+.trends {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  margin-top: $unit * 2;
+}
+
+.trendsHeader {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $unit;
+  align-items: center;
+
+  .tileTitle {
+    margin: 0;
+  }
+}
+
+.trendsRange {
+  margin-left: auto;
+
+  :global(.RadioGroup.buttonsView) {
+    margin: 0;
+  }
+}
+
+.trendCards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: $unit;
+
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 900px) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.trendCard {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+  min-width: 0;
+  padding: $unit;
+  border: 1px solid var(--borderFaintColor);
+  border-radius: var(--border-radius);
+  background: var(--contentColor);
+}
+
+.trendHeader {
+  display: flex;
+  gap: $unit;
+  align-items: baseline;
+  justify-content: space-between;
+
+  .tileTitle {
+    margin: 0;
+  }
+}
+
+.trendLast {
+  white-space: nowrap;
+}
+
+.trendChart {
+  height: 180px;
+  min-width: 0;
+
+  :global(.Chart) {
+    height: 100%;
+  }
+
+  :global(.legend) {
+    gap: calc($unit / 2);
+    font-size: var(--font-size-small);
+  }
+}
+
+.trendEmpty {
+  display: flex;
+  align-items: center;
+  height: 180px;
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small);
+}

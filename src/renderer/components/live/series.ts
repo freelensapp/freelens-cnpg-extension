@@ -12,8 +12,8 @@ export interface SeriesPoint {
   value: number;
 }
 
-/** 120 samples: ten minutes at the five second status interval. */
-export const DEFAULT_SERIES_CAPACITY = 120;
+/** 720 samples: an hour at the five second status interval (SPEC-0028 raised it from ten minutes). */
+export const DEFAULT_SERIES_CAPACITY = 720;
 
 /** A new array with the point appended and the oldest dropped past the capacity. Non-finite values are skipped. */
 export function appendPoint(
