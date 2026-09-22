@@ -341,6 +341,71 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await frame.waitForTimeout(500);
       await shot(`${theme}-form-create-cluster-recovery`);
       await cluster.cancelDialog(frame);
+
+      // SPEC-0026: the two forms the drawer of a cluster opens with the cluster set, then the object store form.
+      await table(frame, cluster.E2E_ACTIONS_CLUSTER).click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const scheduleDoor = drawer.locator('[data-testid="cnpg-cluster-create-schedule"]');
+
+      await scheduleDoor.waitFor({ state: "visible", timeout: 60_000 });
+      await scheduleDoor.click();
+
+      const schedule = frame.locator('[data-testid="cnpg-create-schedule"]');
+
+      await schedule.waitFor({ state: "visible", timeout: 60_000 });
+      await schedule
+        .locator('[data-testid="cnpg-create-schedule-next-runs"]')
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-schedule`);
+      await schedule.locator('[data-testid="cnpg-create-schedule-preset-weekly"]').check();
+      await schedule.locator('[data-testid="cnpg-create-schedule-immediate"]').check();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-schedule-weekly`);
+      await cluster.cancelDialog(frame);
+
+      const poolerDoor = drawer.locator('[data-testid="cnpg-cluster-create-pooler"]');
+
+      await poolerDoor.scrollIntoViewIfNeeded();
+      await poolerDoor.click();
+
+      const pooler = frame.locator('[data-testid="cnpg-create-pooler"]');
+
+      await pooler.waitFor({ state: "visible", timeout: 60_000 });
+      await pooler.locator('[data-testid="cnpg-create-pooler-parameters-add"]').click();
+      await pooler.locator('[data-testid="cnpg-create-pooler-parameters-0-key"]').fill("max_client_conn");
+      await pooler.locator('[data-testid="cnpg-create-pooler-parameters-0-value"]').fill("500");
+      await pooler.locator('[data-testid="cnpg-create-pooler-auth-section-toggle"]').click();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-pooler`);
+      await cluster.cancelDialog(frame);
+      await cluster.closeDetails(frame);
+
+      await cluster.openCnpgPage(frame, "cnpg-backups-objectstores", "Object Stores");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const store = frame.locator('[data-testid="cnpg-create-object-store"]');
+
+      await store.waitFor({ state: "visible", timeout: 60_000 });
+      await store.locator('[data-testid="cnpg-create-object-store-name"]').fill("review-store");
+      await store.locator('[data-testid="cnpg-create-object-store-destination"]').fill("s3://backups/review/");
+      await store.locator('[data-testid="cnpg-create-object-store-endpoint"]').fill("https://minio.cnpg-e2e.svc:9000");
+
+      const secretPicker = frame.locator("#cnpg-create-object-store-s3AccessKeyId-secret");
+
+      await secretPicker.waitFor({ state: "visible", timeout: 60_000 });
+      await secretPicker.fill("actions-store-creds");
+      await secretPicker.press("Enter");
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-object-store`);
+      await store.locator('[data-testid="cnpg-create-object-store-wal-data-section-toggle"]').click();
+      await store.locator('[data-testid="cnpg-create-object-store-retention-section-toggle"]').click();
+      await store.locator('[data-testid="cnpg-create-object-store-retention-section"]').scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-object-store-sections`);
+      await cluster.cancelDialog(frame);
     } finally {
       await cluster.selectNamespace(frame);
     }
@@ -757,6 +822,82 @@ describe("pre-review pass of the CloudNativePG extension", () => {
             await cluster.cancelDialog(frame);
             if (cluster.kubectlActions("get", "clusters.postgresql.cnpg.io", "review-cluster").status === 0) {
               throw new Error("looking created a cluster");
+            }
+          } finally {
+            await cluster.selectNamespace(frame);
+          }
+        },
+      );
+
+      await record(
+        "Create ScheduledBackup form: the expression follows the preset, with its words and its next runs (SPEC-0026)",
+        async () => {
+          await cluster.openCnpgPage(frame, "cnpg-backups-scheduledbackups", "Scheduled Backups");
+          await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+          try {
+            await frame.locator(".AddRemoveButtons .add-button").click();
+
+            const dialog = frame.locator('[data-testid="cnpg-create-schedule"]');
+
+            await dialog.waitFor({ state: "visible", timeout: 60_000 });
+            await dialog.locator('[data-testid="cnpg-create-schedule-preset-hourly"]').check();
+            await dialog.locator('[data-testid="cnpg-create-schedule-minute"]').fill("15");
+
+            const expression = await dialog
+              .locator('[data-testid="cnpg-create-schedule-expression-value"]')
+              .innerText();
+            const runs = await dialog.locator('[data-testid="cnpg-create-schedule-next-runs"]').innerText();
+
+            if (expression !== "0 15 * * * *") throw new Error(`unexpected expression "${expression}"`);
+            if (!/^Next runs: (.+:15:00 UTC, ){2}.+:15:00 UTC$/.test(runs))
+              throw new Error(`unexpected runs "${runs}"`);
+            await checks.expectNoAuthoredColors(frame, "Create ScheduledBackup form");
+            await cluster.cancelDialog(frame);
+          } finally {
+            await cluster.selectNamespace(frame);
+          }
+        },
+      );
+
+      await record(
+        "Create Pooler and Create ObjectStore forms: OK carries the first reason, looking creates nothing (SPEC-0026)",
+        async () => {
+          await cluster.openCnpgPage(frame, "cnpg-pooling-poolers", "Poolers");
+          await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+          try {
+            await frame.locator(".AddRemoveButtons .add-button").click();
+
+            const pooler = frame.locator('[data-testid="cnpg-create-pooler"]');
+
+            await pooler.waitFor({ state: "visible", timeout: 60_000 });
+
+            const poolerReason = await pooler.locator('[data-testid="cnpg-action-blocked"]').innerText();
+
+            if (poolerReason !== "Pick a cluster") throw new Error(`unexpected reason "${poolerReason}"`);
+            await checks.expectNoAuthoredColors(frame, "Create Pooler form");
+            await cluster.cancelDialog(frame);
+
+            await cluster.openCnpgPage(frame, "cnpg-backups-objectstores", "Object Stores");
+            await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+            await frame.locator(".AddRemoveButtons .add-button").click();
+
+            const store = frame.locator('[data-testid="cnpg-create-object-store"]');
+
+            await store.waitFor({ state: "visible", timeout: 60_000 });
+
+            const storeReason = await store.locator('[data-testid="cnpg-action-blocked"]').innerText();
+
+            if (storeReason !== "A name is required") throw new Error(`unexpected reason "${storeReason}"`);
+            await checks.expectNoAuthoredColors(frame, "Create ObjectStore form");
+            await cluster.cancelDialog(frame);
+            const leftovers = [
+              "poolers.postgresql.cnpg.io/review-pooler",
+              "objectstores.barmancloud.cnpg.io/review-store",
+            ];
+            for (const leftover of leftovers) {
+              const [resource, name] = leftover.split("/");
+              if (cluster.kubectlActions("get", resource, name).status === 0)
+                throw new Error(`looking created ${leftover}`);
             }
           } finally {
             await cluster.selectNamespace(frame);

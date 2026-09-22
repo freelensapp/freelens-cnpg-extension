@@ -1,6 +1,6 @@
 # SPEC-0026: Create ScheduledBackup (with a cron editor), Pooler and ObjectStore
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (Barman Cloud plugin `v0.15.0`)
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -252,4 +252,36 @@ As SPEC-0025; no new deviation.
 
 ## Notes and deviations
 
-Filled during implementation when reality diverges from the plan.
+- The cron evaluator is the extension's own (`cron.ts`): it follows the
+  grammar of the operator's parser (six fields seconds first, `*`, `?`,
+  lists, ranges, steps, names of months and days, the descriptors and
+  `@every`), including its rule for the two day fields (when either is a
+  star both must match, else either may), and computes the next runs in
+  UTC. A five field expression is refused with the reason, as the spec
+  asks; the words of a schedule still come from `describeSchedule`.
+- The methods a schedule offers are the ones `backupMethodOptions` of
+  SPEC-0020 computes for the picked cluster, minus the deprecated one, so
+  the two dialogs cannot drift apart on what a cluster can do. The method
+  follows the cluster: the first usable one is picked when the cluster
+  changes.
+- Whether the VolumeSnapshot CRD exists is read with one `get` of the CRD
+  on open: a 404 is "no", a refused read leaves the fact unknown and the
+  option offered (the operator's webhook decides then).
+- The pooler name follows the cluster and the type until the user types
+  one; a name that is one of the cluster's services, or any Service the
+  read on open found in the namespace, is refused at the field, since the
+  operator would fail to create the pooler's own Service.
+- The object store form enforces the credential rules of the plugin's
+  library itself (exactly one family, the S3 key pair together or the IAM
+  role, the Azure and Google variants), because the API of the kind checks
+  none of them; the key inside a secret is picked from the keys the secret
+  carries when the read on open could see them.
+- The drawer rows "Scheduled backups" and "Poolers" of a cluster are always
+  shown now (the Poolers row used to hide itself without poolers): each
+  carries the "Create one" door with the cluster and its namespace set.
+- The E2E case of the schedule creates it with a first backup right away
+  and the schedule as the owner, waits for the child backup named after the
+  schedule and the time of the run and for `status.nextScheduleTime`, then
+  deletes the schedule and sees the backup go with it; the pooler case
+  waits for the Deployment and the Service the operator names after the
+  pooler.

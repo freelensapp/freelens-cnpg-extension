@@ -13,6 +13,7 @@ import { Cluster } from "../api/cnpg/cluster-v1";
 import { Pooler, type PoolerApi } from "../api/cnpg/pooler-v1";
 import { withErrorPage } from "../components/error-page";
 import { imageShort } from "../components/image-catalogs";
+import { openCreatePoolerDialog } from "../components/pooler-create-dialog";
 import { classifyPooler, poolerInstances, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
@@ -84,6 +85,7 @@ export const PoolersPage = observer((props: PoolersPageProps) =>
             ],
           ]}
           renderHeaderTitle={KubeObject.crd.title}
+          addRemoveButtons={{ onAdd: () => openCreatePoolerDialog(), addTooltip: "Create pooler" }}
           renderTableHeader={renderTableHeader}
           renderTableContents={(object: KubeObject) => {
             const health = classifyPooler(object);
