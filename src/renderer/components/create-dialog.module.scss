@@ -187,6 +187,12 @@ $line: rgba(0, 0, 0, 0.12);
     flex: 1 1 160px;
     min-width: 0;
   }
+
+  // The host select asks for 220px at least, more than a column of three
+  // gets: it would run under the field next to it. The column wins.
+  :global(.Select) {
+    min-width: 0;
+  }
 }
 
 .section {

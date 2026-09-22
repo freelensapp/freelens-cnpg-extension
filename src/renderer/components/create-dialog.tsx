@@ -468,6 +468,9 @@ function YamlPane({ yaml, testId }: YamlPaneProps) {
           language="yaml"
           theme="vs"
           value={yaml}
+          // The host sizes its editor from the line count of the value it mounted with (90, 180 or 360 px)
+          // unless a height is given: the pane would show the first lines of a body that grew and hide the rest.
+          style={{ height: "100%" }}
           options={{ scrollbar: { alwaysConsumeMouseWheel: false }, minimap: { enabled: false }, lineNumbers: "off" }}
         />
       </div>

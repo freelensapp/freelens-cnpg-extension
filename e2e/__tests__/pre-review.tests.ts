@@ -319,6 +319,13 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await storePicker.press("Enter");
       await frame.waitForTimeout(500);
       await shot(`${theme}-form-create-cluster`);
+      // F12: the pane is the body, so the editor must fill its box; the host editor sizes itself from the
+      // line count of the value it mounted with unless the dialog gives it a height, and the body grows.
+      await record("Create Cluster: the YAML pane fills its box (F12)", async () => {
+        const box = await dialog.locator('[data-test-id="monaco-editor"]').boundingBox();
+
+        if (!box || box.height < 400) throw new Error(`the editor is ${box?.height ?? 0} px tall in a box of 440 px`);
+      });
 
       await dialog.locator('[data-testid="cnpg-create-cluster-replication-section-toggle"]').click();
       await dialog.locator('[data-testid="cnpg-create-cluster-sync-enabled"]').check();
@@ -363,6 +370,20 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await schedule.locator('[data-testid="cnpg-create-schedule-immediate"]').check();
       await frame.waitForTimeout(500);
       await shot(`${theme}-form-create-schedule-weekly`);
+      // The host select asks for 220 px at least: in a row of three fields it must take its column, not the next one.
+      await record("Create ScheduledBackup: a select of an inline row stays in its column", async () => {
+        const weekday = await schedule
+          .locator(".Select", { has: frame.locator("#cnpg-create-schedule-weekday") })
+          .boundingBox();
+        const hour = await schedule.locator('[data-testid="cnpg-create-schedule-hour"]').boundingBox();
+
+        if (!weekday || !hour) throw new Error("the weekday select or the hour field is not on the screen");
+        if (weekday.x + weekday.width > hour.x + 1) {
+          throw new Error(
+            `the weekday select ends at ${Math.round(weekday.x + weekday.width)} px, the hour field starts at ${Math.round(hour.x)} px`,
+          );
+        }
+      });
       await cluster.cancelDialog(frame);
 
       const poolerDoor = drawer.locator('[data-testid="cnpg-cluster-create-pooler"]');
