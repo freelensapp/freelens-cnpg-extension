@@ -129,6 +129,23 @@ list, which write only after a dialog has listed the exact API calls:
   not a run of the schedule, it never delays or replaces one, and the history
   of the schedule shows it with a hollow mark, outside the figures of the
   schedule.
+- **Creation forms**: a PostgreSQL cluster, a scheduled backup, a pooler, an
+  object store, a database, a role, a publication and a subscription, from
+  the "+" button of their lists and from the drawer of a cluster. The form is
+  the confirmation: its right pane is the exact YAML the create sends, every
+  rule of the operator's admission the form can express is checked at the
+  field, the recommended shape is the default (backups through the Barman
+  Cloud plugin, no deprecated field), the values the operator stamps on its
+  own are shown and never sent, and the OK button says why it is disabled
+  until the form is complete. The scheduled backup form has a cron editor
+  with the next three runs; the declarative forms say the SQL the primary
+  will run.
+- **Trends** on the Live View: nine cards drawn since the page opened, over
+  the figures the page already polls: sessions by state, replay lag per
+  standby, transactions per second, cache hit ratio, WAL archived and
+  failed, WAL on disk, database sizes, checkpoints, deadlocks and temporary
+  files. One point per refresh of the exporter's cache, an hour of memory, a
+  range control, and the exact value of every rounded figure in its tooltip.
 
 ### What the psql session is
 
@@ -142,13 +159,11 @@ read-only session. The extension itself never runs SQL and never sees a
 credential: it composes the command from the namespace and the pod name,
 and everything after that happens in your terminal.
 
-Later milestones: Database, DatabaseRole, Publication, Subscription, operator
-status and events timeline, write actions behind explicit
-confirmation, creation forms, metrics charts. The roadmap and the
+Every milestone of the roadmap is implemented. The roadmap and the
 specifications live under `docs/` and are the single source of truth for
 scope and progress.
 
-> Status: early development, not yet released.
+> Status: feature complete for v1.0.0, not yet released.
 
 The extension is written from scratch under the MIT license and reads the
 resources directly from the Kubernetes API through the Freelens extension
@@ -163,10 +178,9 @@ no code is copied from them.
 
 ## Supported APIs
 
-Every kind below has its list and its drawer. The write actions arrive with
-milestone M6, one at a time, and the creation forms with the last milestone of
-the
-[roadmap](docs/development/ROADMAP.md).
+Every kind below has its list and its drawer; the kinds a person creates by
+hand have a creation form too, and the write actions are on the row menus and
+in the drawers (see the [roadmap](docs/development/ROADMAP.md)).
 
 ### postgresql.cnpg.io/v1
 
@@ -174,14 +188,14 @@ the
 
 | Kind | Views |
 | --- | --- |
-| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View, Logs, Timeline |
+| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View with the trends, Logs, Timeline, creation form |
 | `Backup` | List and drawer with the restore coordinates |
-| `ScheduledBackup` | List and drawer with the schedule in words and the backups it generated |
-| `Pooler` | List and drawer with the live PgBouncer figures |
-| `Database` | List and drawer with the managed objects and the size of the database right now |
-| `DatabaseRole` | List and drawer with attributes, password and client certificate expiry |
-| `Publication` | List and drawer with the published objects, the replication path and the logical slots |
-| `Subscription` | List and drawer with the replication path, the slot on the publisher and the failover caveat |
+| `ScheduledBackup` | List and drawer with the schedule in words and the backups it generated, creation form |
+| `Pooler` | List and drawer with the live PgBouncer figures, creation form |
+| `Database` | List and drawer with the managed objects and the size of the database right now, creation form |
+| `DatabaseRole` | List and drawer with attributes, password and client certificate expiry, creation form |
+| `Publication` | List and drawer with the published objects, the replication path and the logical slots, creation form |
+| `Subscription` | List and drawer with the replication path, the slot on the publisher and the failover caveat, creation form |
 | `ImageCatalog` | List and drawer with the clusters that follow it |
 | `ClusterImageCatalog` | List and drawer with the clusters that follow it |
 | `FailoverQuorum` | List and drawer with the failover check told in words |
@@ -190,7 +204,7 @@ the
 
 | Kind | Views |
 | --- | --- |
-| `ObjectStore` | List and drawer with the recovery windows (Barman Cloud plugin; the in-tree `barmanObjectStore` form is deprecated and is never generated by the extension) |
+| `ObjectStore` | List and drawer with the recovery windows, creation form (Barman Cloud plugin; the in-tree `barmanObjectStore` form is deprecated and is never generated by the extension) |
 
 <!-- markdownlint-enable MD013 -->
 
