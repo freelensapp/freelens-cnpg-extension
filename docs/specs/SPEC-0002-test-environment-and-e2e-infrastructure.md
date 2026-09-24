@@ -46,6 +46,9 @@ spec adds its own cases to the suite).
 | cert-manager | v1.21.2 | `cert-manager/cert-manager` release manifest |
 | Barman Cloud plugin | v0.15.0 | release asset `manifest.yaml` |
 | MinIO | `RELEASE.2025-09-07T16-13-09Z` (the newest tag published on quay.io) | `quay.io/minio/minio` |
+| CSI hostpath driver | v1.18.0 (the version the CloudNativePG testing tools pin) | `kubernetes-csi/csi-driver-host-path`, `deploy/kubernetes-1.34/hostpath` |
+| External snapshotter (CRDs, snapshot controller, sidecar RBAC) | v8.6.0 | `kubernetes-csi/external-snapshotter` |
+| CSI sidecar RBAC | provisioner v6.3.0, attacher v4.13.0, resizer v2.2.1, health monitor v0.18.0 | each sidecar's own release |
 | PostgreSQL image | the operator's default for 1.30.0 (18.x) | operator |
 
 Local prerequisites: Docker with at least 8 GB for its VM, `kind`,
@@ -57,6 +60,15 @@ Local prerequisites: Docker with at least 8 GB for its VM, `kind`,
   (the developer's `~/.kube/config` is never read or written).
 - One control-plane and two worker nodes, so that the three-instance
   cluster spreads and `status.topology` shows more than one node.
+- The CSI hostpath driver (`hostpath.csi.k8s.io`) with the snapshot
+  controller, the storage class `csi-hostpath-sc` (annotated with its
+  default snapshot class) and the snapshot class `csi-hostpath-snapclass`,
+  installed before the operator so that it reads the snapshot CRDs at start
+  (SPEC-0029). The volumes of that driver live on the node the driver runs
+  on: a cluster on that storage class has one instance. The fixture cluster
+  `e2e-snapshots` of the write namespace lives there, with a tablespace and
+  cold volume snapshot backups; its backup `e2e-snapshot-ok` completes
+  during the bring-up, which is the proof the snapshot path works.
 - Namespace `cnpg-e2e` for every namespaced fixture; `cnpg-system` for
   the operator and the plugin; `cert-manager` for cert-manager.
 

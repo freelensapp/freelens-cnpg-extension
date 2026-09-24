@@ -357,7 +357,39 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await dialog.locator('[data-testid="cnpg-create-cluster-bootstrap-radios"]').scrollIntoViewIfNeeded();
       await frame.waitForTimeout(500);
       await shot(`${theme}-form-create-cluster-recovery`);
+
+      // SPEC-0029: a tablespace row, the volume snapshot block, and the recovery from the snapshots of the write namespace.
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-add"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-name"]').fill("analytics");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-size"]').fill("5Gi");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-section"]').scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-cluster-tablespaces`);
+      await dialog.locator('[data-testid="cnpg-create-cluster-backup-options-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-snapshots-enabled"]').check();
+      await dialog.locator('[data-testid="cnpg-create-cluster-backup-options-section"]').scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-cluster-snapshots`);
+      await dialog.locator('[data-testid="cnpg-create-cluster-recovery-source-volumeSnapshots"]').check();
+      await dialog.locator('[data-testid="cnpg-create-cluster-bootstrap-radios"]').scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-form-create-cluster-snapshot-recovery`);
       await cluster.cancelDialog(frame);
+
+      // SPEC-0029: the drawer of the snapshot cluster, with its tablespace and its snapshot settings.
+      await table(frame, cluster.E2E_SNAPSHOT_CLUSTER).click();
+      await frame.locator(".Drawer.KubeObjectDetails").waitFor({ state: "visible", timeout: 60_000 });
+      // The host's Table forwards no data attribute: the row of the Storage section is the anchor, matched
+      // on its exact name (the annotations row above it quotes the word inside the last applied JSON).
+      await frame
+        .locator(".Drawer.KubeObjectDetails")
+        .locator(".DrawerItem", { has: frame.locator("text=/^Tablespaces$/") })
+        .first()
+        .scrollIntoViewIfNeeded();
+      await frame.waitForTimeout(500);
+      await shot(`${theme}-drawer-cluster-tablespaces`);
+      await cluster.closeDetails(frame);
 
       // SPEC-0026: the two forms the drawer of a cluster opens with the cluster set, then the object store form.
       await table(frame, cluster.E2E_ACTIONS_CLUSTER).click();

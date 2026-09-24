@@ -60,7 +60,7 @@ certificate), and every such fixture says so in a comment.
 
 | Command | What it does |
 | --- | --- |
-| `pnpm e2e:cluster:up` | Creates the cluster, installs cert-manager, the operator, the Barman Cloud plugin and the object store, applies the fixture clusters and waits for them to be ready |
+| `pnpm e2e:cluster:up` | Creates the cluster, installs the CSI hostpath driver with the snapshot controller, cert-manager, the operator, the Barman Cloud plugin and the object store, applies the fixture clusters (one of them on the CSI storage class, with a cold volume snapshot backup) and waits for them to be ready |
 | `pnpm e2e:cluster:down` | Deletes the cluster and its kubeconfig |
 | `pnpm e2e` | Cluster up, run the suite, cluster down |
 

@@ -43,6 +43,65 @@ apply_manifest_url() {
 	kubectl_e2e apply --server-side --force-conflicts -f "${file}" >/dev/null
 }
 
+install_csi_host_path() {
+	# The operator reads the snapshot CRDs when it starts (SPEC-0029): the driver
+	# goes in before it, and an operator that started without them is restarted.
+	local had_crd=0
+	kubectl_e2e get crd volumesnapshots.snapshot.storage.k8s.io >/dev/null 2>&1 && had_crd=1
+
+	local snapshotter="${CSI_MANIFESTS_BASE_URL}/external-snapshotter/${EXTERNAL_SNAPSHOTTER_VERSION}"
+	apply_manifest_url "the VolumeSnapshotClass CRD" "${snapshotter}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml"
+	apply_manifest_url "the VolumeSnapshotContent CRD" "${snapshotter}/client/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml"
+	apply_manifest_url "the VolumeSnapshot CRD" "${snapshotter}/client/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml"
+	kubectl_e2e wait --for=condition=established --timeout=120s \
+		crd/volumesnapshotclasses.snapshot.storage.k8s.io \
+		crd/volumesnapshotcontents.snapshot.storage.k8s.io \
+		crd/volumesnapshots.snapshot.storage.k8s.io >/dev/null
+	apply_manifest_url "the snapshot controller RBAC" "${snapshotter}/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml"
+	apply_manifest_url "the snapshot controller" "${snapshotter}/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml"
+	apply_manifest_url "the csi-snapshotter sidecar RBAC" "${snapshotter}/deploy/kubernetes/csi-snapshotter/rbac-csi-snapshotter.yaml"
+	apply_manifest_url "the csi-provisioner sidecar RBAC" \
+		"${CSI_MANIFESTS_BASE_URL}/external-provisioner/${EXTERNAL_PROVISIONER_VERSION}/deploy/kubernetes/rbac.yaml"
+	apply_manifest_url "the csi-attacher sidecar RBAC" \
+		"${CSI_MANIFESTS_BASE_URL}/external-attacher/${EXTERNAL_ATTACHER_VERSION}/deploy/kubernetes/rbac.yaml"
+	apply_manifest_url "the csi-resizer sidecar RBAC" \
+		"${CSI_MANIFESTS_BASE_URL}/external-resizer/${EXTERNAL_RESIZER_VERSION}/deploy/kubernetes/rbac.yaml"
+	apply_manifest_url "the health monitor sidecar RBAC" \
+		"${CSI_MANIFESTS_BASE_URL}/external-health-monitor/${EXTERNAL_HEALTH_MONITOR_VERSION}/deploy/kubernetes/external-health-monitor-controller/rbac.yaml"
+
+	local hostpath="${CSI_MANIFESTS_BASE_URL}/csi-driver-host-path/${CSI_DRIVER_HOST_PATH_VERSION}"
+	apply_manifest_url "the CSI hostpath driver info" "${hostpath}/${CSI_HOSTPATH_DEPLOY_DIR}/csi-hostpath-driverinfo.yaml"
+	# The plugin manifest of a release still names the previous plugin image: the
+	# tag is set to the release, as the CloudNativePG tooling does.
+	local plugin
+	plugin="$(mktemp)"
+	# shellcheck disable=SC2064 # the file name is expanded now on purpose
+	trap "rm -f '${plugin}'" RETURN
+	log "applying the CSI hostpath plugin from ${hostpath}/${CSI_HOSTPATH_DEPLOY_DIR}/csi-hostpath-plugin.yaml"
+	curl --fail --silent --show-error --location --retry 3 "${hostpath}/${CSI_HOSTPATH_DEPLOY_DIR}/csi-hostpath-plugin.yaml" |
+		sed "s|registry.k8s.io/sig-storage/hostpathplugin:.*|registry.k8s.io/sig-storage/hostpathplugin:${CSI_DRIVER_HOST_PATH_VERSION}|g" >"${plugin}"
+	kubectl_e2e apply --server-side --force-conflicts -f "${plugin}" >/dev/null
+	apply_manifest_url "the snapshot class" "${hostpath}/${CSI_HOSTPATH_DEPLOY_DIR}/csi-hostpath-snapshotclass.yaml"
+	# A snapshot of a running PostgreSQL volume can meet a file being written:
+	# the driver is told to go on, as the CloudNativePG tooling does.
+	kubectl_e2e patch volumesnapshotclass "${E2E_SNAPSHOT_CLASS}" --type merge \
+		-p '{"parameters":{"ignoreFailedRead":"true"}}' >/dev/null
+	apply_manifest_url "the storage class" "${hostpath}/examples/csi-storageclass.yaml"
+	kubectl_e2e annotate storageclass "${E2E_STORAGE_CLASS}" --overwrite \
+		"storage.kubernetes.io/default-snapshot-class=${E2E_SNAPSHOT_CLASS}" >/dev/null
+
+	wait_rollout kube-system snapshot-controller
+	kubectl_e2e rollout status statefulset/csi-hostpathplugin --namespace default --timeout "${WAIT_ROLLOUT}" >/dev/null ||
+		die "the CSI hostpath plugin did not become ready"
+	log "CSI hostpath driver and snapshot controller ready"
+
+	if [[ ${had_crd} -eq 0 ]] && kubectl_e2e get deployment cnpg-controller-manager --namespace "${OPERATOR_NAMESPACE}" >/dev/null 2>&1; then
+		log "the operator started without the snapshot CRDs: restarting it once"
+		kubectl_e2e rollout restart deployment/cnpg-controller-manager --namespace "${OPERATOR_NAMESPACE}" >/dev/null
+		wait_rollout "${OPERATOR_NAMESPACE}" cnpg-controller-manager
+	fi
+}
+
 install_cert_manager() {
 	apply_manifest_url "cert-manager ${CERT_MANAGER_VERSION}" "${CERT_MANAGER_MANIFEST_URL}"
 	wait_rollout "${CERT_MANAGER_NAMESPACE}" cert-manager cert-manager-cainjector cert-manager-webhook
@@ -107,6 +166,11 @@ wait_clusters() {
 	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_ACTIONS_CLUSTER}" '{.status.phase}' \
 		"${E2E_HEALTHY_PHASE}" "${WAIT_CLUSTER%s}"
 	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_ACTIONS_CLUSTER}" '{.status.readyInstances}' 2 "${WAIT_CLUSTER%s}"
+	log "waiting for cluster ${E2E_SNAPSHOT_CLUSTER} of the snapshot cases to be healthy, with its tablespace (up to ${WAIT_CLUSTER})"
+	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_SNAPSHOT_CLUSTER}" '{.status.phase}' \
+		"${E2E_HEALTHY_PHASE}" "${WAIT_CLUSTER%s}"
+	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_SNAPSHOT_CLUSTER}" \
+		'{.status.tablespacesStatus[0].state}' reconciled "${WAIT_CLUSTER%s}"
 	log "all clusters healthy"
 }
 
@@ -148,6 +212,29 @@ apply_second_phase() {
 	kubectl_e2e create secret generic e2e-main-app --namespace "${E2E_ACTIONS_NAMESPACE}" \
 		--from-literal=username=app --from-literal=password="${password}" --dry-run=client -o yaml |
 		kubectl_e2e apply -f - >/dev/null
+}
+
+apply_snapshot_backup() {
+	# The recovery case of SPEC-0029 looks for a table written before the fixture
+	# backup, in the tablespace: the proof that the snapshots restored the data.
+	local primary
+	primary="$(kubectl_e2e get clusters.postgresql.cnpg.io "${E2E_SNAPSHOT_CLUSTER}" --namespace "${E2E_ACTIONS_NAMESPACE}" \
+		-o 'jsonpath={.status.currentPrimary}')"
+	[[ -n ${primary} ]] || die "${E2E_SNAPSHOT_CLUSTER} reports no primary"
+	log "writing the marker table of ${E2E_SNAPSHOT_CLUSTER} in the tablespace ${E2E_SNAPSHOT_TABLESPACE} (${primary})"
+	kubectl_e2e exec "${primary}" --namespace "${E2E_ACTIONS_NAMESPACE}" --container postgres -- \
+		psql -U postgres -d app -v ON_ERROR_STOP=1 -tAc \
+		"CREATE TABLE IF NOT EXISTS ${E2E_SNAPSHOT_MARKER_TABLE} (id integer PRIMARY KEY) TABLESPACE ${E2E_SNAPSHOT_TABLESPACE}; INSERT INTO ${E2E_SNAPSHOT_MARKER_TABLE} VALUES (1) ON CONFLICT DO NOTHING;" >/dev/null ||
+		die "could not write the marker table on ${primary}"
+
+	log "applying the volume snapshot backup ${E2E_SNAPSHOT_BACKUP} and waiting for it to complete (up to ${WAIT_BACKUP})"
+	kubectl_e2e apply -f "${E2E_FIXTURES_DIR}"/45-snapshot-backup.yaml >/dev/null
+	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" backups.postgresql.cnpg.io "${E2E_SNAPSHOT_BACKUP}" '{.status.phase}' completed "${WAIT_BACKUP%s}"
+	# A cold snapshot fences the only instance for its duration: the cluster is
+	# healthy again before any case runs.
+	wait_for_jsonpath "${E2E_ACTIONS_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_SNAPSHOT_CLUSTER}" '{.status.phase}' \
+		"${E2E_HEALTHY_PHASE}" "${WAIT_CLUSTER%s}"
+	log "volume snapshot backup ${E2E_SNAPSHOT_BACKUP} completed"
 }
 
 hibernate_and_fence() {
@@ -298,6 +385,7 @@ main() {
 	require_command kind kubectl curl
 	mkdir -p "${E2E_STATE_DIR}"
 	create_cluster
+	install_csi_host_path
 	install_cert_manager
 	install_operator
 	install_barman_plugin
@@ -305,6 +393,7 @@ main() {
 	wait_clusters
 	wait_failover_quorum
 	apply_second_phase
+	apply_snapshot_backup
 	hibernate_and_fence
 	apply_declarative
 	apply_fixture_event

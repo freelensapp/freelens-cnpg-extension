@@ -127,6 +127,17 @@ extension follows that filter.
     reserved name is refused at the field, and the subscription form shows
     the external clusters of `e2e-actions` and the publications known behind
     the one you pick.
+    In the same form, open **Tablespaces** and add one: the name is checked
+    as PostgreSQL checks it, the YAML grows a `tablespaces` entry, and the
+    summary says which volumes the operator will create. Under **Backup
+    options**, check **Take backups as volume snapshots**: the snapshot
+    class of the CSI driver, hot or cold, and what each costs. Then set the
+    bootstrap to **recovery** from **the volume snapshots of a backup**: the
+    pickers list the snapshots of `e2e-snapshot-ok`, the data one first,
+    with the tablespace `analytics` of the fixture cluster `e2e-snapshots`
+    (open its drawer for the Tablespaces table and the "Volume snapshot
+    backups" row; its row menu offers Back up now with the volume snapshot
+    method).
 11. **Clusters, Live View, Trends**: under the tiles of `e2e-main`, nine
     cards drawn since the page opened. Wait a minute for the second sample
     of the exporter: transactions per second, the cache hit ratio, the replay

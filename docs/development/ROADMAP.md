@@ -93,6 +93,7 @@ the cluster.
 | Create ScheduledBackup (cron editor), Pooler, ObjectStore | [SPEC-0026](../specs/SPEC-0026-m7-create-scheduled-backup-pooler-and-object-store.md) | Done |
 | Create Database, DatabaseRole, Publication, Subscription | [SPEC-0027](../specs/SPEC-0027-m7-create-declarative-objects.md) | Done |
 | Metrics charts (host chart components over the live view data) | [SPEC-0028](../specs/SPEC-0028-m7-metrics-charts.md) | Done |
+| Tablespaces, volume snapshot backups and recovery from volume snapshots in the Create Cluster form, with a CSI driver in the E2E cluster | [SPEC-0029](../specs/SPEC-0029-m7-create-cluster-tablespaces-and-volume-snapshots.md) | In PR |
 
 The first spec of the milestone sets the ground rules of every form: the
 form is the confirmation, with the exact YAML it sends in view; every rule

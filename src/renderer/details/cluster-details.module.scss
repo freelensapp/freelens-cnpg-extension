@@ -26,7 +26,8 @@
 .conditions,
 .instances,
 .certificates,
-.plugins {
+.plugins,
+.tablespaces {
   margin: $unit 0 calc($unit * 2);
 
   :global(.TableCell) {
@@ -34,6 +35,11 @@
     &.role,
     &.name {
       flex-grow: 0.9;
+    }
+
+    &.size,
+    &.owner {
+      flex-grow: 0.7;
     }
 
     &.status,

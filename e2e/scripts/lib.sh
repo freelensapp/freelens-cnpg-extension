@@ -25,6 +25,24 @@ KIND_VERSION="${KIND_VERSION:-0.33.0}"             # datasource=github-releases 
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-1.36.4}" # datasource=docker depName=kindest/node
 KIND_NODE_IMAGE="${KIND_NODE_IMAGE:-kindest/node:v${KUBERNETES_VERSION}}"
 
+# The CSI hostpath driver and the external snapshotter the CloudNativePG project
+# installs in its own kind clusters, at the versions its testing tools pin, so
+# that volume snapshot backups and recoveries run for real (SPEC-0029). The
+# sidecar RBAC comes from each sidecar's own release.
+CSI_DRIVER_HOST_PATH_VERSION="${CSI_DRIVER_HOST_PATH_VERSION:-v1.18.0}"       # datasource=github-releases depName=kubernetes-csi/csi-driver-host-path
+EXTERNAL_SNAPSHOTTER_VERSION="${EXTERNAL_SNAPSHOTTER_VERSION:-v8.6.0}"        # datasource=github-releases depName=kubernetes-csi/external-snapshotter
+EXTERNAL_PROVISIONER_VERSION="${EXTERNAL_PROVISIONER_VERSION:-v6.3.0}"        # datasource=github-releases depName=kubernetes-csi/external-provisioner
+EXTERNAL_ATTACHER_VERSION="${EXTERNAL_ATTACHER_VERSION:-v4.13.0}"             # datasource=github-releases depName=kubernetes-csi/external-attacher
+EXTERNAL_RESIZER_VERSION="${EXTERNAL_RESIZER_VERSION:-v2.2.1}"                # datasource=github-releases depName=kubernetes-csi/external-resizer
+EXTERNAL_HEALTH_MONITOR_VERSION="${EXTERNAL_HEALTH_MONITOR_VERSION:-v0.18.0}" # datasource=github-releases depName=kubernetes-csi/external-health-monitor
+CSI_MANIFESTS_BASE_URL="https://raw.githubusercontent.com/kubernetes-csi"
+# The hostpath deploy directory named after a Kubernetes minor is the one the
+# CloudNativePG tooling applies on every supported minor.
+CSI_HOSTPATH_DEPLOY_DIR="deploy/kubernetes-1.34/hostpath"
+# What the driver's own manifests name, and what the fixtures reference.
+E2E_STORAGE_CLASS="csi-hostpath-sc"
+E2E_SNAPSHOT_CLASS="csi-hostpath-snapclass"
+
 CNPG_MANIFEST_URL="https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/v${CNPG_VERSION}/releases/cnpg-${CNPG_VERSION}.yaml"
 BARMAN_PLUGIN_MANIFEST_URL="https://github.com/cloudnative-pg/plugin-barman-cloud/releases/download/${BARMAN_PLUGIN_VERSION}/manifest.yaml"
 CERT_MANAGER_MANIFEST_URL="https://github.com/cert-manager/cert-manager/releases/download/${CERT_MANAGER_VERSION}/cert-manager.yaml"
@@ -64,6 +82,13 @@ E2E_CLUSTERS=(e2e-main e2e-single e2e-hibernated e2e-fenced)
 # from the read-only fixtures, so a write never changes what those cases assert.
 E2E_ACTIONS_NAMESPACE="cnpg-e2e-actions"
 E2E_ACTIONS_CLUSTER="e2e-actions"
+# The cluster of the volume snapshot cases (SPEC-0029): one instance on the CSI
+# hostpath storage class, a tablespace, cold snapshot backups; its fixture backup
+# and the marker table the recovery case looks for.
+E2E_SNAPSHOT_CLUSTER="e2e-snapshots"
+E2E_SNAPSHOT_BACKUP="e2e-snapshot-ok"
+E2E_SNAPSHOT_TABLESPACE="analytics"
+E2E_SNAPSHOT_MARKER_TABLE="snapshot_marker"
 E2E_HEALTHY_PHASE="Cluster in healthy state"
 
 # Timeouts. The first bring-up pulls the PostgreSQL, PgBouncer, MinIO,

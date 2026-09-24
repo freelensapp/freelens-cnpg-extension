@@ -188,7 +188,7 @@ in the drawers (see the [roadmap](docs/development/ROADMAP.md)).
 
 | Kind | Views |
 | --- | --- |
-| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage, backups and archiving, certificates, services and secrets, plugins), Overview, Live View with the trends, Logs, Timeline, creation form |
+| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage with the tablespaces, backups and archiving, certificates, services and secrets, plugins), Overview, Live View with the trends, Logs, Timeline, creation form (image, storage, tablespaces, bootstrap from a new database, a backup, an object store or the volume snapshots of a backup, WAL archiving, volume snapshot backups, replication, resources, updates, scheduling) |
 | `Backup` | List and drawer with the restore coordinates |
 | `ScheduledBackup` | List and drawer with the schedule in words and the backups it generated, creation form |
 | `Pooler` | List and drawer with the live PgBouncer figures, creation form |

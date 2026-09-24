@@ -1,0 +1,12 @@
+# Applied by cluster-up.sh once e2e-snapshots is healthy and its marker table is
+# written (SPEC-0029): a cold volume snapshot backup, with a data snapshot and a
+# tablespace snapshot, that the recovery case of the form restores from.
+apiVersion: postgresql.cnpg.io/v1
+kind: Backup
+metadata:
+  name: e2e-snapshot-ok
+  namespace: cnpg-e2e-actions
+spec:
+  cluster:
+    name: e2e-snapshots
+  method: volumeSnapshot
