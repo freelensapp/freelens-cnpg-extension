@@ -8,30 +8,27 @@
     "src/**/*.{test,spec}.{ts,tsx}",
     "test/**/*.{ts,tsx}"
   ],
-  "project": ["*.{js,mjs,ts}", "out/**/*.js!", "src/**/*.{ts,tsx}"],
+  "project": ["*.{js,mjs,ts}", "out/**/*.js!", "src/**/*.{ts,tsx,sass,scss}"],
 
-  // The E2E scripts are run from the pnpm scripts by path, not as installed binaries
-  "ignoreBinaries": [
-    "electron-rebuild",
-    "yq",
-    "e2e/scripts/cluster-down.sh",
-    "e2e/scripts/cluster-up.sh",
-    "e2e/scripts/demo-down.sh",
-    "e2e/scripts/demo-up.sh",
-    "e2e/scripts/e2e.sh",
-    "e2e/scripts/pre-review.sh"
-  ],
+  "ignoreBinaries": ["electron-rebuild"],
   "ignoreDependencies": [
-    // used as vite plugin
-    "@babel/plugin-proposal-decorators"
+    // Build-only plugins of the electron-vite and vitest configs: Knip 6.35+
+    // executes those configs to find them and trips on the ESM-only
+    // @vitejs/plugin-react, so the configs stay unread (below) and the plugins
+    // are listed here instead.
+    "@babel/plugin-proposal-decorators",
+    "@vitejs/plugin-react",
+    "vite-plugin-sass-dts"
   ],
 
   "typescript": {
     "config": ["tsconfig.json"]
   },
-  "vite": {
-    "config": ["electron.vite.config.js"]
-  },
+  // See ignoreDependencies: the electron-vite and vitest configs import
+  // @vitejs/plugin-react and cannot be executed by Knip's config loader.
+  "electron-vite": false,
+  "vite": false,
+  "vitest": false,
 
   "exclude": ["exports"]
 }
