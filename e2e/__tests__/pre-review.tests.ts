@@ -380,10 +380,11 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       // SPEC-0029: the drawer of the snapshot cluster, with its tablespace and its snapshot settings.
       await table(frame, cluster.E2E_SNAPSHOT_CLUSTER).click();
       await frame.locator(".Drawer.KubeObjectDetails").waitFor({ state: "visible", timeout: 60_000 });
-      // The host's Table forwards no data attribute: the row of the Storage section is the anchor.
+      // The host's Table forwards no data attribute: the row of the Storage section is the anchor, matched
+      // on its exact name (the annotations row above it quotes the word inside the last applied JSON).
       await frame
         .locator(".Drawer.KubeObjectDetails")
-        .locator(".DrawerItem", { hasText: "Tablespaces" })
+        .locator(".DrawerItem", { has: frame.locator("text=/^Tablespaces$/") })
         .first()
         .scrollIntoViewIfNeeded();
       await frame.waitForTimeout(500);
