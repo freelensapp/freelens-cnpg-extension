@@ -1,6 +1,6 @@
 # SPEC-0026: Create ScheduledBackup (with a cron editor), Pooler and ObjectStore
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0` (Barman Cloud plugin `v0.15.0`)
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -289,3 +289,7 @@ As SPEC-0025; no new deviation.
   gets in the dialog: in an inline row the column wins, and the pre-review
   pass checks the weekday select of the weekly schedule against the hour
   field (found on the screenshots of the M7 pre-review pass, fixed in #61).
+- M7 milestone review: 2026-09-24, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.

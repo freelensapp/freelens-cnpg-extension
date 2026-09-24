@@ -1,6 +1,6 @@
 # SPEC-0027: Create Database, DatabaseRole, Publication and Subscription
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -281,3 +281,7 @@ As SPEC-0025; no new deviation.
   sees the rows arrive; the role, database and publication cases create
   their objects on the cluster of the write cases and read them back from
   the primary with `psql` before deleting them with the delete policy.
+- M7 milestone review: 2026-09-24, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.
