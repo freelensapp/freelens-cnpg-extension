@@ -296,6 +296,17 @@ jobs:
       # Creates the kind cluster, applies the CloudNativePG CRDs at the pinned
       # version and the fixtures, and injects their statuses.
       - name: Start the CloudNativePG fixture cluster
+        id: cluster-up
+        run: pnpm e2e:cluster:up
+        continue-on-error: true
+
+      # The bring-up pulls a dozen images from three registries, and a pull
+      # that stalls on the runner leaves a deployment unavailable until the
+      # script gives up (MinIO from quay.io did, on a push to main). The
+      # script is idempotent: a second run re-applies everything and waits
+      # again, and a pull that finished in the meantime lets it through.
+      - name: Start the CloudNativePG fixture cluster (retry)
+        if: steps.cluster-up.outcome == 'failure'
         run: pnpm e2e:cluster:up
 
       - name: Run E2E tests
