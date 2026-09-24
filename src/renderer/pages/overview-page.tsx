@@ -42,7 +42,7 @@ import type { ClusterTile as ClusterTileModel } from "../components/overview-mod
 const { observer } = MobxReact;
 
 const {
-  Component: { TabLayout },
+  Component: { NamespaceSelectFilter, TabLayout },
   Navigation: { getDetailsUrl },
 } = Renderer;
 
@@ -79,16 +79,16 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
 
     const loading = !clusterStore.isLoaded && !clusterStore.failedLoading;
     const summary = summarize(
-      clusterStore.items as Cluster[],
-      (backupStore?.items ?? []) as Backup[],
-      (scheduleStore?.items ?? []) as ScheduledBackup[],
+      clusterStore.contextItems as Cluster[],
+      (backupStore?.contextItems ?? []) as Backup[],
+      (scheduleStore?.contextItems ?? []) as ScheduledBackup[],
       new Date(),
-      (objectStoreStore?.items ?? []) as ObjectStore[],
+      (objectStoreStore?.contextItems ?? []) as ObjectStore[],
       {
-        databases: databaseStore?.items,
-        roles: roleStore?.items,
-        publications: publicationStore?.items,
-        subscriptions: subscriptionStore?.items,
+        databases: databaseStore?.contextItems,
+        roles: roleStore?.contextItems,
+        publications: publicationStore?.contextItems,
+        subscriptions: subscriptionStore?.contextItems,
       },
     );
     // The door of the declared objects tile: the list of the first kind that has a failure.
@@ -122,7 +122,13 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
       <TabLayout scrollable>
         <style>{stylesInline}</style>
         <div className={styles.overview} data-testid="cnpg-overview">
-          <h5 className={styles.title}>Overview</h5>
+          <div className={styles.header}>
+            <h5 className={styles.title}>Overview</h5>
+            {/* The host's own namespace filter, the one of every list: the page follows it, so it is here to move it. */}
+            <div className={styles.namespaces} data-testid="cnpg-overview-namespaces">
+              <NamespaceSelectFilter id="cnpg-overview-namespace-filter" />
+            </div>
+          </div>
           {loading ? (
             <div className={styles.strip} data-testid="cnpg-overview-skeleton">
               {[0, 1, 2, 3, 4, 5].map((index) => (
@@ -205,11 +211,14 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
             <div className={styles.empty} data-testid="cnpg-overview-empty">
               <p>No PostgreSQL cluster in the selected namespaces.</p>
               <p>
-                Create one with the CloudNativePG operator, see{" "}
+                This page follows the namespace filter of Freelens, the one at the top of every list: on a first
+                connection to a Kubernetes cluster it selects only the namespace <code>default</code>. Pick the
+                namespaces of your clusters in the selector above, or create a cluster with the CloudNativePG operator,
+                see{" "}
                 <a href="https://cloudnative-pg.io/documentation/current/quickstart/" target="_blank" rel="noreferrer">
                   the quickstart
                 </a>
-                , or widen the namespace filter.
+                .
               </p>
             </div>
           ) : (

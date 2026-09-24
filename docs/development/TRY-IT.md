@@ -49,8 +49,9 @@ pnpm pack:dev
 
 In Freelens: Extensions, then install the `.tgz` the command printed. Add the
 demo kubeconfig (Catalog, add from file), open the cluster, and select the
-namespace `cnpg-e2e` in the namespace filter of any list: every view of the
-extension follows that filter.
+namespace `cnpg-e2e` in the namespace filter, at the top of the Overview and
+of every list (on a first connection Freelens selects only `default`): every
+view of the extension follows that filter.
 
 ## 3. Walk through it
 

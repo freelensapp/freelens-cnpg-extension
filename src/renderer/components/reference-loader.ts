@@ -35,6 +35,7 @@
 // shape as `object-existence.ts` and the status classifiers of DESIGN.md
 // section 2).
 
+import { Renderer } from "@freelensapp/extensions";
 import React from "react";
 import { maybe } from "../../common/utils";
 import { type ObjectLookupStore, objectExists } from "./object-existence";
@@ -243,6 +244,15 @@ export function useReferenceStores(
 ): void {
   const { maxAttempts = defaultMaxAttempts, retryDelayMs: baseDelayMs = defaultRetryDelayMs } = options;
   const key = referenceRequestsKey(requests);
+  // A request without explicit namespaces loads the host's context namespaces,
+  // the ones of the namespace filter: read here, inside the observer that
+  // renders the page, so that a filter moved while the page is open re-runs
+  // the load (`merge: true` keeps what was loaded) and the pages that show the
+  // filter follow it. Requests with explicit namespaces are unaffected.
+  const followsContext = requests.some((request) => requestedNamespaces(request.namespaces) === undefined);
+  const contextKey = followsContext
+    ? (maybe(() => Renderer.K8sApi.namespaceStore.contextNamespaces.join(",")) ?? "")
+    : "";
   const latestRequests = React.useRef(requests);
   // The only state the hook keeps, and only for the `store=unavailable` case:
   // a CRD store that `maybe(() => Kind.getStore())` could not resolve is
@@ -342,5 +352,5 @@ export function useReferenceStores(
         maybe(() => dispose());
       }
     };
-  }, [key, maxAttempts, baseDelayMs]);
+  }, [key, contextKey, maxAttempts, baseDelayMs]);
 }

@@ -6,6 +6,7 @@ declare const classNames: {
   readonly title: "title";
   readonly header: "header";
   readonly picker: "picker";
+  readonly namespaces: "namespaces";
   readonly headerFacts: "headerFacts";
   readonly controls: "controls";
   readonly control: "control";

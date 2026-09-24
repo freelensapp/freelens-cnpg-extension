@@ -1,6 +1,8 @@
 declare const classNames: {
   readonly overview: "overview";
   readonly title: "title";
+  readonly header: "header";
+  readonly namespaces: "namespaces";
   readonly strip: "strip";
   readonly statTile: "statTile";
   readonly clusterTile: "clusterTile";

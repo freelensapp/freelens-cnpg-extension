@@ -136,3 +136,7 @@ shows what the cluster already writes to its standard output to whoever has
   after the review). Verdict: approved, no blocking finding. Status moved to
   Verified. Still open for a later look: the states that only unit tests
   cover, listed above.
+- 2026-09-24: the shared frame of the pages with a cluster picker carries the
+  host's namespace filter next to the picker, and its empty panel says which
+  filter it follows (found on the Overview during the manual test of the lead
+  maintainer, SPEC-0004 notes).
