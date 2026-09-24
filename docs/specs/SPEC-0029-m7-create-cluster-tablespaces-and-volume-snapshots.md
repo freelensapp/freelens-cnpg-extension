@@ -1,6 +1,6 @@
 # SPEC-0029: Tablespaces and volume snapshots in the Create Cluster form
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-24
