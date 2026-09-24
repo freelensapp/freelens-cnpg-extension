@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Creates the disposable kind cluster the E2E suite runs against: cert-manager,
-# the CloudNativePG operator, the Barman Cloud plugin, an in-cluster MinIO, then
+# the CloudNativePG operator, the Barman Cloud plugin, an in-cluster S3 store, then
 # the fixture clusters, backups, schedule and pooler, waiting for every one of
 # them to reach the state the views expect (SPEC-0002).
 #
@@ -133,25 +133,46 @@ install_barman_plugin() {
 	log "Barman Cloud plugin ready"
 }
 
+# Creates a bucket on the S3 store through the shell of the server, once: the
+# plugin would create it on the first backup, but the object stores of the
+# fixtures report their recovery windows only against a bucket that exists.
+ensure_bucket() {
+	local bucket="$1" deadline listed
+	deadline=$(($(date +%s) + 120))
+	while :; do
+		listed="$(kubectl_e2e exec deploy/s3 --namespace "${E2E_NAMESPACE}" -c seaweedfs -- \
+			sh -c 'echo "s3.bucket.list" | weed shell' 2>/dev/null || true)"
+		if [[ ${listed} == *"${bucket}"* ]]; then
+			return 0
+		fi
+		if kubectl_e2e exec deploy/s3 --namespace "${E2E_NAMESPACE}" -c seaweedfs -- \
+			sh -c "echo 's3.bucket.create -name ${bucket}' | weed shell" >/dev/null 2>&1; then
+			log "bucket ${bucket} created"
+			return 0
+		fi
+		[[ "$(date +%s)" -ge ${deadline} ]] && die "could not create the bucket ${bucket} on the S3 store"
+		sleep 3
+	done
+}
+
 apply_fixtures() {
 	# Phase 1: everything the clusters depend on, then the clusters. The image
-	# pins of lib.sh are substituted into the MinIO manifest so that the single
+	# pins of lib.sh are substituted into the object store manifest so that the single
 	# place where versions live stays lib.sh.
 	local substituted_dir file
 	substituted_dir="$(mktemp -d)"
 	# shellcheck disable=SC2064 # the directory is expanded now on purpose
 	trap "rm -rf '${substituted_dir}'" RETURN
 	for file in "${E2E_FIXTURES_DIR}"/[0-3]*.yaml; do
-		sed -e "s|__MINIO_IMAGE__|${MINIO_IMAGE}|g" -e "s|__MC_IMAGE__|${MC_IMAGE}|g" \
+		sed -e "s|__S3_IMAGE__|${S3_IMAGE}|g" \
 			"${file}" >"${substituted_dir}/$(basename "${file}")"
 	done
-	log "applying the namespace, MinIO, object stores and clusters"
+	log "applying the namespace, the S3 store, the object stores and the clusters"
 	kubectl_e2e apply -f "${substituted_dir}" >/dev/null
 
-	log "waiting for MinIO and its bucket"
-	wait_rollout "${E2E_NAMESPACE}" minio
-	kubectl_e2e wait --for=condition=complete --timeout=300s job/minio-bucket --namespace "${E2E_NAMESPACE}" >/dev/null ||
-		die "the minio-bucket job did not complete; is ${MC_IMAGE} reachable?"
+	log "waiting for the S3 store and creating its bucket"
+	wait_rollout "${E2E_NAMESPACE}" s3
+	ensure_bucket backups
 }
 
 wait_clusters() {

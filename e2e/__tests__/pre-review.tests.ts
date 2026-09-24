@@ -454,7 +454,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       await store.waitFor({ state: "visible", timeout: 60_000 });
       await store.locator('[data-testid="cnpg-create-object-store-name"]').fill("review-store");
       await store.locator('[data-testid="cnpg-create-object-store-destination"]').fill("s3://backups/review/");
-      await store.locator('[data-testid="cnpg-create-object-store-endpoint"]').fill("https://minio.cnpg-e2e.svc:9000");
+      await store.locator('[data-testid="cnpg-create-object-store-endpoint"]').fill("https://s3.cnpg-e2e.svc:9000");
 
       const secretPicker = frame.locator("#cnpg-create-object-store-s3AccessKeyId-secret");
 
