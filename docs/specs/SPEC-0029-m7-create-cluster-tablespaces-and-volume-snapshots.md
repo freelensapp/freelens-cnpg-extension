@@ -1,6 +1,6 @@
 # SPEC-0029: Tablespaces and volume snapshots in the Create Cluster form
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-24
@@ -308,3 +308,7 @@ case runs.
   CloudNativePG tooling does. The driver goes in before cert-manager and the
   operator; on a reused cluster whose operator started without the snapshot
   CRDs, the bring-up restarts the operator once.
+- Milestone review: 2026-09-24, lead maintainer, on the screenshots of the
+  pre-review pass on both themes and of the three E2E cases (gallery on an
+  ephemeral branch, deleted after the review). Verdict: approved, no blocking
+  finding. Status moved to Verified.
