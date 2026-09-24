@@ -6,13 +6,15 @@
 // The decisions of the Create Cluster form (SPEC-0025): what the form offers
 // from what the reads on open found, which field is wrong and why, what the
 // operator will make of the object, and the exact body the one `create`
-// sends. Pure: `cluster-create-dialog.tsx` renders it. Every rule of the
+// sends; with SPEC-0029, the tablespaces, the volume snapshot backups and the
+// recovery from snapshots. Pure: `cluster-create-dialog.tsx` renders it. Every rule of the
 // operator's admission the form can express is here, with the sentence of
 // the field, so that a mistake is read before the submit and not in the
 // answer of the API server.
 
 import { BARMAN_CLOUD_PLUGIN_NAME } from "../api/barmancloud/object-store-v1";
 import { CNPG_API_VERSION } from "../api/cnpg/cluster-v1";
+import { SNAPSHOT_API_GROUP } from "../api/snapshot/volume-snapshot-v1";
 import {
   CLUSTER_NAME_MAX,
   collisionWarning,
@@ -60,6 +62,38 @@ export interface BackupChoice {
   phase?: string;
 }
 
+/** A snapshot class of the Kubernetes cluster, with the CSI driver it belongs to. */
+export interface SnapshotClassChoice {
+  name: string;
+  driver?: string;
+}
+
+/** A volume snapshot of the namespace, with what the operator stamped on it (SPEC-0029). */
+export interface SnapshotChoice {
+  name: string;
+  /** `PG_DATA`, `PG_WAL` or `PG_TABLESPACE` when the operator took it; absent otherwise. */
+  role?: string;
+  tablespace?: string;
+  backup?: string;
+  cluster?: string;
+  date?: string;
+  hot?: boolean;
+  ready: boolean;
+}
+
+/** One row of the Tablespaces section (SPEC-0029). */
+export interface TablespaceRow {
+  name: string;
+  size: string;
+  storageClass: string;
+  owner: string;
+  temporary: boolean;
+}
+
+export function emptyTablespaceRow(): TablespaceRow {
+  return { name: "", size: "", storageClass: "", owner: "", temporary: false };
+}
+
 /** What the reads on open found (F7). `unavailable` is any failure: the pickers degrade, nothing blocks. */
 export interface ClusterCreateInputs {
   /** The namespaces the page filter selects, for the default of the form (F4). */
@@ -71,9 +105,24 @@ export interface ClusterCreateInputs {
   storageClasses: string[];
   secrets: SecretChoice[];
   backups: BackupChoice[];
+  snapshotClasses: SnapshotClassChoice[];
+  volumeSnapshots: SnapshotChoice[];
+  /** Whether the VolumeSnapshot CRD exists in the Kubernetes cluster; undefined while unknown or unreadable. */
+  volumeSnapshotCrd?: boolean;
   /** The default image of the operator, when SPEC-0016 could read it from the deployment. */
   operatorImage?: string;
-  reads: Record<"clusters" | "objectStores" | "catalogs" | "storageClasses" | "secrets" | "backups", ReadState>;
+  reads: Record<
+    | "clusters"
+    | "objectStores"
+    | "catalogs"
+    | "storageClasses"
+    | "secrets"
+    | "backups"
+    | "snapshotClasses"
+    | "volumeSnapshots"
+    | "crds",
+    ReadState
+  >;
 }
 
 export function emptyClusterCreateInputs(selectedNamespaces: string[] = []): ClusterCreateInputs {
@@ -85,6 +134,8 @@ export function emptyClusterCreateInputs(selectedNamespaces: string[] = []): Clu
     storageClasses: [],
     secrets: [],
     backups: [],
+    snapshotClasses: [],
+    volumeSnapshots: [],
     reads: {
       clusters: "loading",
       objectStores: "loading",
@@ -92,13 +143,18 @@ export function emptyClusterCreateInputs(selectedNamespaces: string[] = []): Clu
       storageClasses: "loading",
       secrets: "loading",
       backups: "loading",
+      snapshotClasses: "loading",
+      volumeSnapshots: "loading",
+      crds: "loading",
     },
   };
 }
 
 export type ImageSource = "operator" | "catalog" | "name";
 export type BootstrapChoice = "initdb" | "recovery";
-export type RecoverySource = "backup" | "objectStore";
+export type RecoverySource = "backup" | "objectStore" | "volumeSnapshots";
+export type SnapshotMode = "hot" | "cold";
+export type SnapshotOwner = "" | "none" | "cluster" | "backup";
 export type LocaleProvider = "" | "libc" | "icu" | "builtin";
 export type SyncMethod = "any" | "first";
 export type DataDurability = "" | "required" | "preferred";
@@ -123,6 +179,7 @@ export interface ClusterForm {
   walEnabled: boolean;
   walSize: string;
   walClass: string;
+  tablespaces: TablespaceRow[];
   bootstrap: BootstrapChoice;
   initdbDatabase: string;
   initdbOwner: string;
@@ -137,8 +194,22 @@ export interface ClusterForm {
   /** The folder of the source cluster in the object store: its name, unless it archived under another. */
   recoveryServerName: string;
   recoveryTargetTime: string;
+  /** The data snapshot, the WAL snapshot and the tablespace snapshots of a recovery from volume snapshots. */
+  recoveryDataSnapshot: string;
+  recoveryWalSnapshot: string;
+  /** Keyed by tablespace name; a row without an entry sends nothing for it. */
+  recoveryTablespaceSnapshots: Record<string, string>;
+  /** Whether the WAL archive of the source is given with the snapshots (the object store fields above). */
+  recoveryWalArchive: boolean;
   objectStore: string;
   backupTarget: BackupTarget;
+  snapshotsEnabled: boolean;
+  snapshotClass: string;
+  snapshotWalClass: string;
+  snapshotMode: SnapshotMode;
+  snapshotWaitForArchive: boolean;
+  snapshotImmediateCheckpoint: boolean;
+  snapshotOwner: SnapshotOwner;
   superuserAccess: boolean;
   superuserSecret: string;
   syncEnabled: boolean;
@@ -172,6 +243,7 @@ export function defaultClusterForm(namespace: string): ClusterForm {
     walEnabled: false,
     walSize: "",
     walClass: "",
+    tablespaces: [],
     bootstrap: "initdb",
     initdbDatabase: "app",
     initdbOwner: "app",
@@ -185,8 +257,19 @@ export function defaultClusterForm(namespace: string): ClusterForm {
     recoveryObjectStore: "",
     recoveryServerName: "",
     recoveryTargetTime: "",
+    recoveryDataSnapshot: "",
+    recoveryWalSnapshot: "",
+    recoveryTablespaceSnapshots: {},
+    recoveryWalArchive: false,
     objectStore: "",
     backupTarget: "",
+    snapshotsEnabled: false,
+    snapshotClass: "",
+    snapshotWalClass: "",
+    snapshotMode: "hot",
+    snapshotWaitForArchive: true,
+    snapshotImmediateCheckpoint: false,
+    snapshotOwner: "",
     superuserAccess: false,
     superuserSecret: "",
     syncEnabled: false,
@@ -225,6 +308,11 @@ export interface ClusterEffectiveValues {
   antiAffinity: "preferred";
   dataDurability: "required";
   storageClass: string;
+  tablespaceOwner: string;
+  snapshotClass: string;
+  snapshotWalClass: string;
+  snapshotMode: "hot";
+  snapshotOwner: "none";
 }
 
 export function clusterEffectiveValues(inputs: ClusterCreateInputs): ClusterEffectiveValues {
@@ -238,6 +326,11 @@ export function clusterEffectiveValues(inputs: ClusterCreateInputs): ClusterEffe
     antiAffinity: "preferred",
     dataDurability: "required",
     storageClass: "the default storage class of the Kubernetes cluster",
+    tablespaceOwner: "the owner of the application database, else postgres",
+    snapshotClass: "the default snapshot class of the CSI driver",
+    snapshotWalClass: "the snapshot class of the data volume",
+    snapshotMode: "hot",
+    snapshotOwner: "none",
   };
 }
 
@@ -251,13 +344,18 @@ export const CLUSTER_FIELD_ORDER: readonly string[] = [
   "imageName",
   "storageSize",
   "walSize",
+  "tablespaces",
   "initdbDatabase",
   "initdbOwner",
   "initdbLocale",
   "recoveryBackup",
   "recoveryObjectStore",
   "recoveryServerName",
+  "recoveryDataSnapshot",
+  "recoveryWalSnapshot",
   "recoveryTargetTime",
+  "snapshotsEnabled",
+  "snapshotClass",
   "syncNumber",
   "requestsCpu",
   "requestsMemory",
@@ -276,6 +374,46 @@ function instancesOf(form: ClusterForm): number {
 function sharedBuffersOf(form: ClusterForm): ReturnType<typeof postgresMemory> {
   const row = form.parameters.find((parameter) => parameter.key.trim() === "shared_buffers");
   return row ? postgresMemory(row.value) : undefined;
+}
+
+const TABLESPACE_IDENTIFIER = /^[a-zA-Z_][a-zA-Z0-9_$]*$/;
+const TABLESPACE_NAME_MAX = 63;
+
+/** The operator's own rule for a tablespace name (`IsTablespaceNameValid` at v1.30.0), in the words of the form. */
+export function tablespaceNameError(name: string): string | undefined {
+  if (name === "") return "A tablespace name is required";
+  if (name.startsWith("pg_")) return "Tablespace names beginning with pg_ are reserved for PostgreSQL";
+  if (!TABLESPACE_IDENTIFIER.test(name)) {
+    return "A tablespace name is a PostgreSQL identifier: letters, digits, _ and $, starting with a letter or _";
+  }
+  if (name.length > TABLESPACE_NAME_MAX) return `A tablespace name is ${TABLESPACE_NAME_MAX} characters at most`;
+  return undefined;
+}
+
+/** The volume name the operator derives from a tablespace name: a leading _ becomes 1, $ and _ become -, lowercase. */
+export function tablespaceVolumeName(name: string): string {
+  const started = name.startsWith("_") ? `1${name.slice(1)}` : name;
+  return `tbs-${started.replace(/\$/g, "-").replace(/_/g, "-").toLowerCase()}`;
+}
+
+export const TABLESPACE_HINT =
+  "A tablespace cannot be removed once created, its volume can grow and never shrink, and the section cannot be dropped once the cluster has one.";
+
+/** The name of the WAL archive source of a recovery, as sent in `recovery.source` and `externalClusters`. */
+function recoverySourceName(form: ClusterForm): string {
+  return form.recoveryServerName.trim();
+}
+
+/** Whether the recovery replays the WAL archive of a source through the plugin: the object store recovery, or snapshots with the archive. */
+function recoveryUsesArchive(form: ClusterForm): boolean {
+  return (
+    form.bootstrap === "recovery" &&
+    (form.recoverySource === "objectStore" || (form.recoverySource === "volumeSnapshots" && form.recoveryWalArchive))
+  );
+}
+
+function pickedSnapshot(inputs: ClusterCreateInputs, name: string): SnapshotChoice | undefined {
+  return inputs.volumeSnapshots.find((snapshot) => snapshot.name === name);
 }
 
 /** Every field that is wrong, with the reason it shows (F6). A field that is fine is absent. */
@@ -304,6 +442,24 @@ export function clusterFormErrors(inputs: ClusterCreateInputs, form: ClusterForm
   put("storageSize", quantityError(form.storageSize, "A storage size"));
   if (form.walEnabled) put("walSize", quantityError(form.walSize, "A WAL volume size"));
 
+  const lowerNames = form.tablespaces.map((row) => row.name.trim().toLowerCase());
+  const volumeNames = form.tablespaces.map((row) => tablespaceVolumeName(row.name.trim()));
+  form.tablespaces.forEach((row, index) => {
+    const name = row.name.trim();
+    let nameError = tablespaceNameError(name);
+    if (!nameError && lowerNames.indexOf(name.toLowerCase()) !== index) {
+      nameError = `${name} is declared twice (tablespace names are compared ignoring case)`;
+    }
+    if (!nameError && volumeNames.indexOf(volumeNames[index]) !== index) {
+      const other = form.tablespaces[volumeNames.indexOf(volumeNames[index])].name.trim();
+      nameError = `${name} and ${other} become the same volume name (${volumeNames[index]})`;
+    }
+    put(`tablespaces.${index}.name`, nameError);
+    put(`tablespaces.${index}.size`, quantityError(row.size, "A size"));
+    if (row.owner.trim() !== "") put(`tablespaces.${index}.owner`, identifierError(row.owner.trim(), "An owner"));
+  });
+  if (Object.keys(errors).some((key) => key.startsWith("tablespaces."))) errors.tablespaces = "A tablespace is wrong";
+
   if (form.bootstrap === "initdb") {
     put("initdbDatabase", identifierError(form.initdbDatabase, "A database name"));
     put("initdbOwner", identifierError(form.initdbOwner, "An owner"));
@@ -321,20 +477,50 @@ export function clusterFormErrors(inputs: ClusterCreateInputs, form: ClusterForm
     if (form.recoveryTargetTime !== "")
       put("recoveryTargetTime", rfc3339Error(form.recoveryTargetTime, "A target time"));
   } else {
-    if (form.recoveryObjectStore === "") errors.recoveryObjectStore = "Pick the object store that holds the backups";
-    put("recoveryServerName", dnsLabelError(form.recoveryServerName));
-    if (
-      !errors.recoveryServerName &&
-      !errors.name &&
-      form.objectStore !== "" &&
-      form.objectStore === form.recoveryObjectStore &&
-      form.recoveryServerName === form.name
-    ) {
-      errors.recoveryServerName =
-        "The new cluster would archive into the folder it recovers from: give it another name, or archive to another store";
+    if (form.recoverySource === "volumeSnapshots") {
+      if (form.recoveryDataSnapshot === "") errors.recoveryDataSnapshot = "Pick the data snapshot to recover from";
+      else {
+        const snapshot = pickedSnapshot(inputs, form.recoveryDataSnapshot);
+        if (snapshot && !snapshot.ready) {
+          errors.recoveryDataSnapshot = `${snapshot.name} is not ready to use yet: the recovery would wait on it`;
+        }
+      }
+      if (form.recoveryWalSnapshot !== "") {
+        if (!form.walEnabled) {
+          errors.recoveryWalSnapshot = "A WAL snapshot needs a WAL volume of its own: give the WAL a volume in Storage";
+        } else {
+          const snapshot = pickedSnapshot(inputs, form.recoveryWalSnapshot);
+          if (snapshot && !snapshot.ready) {
+            errors.recoveryWalSnapshot = `${snapshot.name} is not ready to use yet: the recovery would wait on it`;
+          }
+        }
+      }
+      if (form.recoveryTargetTime !== "" && !form.recoveryWalArchive) {
+        errors.recoveryTargetTime =
+          "A point in time is reached by replaying WAL the snapshots do not carry: give the WAL archive of the source";
+      }
     }
-    if (form.recoveryTargetTime !== "")
+    if (recoveryUsesArchive(form)) {
+      if (form.recoveryObjectStore === "") errors.recoveryObjectStore = "Pick the object store that holds the backups";
+      put("recoveryServerName", dnsLabelError(form.recoveryServerName));
+      if (
+        !errors.recoveryServerName &&
+        !errors.name &&
+        form.objectStore !== "" &&
+        form.objectStore === form.recoveryObjectStore &&
+        form.recoveryServerName === form.name
+      ) {
+        errors.recoveryServerName =
+          "The new cluster would archive into the folder it recovers from: give it another name, or archive to another store";
+      }
+    }
+    if (form.recoveryTargetTime !== "" && !errors.recoveryTargetTime)
       put("recoveryTargetTime", rfc3339Error(form.recoveryTargetTime, "A target time"));
+  }
+
+  if (form.snapshotsEnabled && inputs.volumeSnapshotCrd === false) {
+    errors.snapshotsEnabled =
+      "The VolumeSnapshot CRD is not installed in this Kubernetes cluster: the operator refuses the volumeSnapshot method";
   }
 
   if (form.syncEnabled) {
@@ -451,6 +637,60 @@ export function clusterFormWarnings(inputs: ClusterCreateInputs, form: ClusterFo
   ) {
     warnings.catalog = `No catalog named ${form.catalog} was found: the cluster would report an invalid catalog`;
   }
+  form.tablespaces.forEach((row, index) => {
+    if (
+      row.storageClass !== "" &&
+      inputs.reads.storageClasses === "ready" &&
+      !inputs.storageClasses.includes(row.storageClass)
+    ) {
+      warnings[`tablespaces.${index}.storageClass`] =
+        `No storage class named ${row.storageClass} was found: the volumes will stay pending until it exists`;
+    }
+  });
+  if (form.snapshotsEnabled) {
+    const classNames = inputs.snapshotClasses.map((choice) => choice.name);
+    for (const key of ["snapshotClass", "snapshotWalClass"] as const) {
+      if (form[key] !== "" && inputs.reads.snapshotClasses === "ready" && !classNames.includes(form[key])) {
+        warnings[key] = `No snapshot class named ${form[key]} was found: the snapshots will fail until it exists`;
+      }
+    }
+  }
+  if (form.bootstrap === "recovery" && form.recoverySource === "volumeSnapshots") {
+    const snapshotNames = inputs.volumeSnapshots.map((snapshot) => snapshot.name);
+    const roleWarning = (name: string, role: string, tablespace?: string): string | undefined => {
+      const snapshot = pickedSnapshot(inputs, name);
+      if (!snapshot) return undefined;
+      if (snapshot.role === undefined) return `${name} was not taken by the operator: its content is unknown`;
+      if (snapshot.role !== role) return `${name} is a ${snapshot.role} snapshot, not ${role}`;
+      if (tablespace !== undefined && snapshot.tablespace !== tablespace) {
+        return `${name} is the snapshot of the tablespace ${snapshot.tablespace ?? "?"}, not ${tablespace}`;
+      }
+      return undefined;
+    };
+    put(
+      "recoveryDataSnapshot",
+      unseen(inputs.reads.volumeSnapshots, snapshotNames, form.recoveryDataSnapshot, "snapshot") ??
+        roleWarning(form.recoveryDataSnapshot, "PG_DATA"),
+    );
+    const data = pickedSnapshot(inputs, form.recoveryDataSnapshot);
+    if (!warnings.recoveryDataSnapshot && data?.hot === true && !form.recoveryWalArchive) {
+      warnings.recoveryDataSnapshot = `${data.name} is a hot snapshot: without the WAL archive of the source the recovery may not finish`;
+    }
+    put(
+      "recoveryWalSnapshot",
+      unseen(inputs.reads.volumeSnapshots, snapshotNames, form.recoveryWalSnapshot, "snapshot") ??
+        roleWarning(form.recoveryWalSnapshot, "PG_WAL"),
+    );
+    for (const row of form.tablespaces) {
+      const tablespace = row.name.trim();
+      const name = form.recoveryTablespaceSnapshots[tablespace] ?? "";
+      put(
+        `recoveryTablespaceSnapshots.${tablespace}`,
+        unseen(inputs.reads.volumeSnapshots, snapshotNames, name, "snapshot") ??
+          roleWarning(name, "PG_TABLESPACE", tablespace),
+      );
+    }
+  }
   return warnings;
 }
 
@@ -476,6 +716,14 @@ export function clusterCreateBody(form: ClusterForm): Record<string, unknown> {
   if (form.walEnabled) {
     spec.walStorage = { size: form.walSize.trim(), ...(form.walClass ? { storageClass: form.walClass } : {}) };
   }
+  if (form.tablespaces.length > 0) {
+    spec.tablespaces = form.tablespaces.map((row) => ({
+      name: row.name.trim(),
+      storage: { size: row.size.trim(), ...(row.storageClass ? { storageClass: row.storageClass } : {}) },
+      ...(row.owner.trim() !== "" ? { owner: { name: row.owner.trim() } } : {}),
+      ...(row.temporary ? { temporary: true } : {}),
+    }));
+  }
 
   if (form.bootstrap === "initdb") {
     const initdb: Record<string, unknown> = { database: form.initdbDatabase, owner: form.initdbOwner };
@@ -495,20 +743,36 @@ export function clusterCreateBody(form: ClusterForm): Record<string, unknown> {
     spec.bootstrap = { initdb };
   } else {
     const recovery: Record<string, unknown> = {};
+    const snapshotRef = (name: string) => ({ name, kind: "VolumeSnapshot", apiGroup: SNAPSHOT_API_GROUP });
     if (form.recoverySource === "backup") {
       recovery.backup = { name: form.recoveryBackup };
+    } else if (form.recoverySource === "volumeSnapshots") {
+      if (form.recoveryWalArchive) recovery.source = recoverySourceName(form);
+      const tablespaceStorage: Record<string, unknown> = {};
+      for (const row of form.tablespaces) {
+        const tablespace = row.name.trim();
+        const name = form.recoveryTablespaceSnapshots[tablespace];
+        if (tablespace !== "" && name) tablespaceStorage[tablespace] = snapshotRef(name);
+      }
+      recovery.volumeSnapshots = {
+        storage: snapshotRef(form.recoveryDataSnapshot),
+        ...(form.walEnabled && form.recoveryWalSnapshot !== ""
+          ? { walStorage: snapshotRef(form.recoveryWalSnapshot) }
+          : {}),
+        ...(Object.keys(tablespaceStorage).length > 0 ? { tablespaceStorage } : {}),
+      };
     } else {
-      recovery.source = form.recoveryServerName;
+      recovery.source = recoverySourceName(form);
     }
     if (form.recoveryTargetTime.trim() !== "") recovery.recoveryTarget = { targetTime: form.recoveryTargetTime.trim() };
     spec.bootstrap = { recovery };
-    if (form.recoverySource === "objectStore") {
+    if (recoveryUsesArchive(form)) {
       spec.externalClusters = [
         {
-          name: form.recoveryServerName,
+          name: recoverySourceName(form),
           plugin: {
             name: BARMAN_CLOUD_PLUGIN_NAME,
-            parameters: { barmanObjectName: form.recoveryObjectStore, serverName: form.recoveryServerName },
+            parameters: { barmanObjectName: form.recoveryObjectStore, serverName: recoverySourceName(form) },
           },
         },
       ];
@@ -520,7 +784,24 @@ export function clusterCreateBody(form: ClusterForm): Record<string, unknown> {
       { name: BARMAN_CLOUD_PLUGIN_NAME, isWALArchiver: true, parameters: { barmanObjectName: form.objectStore } },
     ];
   }
-  if (form.backupTarget) spec.backup = { target: form.backupTarget };
+  const backup: Record<string, unknown> = {};
+  if (form.backupTarget) backup.target = form.backupTarget;
+  if (form.snapshotsEnabled) {
+    const volumeSnapshot: Record<string, unknown> = {};
+    if (form.snapshotClass) volumeSnapshot.className = form.snapshotClass;
+    if (form.walEnabled && form.snapshotWalClass) volumeSnapshot.walClassName = form.snapshotWalClass;
+    if (form.snapshotMode === "cold") volumeSnapshot.online = false;
+    else {
+      const onlineConfiguration = {
+        ...(form.snapshotWaitForArchive ? {} : { waitForArchive: false }),
+        ...(form.snapshotImmediateCheckpoint ? { immediateCheckpoint: true } : {}),
+      };
+      if (Object.keys(onlineConfiguration).length > 0) volumeSnapshot.onlineConfiguration = onlineConfiguration;
+    }
+    if (form.snapshotOwner) volumeSnapshot.snapshotOwnerReference = form.snapshotOwner;
+    backup.volumeSnapshot = volumeSnapshot;
+  }
+  if (Object.keys(backup).length > 0) spec.backup = backup;
 
   if (form.superuserAccess) {
     spec.enableSuperuserAccess = true;
@@ -582,16 +863,30 @@ function imageWords(inputs: ClusterCreateInputs, form: ClusterForm): string {
   return `image ${clusterEffectiveValues(inputs).image}`;
 }
 
-function bootstrapWords(form: ClusterForm): string {
+function bootstrapWords(inputs: ClusterCreateInputs, form: ClusterForm): string {
   if (form.bootstrap === "initdb") return `a new database ${form.initdbDatabase} owned by ${form.initdbOwner}`;
   const upTo = form.recoveryTargetTime ? ` up to ${form.recoveryTargetTime}` : "";
-  return form.recoverySource === "backup"
-    ? `recovery from the backup ${form.recoveryBackup || "?"}${upTo}`
-    : `recovery of ${form.recoveryServerName || "?"} from the object store ${form.recoveryObjectStore || "?"}${upTo}`;
+  if (form.recoverySource === "backup") return `recovery from the backup ${form.recoveryBackup || "?"}${upTo}`;
+  if (form.recoverySource === "volumeSnapshots") {
+    const snapshot = pickedSnapshot(inputs, form.recoveryDataSnapshot);
+    const facts = snapshot
+      ? [
+          snapshot.hot === undefined ? undefined : snapshot.hot ? "hot" : "cold",
+          snapshot.backup ? `backup ${snapshot.backup}${snapshot.cluster ? ` of ${snapshot.cluster}` : ""}` : undefined,
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : "";
+    const archive = form.recoveryWalArchive
+      ? ` and the WAL archive of ${form.recoveryServerName || "?"} in ${form.recoveryObjectStore || "?"}`
+      : "";
+    return `recovery from the volume snapshot ${form.recoveryDataSnapshot || "?"}${facts ? ` (${facts})` : ""}${archive}${upTo}`;
+  }
+  return `recovery of ${form.recoveryServerName || "?"} from the object store ${form.recoveryObjectStore || "?"}${upTo}`;
 }
 
 /** What the operator will create from the object, said before the click (F2). */
-export function clusterCreateNotes(_inputs: ClusterCreateInputs, form: ClusterForm): string[] {
+export function clusterCreateNotes(inputs: ClusterCreateInputs, form: ClusterForm): string[] {
   const instances = instancesOf(form);
   const count = Number.isNaN(instances) ? "?" : String(instances);
   const name = form.name || "<name>";
@@ -601,9 +896,25 @@ export function clusterCreateNotes(_inputs: ClusterCreateInputs, form: ClusterFo
       form.walEnabled ? ` and a WAL volume of ${form.walSize || "?"}` : ""
     }, the services ${name}-rw, ${name}-ro and ${name}-r, and the secrets ${name}-app${form.superuserAccess ? ` and ${name}-superuser` : ""}.`,
   );
+  if (form.tablespaces.length > 0) {
+    const names = form.tablespaces.map((row) => row.name.trim() || "?");
+    notes.push(
+      `${names.length} tablespace${names.length === 1 ? "" : "s"} (${names.join(", ")}): one volume per instance and per tablespace (${name}-<n>-${form.tablespaces.map((row) => tablespaceVolumeName(row.name.trim() || "?"))[0]}${names.length > 1 ? ", ..." : ""}), created with CREATE TABLESPACE on the primary.`,
+    );
+  }
   notes.push(
-    `Bootstrap: ${bootstrapWords(form)}. The bootstrap section is read once, when the first instance is created.`,
+    `Bootstrap: ${bootstrapWords(inputs, form)}. The bootstrap section is read once, when the first instance is created.`,
   );
+  if (form.bootstrap === "recovery" && form.recoverySource === "volumeSnapshots") {
+    notes.push(
+      `The data snapshot is restored as the volume of the first instance${form.walEnabled && form.recoveryWalSnapshot ? ", the WAL snapshot as its WAL volume" : ""}${Object.values(form.recoveryTablespaceSnapshots).some(Boolean) ? ", the tablespace snapshots as its tablespace volumes" : ""}; a hot snapshot is finished by replaying the WAL archive of the source.`,
+    );
+  }
+  if (form.snapshotsEnabled) {
+    notes.push(
+      `Backups by volume snapshot are available (${form.snapshotClass ? `class ${form.snapshotClass}` : "the default snapshot class of the driver"}, ${form.snapshotMode}): Back up now and the schedules can pick the volumeSnapshot method${form.objectStore ? ", and the plugin method stays available" : ""}.`,
+    );
+  }
   if (form.objectStore) {
     notes.push(
       `WAL is archived to the object store ${form.objectStore} through the Barman Cloud plugin: backups and point in time recovery become possible.`,
@@ -623,7 +934,7 @@ export function clusterCreateNotes(_inputs: ClusterCreateInputs, form: ClusterFo
 }
 
 /** What it costs (F2). */
-export function clusterCreateWarnings(_inputs: ClusterCreateInputs, form: ClusterForm): string[] {
+export function clusterCreateWarnings(inputs: ClusterCreateInputs, form: ClusterForm): string[] {
   const warnings: string[] = [];
   const instances = instancesOf(form);
   if (instances === 1) warnings.push("One instance: no failover, and no standby to read from.");
@@ -653,6 +964,29 @@ export function clusterCreateWarnings(_inputs: ClusterCreateInputs, form: Cluste
       "Recovery replays the backups and the WAL of the source: the new cluster starts with that data, not empty.",
     );
   }
+  if (form.bootstrap === "recovery" && form.recoverySource === "volumeSnapshots") {
+    if (!Number.isNaN(instances) && instances > 1) {
+      warnings.push(
+        "The replicas of a cluster recovered from a snapshot may be synchronised with pg_basebackup, a full copy that is slow on a large database.",
+      );
+    }
+    const data = pickedSnapshot(inputs, form.recoveryDataSnapshot);
+    if (data?.hot === true && !form.recoveryWalArchive) {
+      warnings.push(
+        "The data snapshot was hot and no WAL archive of the source is given: the recovery may not finish.",
+      );
+    }
+  }
+  if (form.snapshotsEnabled && form.snapshotMode === "hot" && !form.objectStore) {
+    warnings.push(
+      "Hot snapshots without WAL archiving: each snapshot is consistent on its own, but nothing can be replayed past it.",
+    );
+  }
+  if (form.snapshotsEnabled && form.snapshotMode === "cold" && instances === 1) {
+    warnings.push(
+      "Cold snapshots fence the only instance: the database is unavailable for the duration of every backup.",
+    );
+  }
   return warnings;
 }
 
@@ -661,7 +995,10 @@ function writeFacts(inputs: ClusterCreateInputs, form: ClusterForm): string {
     `${form.instances || "?"} instance${form.instances === "1" ? "" : "s"}`,
     imageWords(inputs, form),
     `storage ${form.storageSize || "?"}${form.storageClass ? ` (${form.storageClass})` : ""}`,
-    bootstrapWords(form),
+    ...(form.tablespaces.length > 0
+      ? [`${form.tablespaces.length} tablespace${form.tablespaces.length === 1 ? "" : "s"}`]
+      : []),
+    bootstrapWords(inputs, form),
     form.objectStore ? `WAL archiving to ${form.objectStore}` : "no WAL archiving",
   ];
   return parts.join(", ");

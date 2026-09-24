@@ -21,6 +21,8 @@ const TYPED = "\u0000typed";
 
 export interface PickerChoice {
   name: string;
+  /** What the option says, when more than the name helps (a snapshot with its backup and day); the value stays the name. */
+  label?: string;
   /** Why the choice is dimmed; it stays selectable so the reason can be read next to it. */
   reason?: string;
 }
@@ -95,7 +97,7 @@ export function ObjectChoiceField({
       value={value}
       placeholder={placeholder}
       options={[
-        ...choices.map((choice) => ({ value: choice.name, label: choice.name, reason: choice.reason })),
+        ...choices.map((choice) => ({ value: choice.name, label: choice.label ?? choice.name, reason: choice.reason })),
         { value: TYPED, label: "Type a name..." },
       ]}
       onChange={(picked) => {

@@ -275,6 +275,17 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const plugins = spec?.plugins ?? [];
     const walArchiver = plugins.find((plugin) => plugin.isWALArchiver);
     const inTreeBackup = Boolean(spec?.backup?.barmanObjectStore);
+    // SPEC-0029: the tablespaces the spec declares, with the state the operator reports for each.
+    const tablespaces = spec?.tablespaces ?? [];
+    const tablespaceStates = status?.tablespacesStatus ?? [];
+    const volumeSnapshot = spec?.backup?.volumeSnapshot;
+    const volumeSnapshotWords = volumeSnapshot
+      ? `${volumeSnapshot.className ?? "the driver's default class"}, ${volumeSnapshot.online === false ? "cold" : "hot"}${
+          volumeSnapshot.snapshotOwnerReference && volumeSnapshot.snapshotOwnerReference !== "none"
+            ? `, owned by the ${volumeSnapshot.snapshotOwnerReference}`
+            : ""
+        }`
+      : undefined;
     const image = status?.pgDataImageInfo?.image ?? status?.image ?? spec?.imageName;
     const readService = status?.readService ?? `${name}-ro`;
     const anyService = `${name}-r`;
@@ -596,6 +607,54 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             {spec?.walStorage?.storageClass ? ` (${spec.walStorage.storageClass})` : ""}
           </WithTooltip>
         </DrawerItem>
+        <DrawerItem name="Tablespaces" hidden={tablespaces.length === 0}>
+          {tablespaces.length}
+        </DrawerItem>
+        {tablespaces.length > 0 ? (
+          <Table
+            scrollable={false}
+            sortSyncWithUrl={false}
+            className={styles.tablespaces}
+            data-testid="cnpg-cluster-tablespaces"
+          >
+            <TableHead flat sticky={false}>
+              <TableCell className={styles.name}>Tablespace</TableCell>
+              <TableCell className={styles.size}>Volume</TableCell>
+              <TableCell className={styles.owner}>Owner</TableCell>
+              <TableCell className={styles.state}>State</TableCell>
+            </TableHead>
+            {tablespaces.map((tablespace) => {
+              const reported = tablespaceStates.find((entry) => entry.name === tablespace.name);
+              const state = reported?.state;
+              return (
+                <TableRow key={tablespace.name} nowrap data-testid={`cnpg-cluster-tablespace-${tablespace.name}`}>
+                  <TableCell className={styles.name}>
+                    <WithTooltip>{`${tablespace.name}${tablespace.temporary ? " (temporary)" : ""}`}</WithTooltip>
+                  </TableCell>
+                  <TableCell className={styles.size}>
+                    <WithTooltip>
+                      {`${tablespace.storage?.size ?? notAvailable}${tablespace.storage?.storageClass ? ` (${tablespace.storage.storageClass})` : ""}`}
+                    </WithTooltip>
+                  </TableCell>
+                  <TableCell className={styles.owner}>
+                    {reported?.owner ?? tablespace.owner?.name ?? "the application owner"}
+                  </TableCell>
+                  <TableCell className={styles.state}>
+                    {state ? (
+                      <Badge
+                        className={state === "reconciled" ? "success" : state === "error" ? "error" : "info"}
+                        label={state}
+                        tooltip={reported?.error}
+                      />
+                    ) : (
+                      "not reported yet"
+                    )}
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </Table>
+        ) : null}
         <DrawerItem name="Volumes" hidden={status?.pvcCount === undefined}>
           {status?.pvcCount}
         </DrawerItem>
@@ -633,6 +692,9 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             label="barmanObjectStore (deprecated)"
             tooltip="Use the Barman Cloud plugin instead"
           />
+        </DrawerItem>
+        <DrawerItem name="Volume snapshot backups" hidden={!volumeSnapshotWords}>
+          <WithTooltip>{volumeSnapshotWords}</WithTooltip>
         </DrawerItem>
         <BackupHistoryStrip history={history} now={now} backupUrl={backupUrl} listUrl={backupsListUrl} />
         <DrawerItem name="Scheduled backups">

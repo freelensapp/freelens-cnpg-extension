@@ -152,6 +152,14 @@ export const E2E_ACTIONS_NAMESPACE = process.env.E2E_ACTIONS_NAMESPACE || "cnpg-
 export const E2E_ACTIONS_CLUSTER = "e2e-actions";
 /** The weekly schedule of that cluster: it never fires during a run (SPEC-0021). */
 export const E2E_ACTIONS_SCHEDULE = "e2e-actions-weekly";
+/** The cluster of the volume snapshot cases (SPEC-0029), in the same namespace, with its fixture backup and marker table. */
+export const E2E_SNAPSHOT_CLUSTER = "e2e-snapshots";
+export const E2E_SNAPSHOT_BACKUP = "e2e-snapshot-ok";
+export const E2E_SNAPSHOT_TABLESPACE = "analytics";
+export const E2E_SNAPSHOT_MARKER_TABLE = "snapshot_marker";
+/** What the CSI hostpath driver of the E2E cluster is called (SPEC-0002). */
+export const E2E_STORAGE_CLASS = "csi-hostpath-sc";
+export const E2E_SNAPSHOT_CLASS = "csi-hostpath-snapclass";
 
 /** `kubectl` in the namespace of the write cases: the readback half of every write assert. */
 export function kubectlActions(...args: string[]): { status: number; stdout: string; stderr: string } {

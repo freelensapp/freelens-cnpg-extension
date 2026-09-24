@@ -2751,6 +2751,337 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "creates a cluster with a tablespace from the form, and the operator reconciles it (SPEC-0029)",
+    async () => {
+      const name = "e2e-tablespaced";
+      const clusters = "clusters.postgresql.cnpg.io";
+
+      if (cluster.kubectlActions("get", clusters, name).status === 0) {
+        cluster.kubectlActions("delete", clusters, name, "--wait=true", "--timeout=180s");
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-cluster"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill(name);
+      await dialog.locator('[data-testid="cnpg-create-cluster-instances"]').fill("1");
+      await dialog.locator('[data-testid="cnpg-create-cluster-storage-size"]').fill("1Gi");
+
+      // The rules at the field: a reserved name, then a duplicate ignoring case, and OK says so.
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-add"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-name"]').fill("pg_reports");
+      expect(
+        await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-name-field-error"]').innerText(),
+      ).toContain("reserved for PostgreSQL");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-name"]').fill("reports");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-size"]').fill("512Mi");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-add"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-1-name"]').fill("Reports");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-1-size"]').fill("512Mi");
+      expect(
+        await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-1-name-field-error"]').innerText(),
+      ).toBe("Reports is declared twice (tablespace names are compared ignoring case)");
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe("A tablespace is wrong");
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-1-remove"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-temporary"]').check();
+
+      // F12: the pane carries the tablespace, and nothing the user did not decide.
+      const expectedYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: Cluster",
+        "metadata:",
+        `  name: ${name}`,
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  instances: 1",
+        "  storage:",
+        "    size: 1Gi",
+        "  tablespaces:",
+        "    - name: reports",
+        "      storage:",
+        "        size: 512Mi",
+        "      temporary: true",
+        "  bootstrap:",
+        "    initdb:",
+        "      database: app",
+        "      owner: app",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-cluster-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toContain(
+        "1 tablespace",
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "create-cluster-tablespaces-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the PostgreSQL cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+
+      // F14: read back, then what the operator made of it: the tablespace reconciled on the primary.
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.tablespaces[0].name}")).toBe("reports");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.tablespaces[0].storage.size}")).toBe("512Mi");
+      expect(cluster.kubectlActionsField(clusters, name, "{.spec.tablespaces[0].temporary}")).toBe("true");
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(clusters, name, "{.status.tablespacesStatus[0].state}"),
+          (state) => state === "reconciled" || state === "error",
+          6 * 60_000,
+        ),
+      ).toBe("reconciled");
+      expect(cluster.kubectlActions("get", "pvc", `${name}-1-tbs-reports`, "-o", "name").status).toBe(0);
+
+      // The drawer shows the tablespace with the state the operator reports.
+      await cluster.expectRow(frame, name);
+      await cluster.expectDetails(frame, name, "Tablespaces", "reports (temporary)", "512Mi", "reconciled");
+
+      cluster.kubectlActions("delete", clusters, name, "--wait=true", "--timeout=180s");
+      expect(cluster.kubectlActions("get", clusters, name).status).not.toBe(0);
+      await cluster.clearNotifications(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "takes a volume snapshot backup from the row menu, and the backup lists its snapshots (SPEC-0029)",
+    async () => {
+      const backup = "backups.postgresql.cnpg.io";
+      const clusters = "clusters.postgresql.cnpg.io";
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+
+      // The drawer of the fixture cluster: its tablespace, reconciled, and the snapshot settings it declares.
+      await cluster.expectDetails(
+        frame,
+        cluster.E2E_SNAPSHOT_CLUSTER,
+        "Tablespaces",
+        cluster.E2E_SNAPSHOT_TABLESPACE,
+        `512Mi (${cluster.E2E_STORAGE_CLASS})`,
+        "reconciled",
+        "Volume snapshot backups",
+        `${cluster.E2E_SNAPSHOT_CLASS}, cold`,
+      );
+
+      await cluster.openRowMenu(frame, cluster.E2E_SNAPSHOT_CLUSTER);
+      await frame.locator('.Menu [data-testid="cnpg-cluster-backup-now-menu-item"]').first().click();
+
+      const dialog = frame.locator('[data-testid="cnpg-backup-now-dialog"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      // Two methods on this cluster: the plugin of its WAL archiver, and the volume snapshot.
+      await pickInSelect(frame, "cnpg-backup-now-method", "Volume snapshot");
+
+      const name = await dialog.locator('[data-testid="cnpg-backup-now-name"]').inputValue();
+
+      expect(name).toMatch(new RegExp(`^${cluster.E2E_SNAPSHOT_CLUSTER}-\\d{14}$`));
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toContain(
+        "method volumeSnapshot",
+      );
+      await cluster.captureScreenshot(frame, "backup-now-volume-snapshot-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(frame, "ok", `Backup ${name}`);
+
+      expect(cluster.kubectlActionsField(backup, name, "{.spec.method}")).toBe("volumeSnapshot");
+      // A cold snapshot fences the only instance for its duration: the backup completes, the cluster comes back.
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(backup, name, "{.status.phase}"),
+          (phase) => phase === "completed" || phase === "failed",
+          5 * 60_000,
+        ),
+      ).toBe("completed");
+      expect(cluster.kubectlActionsField(backup, name, "{.status.snapshotBackupStatus.elements[*].type}")).toBe(
+        "PG_DATA PG_TABLESPACE",
+      );
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(clusters, cluster.E2E_SNAPSHOT_CLUSTER, "{.status.phase}"),
+          (phase) => phase === "Cluster in healthy state",
+          5 * 60_000,
+        ),
+      ).toBe("Cluster in healthy state");
+
+      // The drawer of the backup lists the snapshot of the data volume and the one of the tablespace.
+      await cluster.openCnpgPage(frame, "cnpg-backups-backups", "Backups");
+      await cluster.expectRow(frame, name, cluster.E2E_SNAPSHOT_CLUSTER, "volumeSnapshot", "Completed");
+      await cluster.expectDetails(
+        frame,
+        name,
+        "Volume snapshot",
+        `${name}-tbs-${cluster.E2E_SNAPSHOT_TABLESPACE}`,
+        "PG_TABLESPACE",
+        cluster.E2E_SNAPSHOT_TABLESPACE,
+      );
+
+      // The backup and its snapshots go, so the recovery case picks the fixture's own.
+      cluster.kubectlActions("delete", backup, name, "--wait=true", "--timeout=120s");
+      cluster.kubectlActions("delete", "volumesnapshots.snapshot.storage.k8s.io", "-l", `cnpg.io/backupName=${name}`);
+      await cluster.clearNotifications(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "creates a cluster from the volume snapshots of a backup, and the data is there (SPEC-0029)",
+    async () => {
+      const name = "e2e-recovered";
+      const clusters = "clusters.postgresql.cnpg.io";
+      const dataSnapshot = cluster.E2E_SNAPSHOT_BACKUP;
+      const tablespaceSnapshot = `${cluster.E2E_SNAPSHOT_BACKUP}-tbs-${cluster.E2E_SNAPSHOT_TABLESPACE}`;
+
+      if (cluster.kubectlActions("get", clusters, name).status === 0) {
+        cluster.kubectlActions("delete", clusters, name, "--wait=true", "--timeout=180s");
+      }
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator(".AddRemoveButtons .add-button").click();
+
+      const dialog = frame.locator('[data-testid="cnpg-create-cluster"]');
+
+      await dialog.waitFor({ state: "visible", timeout: 60_000 });
+      await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill(name);
+      await dialog.locator('[data-testid="cnpg-create-cluster-instances"]').fill("1");
+      await dialog.locator('[data-testid="cnpg-create-cluster-storage-size"]').fill("1Gi");
+      // The storage class of the CSI driver: the only one the snapshots can be restored on.
+      await pickInSelect(frame, "cnpg-create-cluster-storage-class", cluster.E2E_STORAGE_CLASS);
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-section-toggle"]').click();
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-add"]').click();
+      await dialog
+        .locator('[data-testid="cnpg-create-cluster-tablespaces-0-name"]')
+        .fill(cluster.E2E_SNAPSHOT_TABLESPACE);
+      await dialog.locator('[data-testid="cnpg-create-cluster-tablespaces-0-size"]').fill("512Mi");
+      await pickInSelect(frame, "cnpg-create-cluster-tablespaces-0-class", cluster.E2E_STORAGE_CLASS);
+
+      // The recovery from snapshots: the data one first in the picker, the tablespace one under its name.
+      await dialog.locator('[data-testid="cnpg-create-cluster-bootstrap-recovery"]').check();
+      await dialog.locator('[data-testid="cnpg-create-cluster-recovery-source-volumeSnapshots"]').check();
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe(
+        "Pick the data snapshot to recover from",
+      );
+      await pickInSelect(frame, "cnpg-create-cluster-recovery-data-snapshot", dataSnapshot);
+      await pickInSelect(
+        frame,
+        `cnpg-create-cluster-recovery-tablespace-snapshot-${cluster.E2E_SNAPSHOT_TABLESPACE}`,
+        tablespaceSnapshot,
+      );
+      // A point in time needs the WAL archive the snapshots do not carry: refused at the field.
+      await dialog.locator('[data-testid="cnpg-create-cluster-recovery-target"]').fill("2026-09-24T10:00:00Z");
+      expect(
+        await dialog.locator('[data-testid="cnpg-create-cluster-recovery-target-field-error"]').innerText(),
+      ).toContain("give the WAL archive of the source");
+      await dialog.locator('[data-testid="cnpg-create-cluster-recovery-target"]').fill("");
+
+      const expectedYaml = [
+        "apiVersion: postgresql.cnpg.io/v1",
+        "kind: Cluster",
+        "metadata:",
+        `  name: ${name}`,
+        `  namespace: ${cluster.E2E_ACTIONS_NAMESPACE}`,
+        "spec:",
+        "  instances: 1",
+        "  storage:",
+        "    size: 1Gi",
+        `    storageClass: ${cluster.E2E_STORAGE_CLASS}`,
+        "  tablespaces:",
+        `    - name: ${cluster.E2E_SNAPSHOT_TABLESPACE}`,
+        "      storage:",
+        "        size: 512Mi",
+        `        storageClass: ${cluster.E2E_STORAGE_CLASS}`,
+        "  bootstrap:",
+        "    recovery:",
+        "      volumeSnapshots:",
+        "        storage:",
+        `          name: ${dataSnapshot}`,
+        "          kind: VolumeSnapshot",
+        "          apiGroup: snapshot.storage.k8s.io",
+        "        tablespaceStorage:",
+        `          ${cluster.E2E_SNAPSHOT_TABLESPACE}:`,
+        `            name: ${tablespaceSnapshot}`,
+        "            kind: VolumeSnapshot",
+        "            apiGroup: snapshot.storage.k8s.io",
+        "",
+      ].join("\n");
+
+      expect(
+        await waitUntil(
+          async () => dialog.locator('[data-testid="cnpg-create-cluster-yaml"]').getAttribute("data-yaml"),
+          (yaml) => yaml === expectedYaml,
+          30_000,
+        ),
+      ).toBe(expectedYaml);
+      expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toContain(
+        `recovery from the volume snapshot ${dataSnapshot} (cold, backup ${dataSnapshot} of ${cluster.E2E_SNAPSHOT_CLUSTER})`,
+      );
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      await cluster.captureScreenshot(frame, "create-cluster-snapshot-recovery-dark");
+      await cluster.confirmDialog(frame);
+      await cluster.expectNotification(
+        frame,
+        "ok",
+        `Requested the PostgreSQL cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}`,
+      );
+
+      // F14: read back, then the cluster comes up from the snapshots with the marker table in its tablespace.
+      expect(
+        cluster.kubectlActionsField(clusters, name, "{.spec.bootstrap.recovery.volumeSnapshots.storage.name}"),
+      ).toBe(dataSnapshot);
+      expect(
+        cluster.kubectlActionsField(
+          clusters,
+          name,
+          `{.spec.bootstrap.recovery.volumeSnapshots.tablespaceStorage.${cluster.E2E_SNAPSHOT_TABLESPACE}.name}`,
+        ),
+      ).toBe(tablespaceSnapshot);
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(clusters, name, "{.status.phase}"),
+          (phase) => phase === "Cluster in healthy state",
+          8 * 60_000,
+        ),
+      ).toBe("Cluster in healthy state");
+      expect(
+        await waitUntil(
+          async () => cluster.kubectlActionsField(clusters, name, "{.status.tablespacesStatus[0].state}"),
+          (state) => state === "reconciled" || state === "error",
+          3 * 60_000,
+        ),
+      ).toBe("reconciled");
+      expect(psqlActionsIn(`${name}-1`, "app", `SELECT count(*) FROM ${cluster.E2E_SNAPSHOT_MARKER_TABLE}`)).toBe("1");
+      expect(
+        psqlActionsIn(
+          `${name}-1`,
+          "app",
+          `SELECT tablespace FROM pg_tables WHERE tablename = '${cluster.E2E_SNAPSHOT_MARKER_TABLE}'`,
+        ),
+      ).toBe(cluster.E2E_SNAPSHOT_TABLESPACE);
+
+      cluster.kubectlActions("delete", clusters, name, "--wait=true", "--timeout=180s");
+      expect(cluster.kubectlActions("get", clusters, name).status).not.toBe(0);
+      await cluster.clearNotifications(frame);
+      await cluster.selectNamespace(frame);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "creates a scheduled backup from the door of the drawer, with a first backup right away, and its backup goes with it (SPEC-0026)",
     async () => {
       const name = "e2e-created-schedule";

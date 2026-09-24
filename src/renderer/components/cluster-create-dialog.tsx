@@ -20,6 +20,15 @@ import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
+import {
+  orderSnapshots,
+  snapshotFacts,
+  snapshotLabel,
+  snapshotReason,
+  VOLUME_SNAPSHOT_CRD_NAME,
+  volumeSnapshotApi,
+  volumeSnapshotClassApi,
+} from "../api/snapshot/volume-snapshot-v1";
 import { accessGuard, sharedAccessReviews } from "./access-review";
 import { createActionDialogModel } from "./action-dialog";
 import {
@@ -34,7 +43,9 @@ import {
   clusterFormWarnings,
   defaultClusterForm,
   emptyClusterCreateInputs,
+  emptyTablespaceRow,
   pickedCatalog,
+  TABLESPACE_HINT,
 } from "./cluster-create";
 import {
   CheckboxField,
@@ -51,18 +62,20 @@ import {
   TextField,
 } from "./create-dialog";
 import { defaultNamespace, OPERATOR_WRITTEN_PARAMETERS, toYaml } from "./create-forms";
+import { ObjectChoiceField } from "./create-pickers";
 import { findOperators } from "./operator";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
+import type { SnapshotRole, VolumeSnapshot, VolumeSnapshotClass } from "../api/snapshot/volume-snapshot-v1";
 import type { ActionDialogModel } from "./action-dialog";
-import type { ClusterCreateInputs, ClusterForm, ReadState } from "./cluster-create";
+import type { ClusterCreateInputs, ClusterForm, ReadState, TablespaceRow } from "./cluster-create";
 import type { KeyValue } from "./create-forms";
 
 const { observer } = MobxReact;
 
 const {
   Component: { MaybeLink, NamespaceSelect, Notifications },
-  K8sApi: { deploymentApi, namespaceStore, secretsApi, storageClassApi },
+  K8sApi: { crdApi, deploymentApi, namespaceStore, secretsApi, storageClassApi },
   Navigation: { getDetailsUrl },
 } = Renderer;
 
@@ -73,7 +86,9 @@ const OPERATOR_IMAGE_ENV = "POSTGRES_IMAGE_NAME";
 
 export type ClusterSection =
   | "wal"
+  | "tablespaces"
   | "initdbOptions"
+  | "recoveryArchive"
   | "backupOptions"
   | "replication"
   | "resources"
@@ -100,7 +115,9 @@ function createModel(namespace: string, fixedNamespace?: string): ClusterCreateM
       inputs: emptyClusterCreateInputs(namespaceStore.contextNamespaces),
       open: {
         wal: false,
+        tablespaces: false,
         initdbOptions: false,
+        recoveryArchive: false,
         backupOptions: false,
         replication: false,
         resources: false,
@@ -224,10 +241,35 @@ function loadNamespaced(model: ClusterCreateModel, namespace: string): void {
       })),
     }),
   );
+  // The snapshots of the namespace, for a recovery from volume snapshots (SPEC-0029): a 404 on a
+  // Kubernetes cluster without the CRD leaves the picker a text field, as any failed read.
+  void read<VolumeSnapshot>(
+    model,
+    "volumeSnapshots",
+    () => volumeSnapshotApi().list({ namespace }),
+    (items) => ({ volumeSnapshots: items.map((item) => snapshotFacts(item)) }),
+  );
 }
 
 /** The reads that do not depend on the namespace. */
 function loadClusterWide(model: ClusterCreateModel): void {
+  void read<VolumeSnapshotClass>(
+    model,
+    "snapshotClasses",
+    () => volumeSnapshotClassApi().list(),
+    (items) => ({ snapshotClasses: items.map((item) => ({ name: item.getName(), driver: item.driver })) }),
+  );
+  // Whether the volumeSnapshot method can exist here at all (SPEC-0029, as SPEC-0026 checks it).
+  setInputs(model, {}, "crds", "loading");
+  crdApi
+    .get({ name: VOLUME_SNAPSHOT_CRD_NAME })
+    .then((crd) => setInputs(model, { volumeSnapshotCrd: Boolean(crd) }, "crds", "ready"))
+    .catch((error: unknown) => {
+      // A 404 is an answer: the CRD is not there. Anything else leaves the fact unknown.
+      const code = (error as { statusCode?: number; code?: number })?.statusCode ?? (error as { code?: number })?.code;
+      if (code === 404) setInputs(model, { volumeSnapshotCrd: false }, "crds", "ready");
+      else setInputs(model, {}, "crds", "unavailable");
+    });
   void read<{ getName(): string }>(
     model,
     "storageClasses",
@@ -498,6 +540,243 @@ const StorageSection = observer(({ model }: SectionProps) => {
   );
 });
 
+const TablespacesSection = observer(({ model }: SectionProps) => {
+  const { form, inputs } = model;
+  const errors = clusterFormErrors(inputs, form);
+  const warnings = clusterFormWarnings(inputs, form);
+  const effective = clusterEffectiveValues(inputs);
+  const rows = form.tablespaces;
+  const setRows = (tablespaces: TablespaceRow[]) => update(model, { tablespaces });
+  const patch = (index: number, change: Partial<TablespaceRow>) =>
+    setRows(rows.map((row, at) => (at === index ? { ...row, ...change } : row)));
+  return (
+    <CollapsibleSection
+      title={rows.length > 0 ? `Tablespaces (${rows.length})` : "Tablespaces"}
+      hint={TABLESPACE_HINT}
+      open={model.open.tablespaces}
+      onToggle={() => toggle(model, "tablespaces")}
+      testId={`${TEST_ID}-tablespaces-section`}
+    >
+      <div className={styles.rows} data-testid={`${TEST_ID}-tablespaces`}>
+        {rows.map((row, index) => (
+          <div key={`${TEST_ID}-tablespace-${index}`} data-testid={`${TEST_ID}-tablespaces-${index}`}>
+            <Inline>
+              <TextField
+                label="Name"
+                value={row.name}
+                onChange={(name) => patch(index, { name })}
+                placeholder="analytics"
+                inputTestId={`${TEST_ID}-tablespaces-${index}-name`}
+                testId={`${TEST_ID}-tablespaces-${index}-name-field`}
+                hint="A PostgreSQL identifier; it cannot be changed later."
+                error={errors[`tablespaces.${index}.name`]}
+              />
+              <TextField
+                label="Size"
+                value={row.size}
+                onChange={(size) => patch(index, { size })}
+                placeholder="5Gi"
+                inputTestId={`${TEST_ID}-tablespaces-${index}-size`}
+                testId={`${TEST_ID}-tablespaces-${index}-size-field`}
+                hint="One volume per instance. It can grow later, never shrink."
+                error={errors[`tablespaces.${index}.size`]}
+              />
+              <ObjectPicker
+                id={`${TEST_ID}-tablespaces-${index}-class`}
+                inputTestId={`${TEST_ID}-tablespaces-${index}-class-input`}
+                label="Storage class"
+                value={row.storageClass}
+                onChange={(storageClass) => patch(index, { storageClass })}
+                names={inputs.storageClasses}
+                read={inputs.reads.storageClasses}
+                typed={typing(model, `tablespaces.${index}.storageClass`)}
+                onTyped={(value) => setTyping(model, `tablespaces.${index}.storageClass`, value)}
+                noneLabel="The default storage class"
+                placeholder="The default storage class"
+                unverifiedHint="The storage classes could not be listed: the name goes unverified."
+                warning={warnings[`tablespaces.${index}.storageClass`]}
+              />
+            </Inline>
+            <Inline>
+              <TextField
+                label="Owner"
+                value={row.owner}
+                onChange={(owner) => patch(index, { owner })}
+                placeholder="Optional"
+                inputTestId={`${TEST_ID}-tablespaces-${index}-owner`}
+                testId={`${TEST_ID}-tablespaces-${index}-owner-field`}
+                effective={effective.tablespaceOwner}
+                error={errors[`tablespaces.${index}.owner`]}
+              />
+              <CheckboxField
+                label="Temporary"
+                checked={row.temporary}
+                onChange={(temporary) => patch(index, { temporary })}
+                hint="Joins temp_tablespaces: temporary objects and files land here."
+                testId={`${TEST_ID}-tablespaces-${index}-temporary`}
+              />
+            </Inline>
+            <div>
+              <button
+                type="button"
+                className={styles.button}
+                data-testid={`${TEST_ID}-tablespaces-${index}-remove`}
+                onClick={() => setRows(rows.filter((_, at) => at !== index))}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        ))}
+        <div>
+          <button
+            type="button"
+            className={styles.button}
+            data-testid={`${TEST_ID}-tablespaces-add`}
+            onClick={() => setRows([...rows, emptyTablespaceRow()])}
+          >
+            Add tablespace
+          </button>
+        </div>
+      </div>
+    </CollapsibleSection>
+  );
+});
+
+/** The object store and the server name of a WAL archive: the object store recovery, or the archive next to snapshots. */
+const RecoveryArchiveFields = observer(({ model }: SectionProps) => {
+  const { form, inputs } = model;
+  const errors = clusterFormErrors(inputs, form);
+  const warnings = clusterFormWarnings(inputs, form);
+  return (
+    <Inline>
+      <ObjectPicker
+        id={`${TEST_ID}-recovery-store`}
+        inputTestId={`${TEST_ID}-recovery-store-input`}
+        label="Object store"
+        value={form.recoveryObjectStore}
+        onChange={(recoveryObjectStore) => update(model, { recoveryObjectStore })}
+        names={inputs.objectStores}
+        read={inputs.reads.objectStores}
+        typed={typing(model, "recoveryObjectStore")}
+        onTyped={(value) => setTyping(model, "recoveryObjectStore", value)}
+        placeholder="Pick an object store"
+        unverifiedHint="The object stores could not be listed: the name goes unverified."
+        error={errors.recoveryObjectStore}
+        warning={warnings.recoveryObjectStore}
+      />
+      <TextField
+        label="Source server name"
+        value={form.recoveryServerName}
+        onChange={(recoveryServerName) => update(model, { recoveryServerName })}
+        placeholder="The name of the cluster that wrote the backups"
+        inputTestId={`${TEST_ID}-recovery-server`}
+        testId={`${TEST_ID}-recovery-server-field`}
+        hint="The folder in the store: the source cluster's name, unless it archived under another."
+        error={errors.recoveryServerName}
+      />
+    </Inline>
+  );
+});
+
+/** A recovery from volume snapshots (SPEC-0029): the data snapshot, the WAL and tablespace snapshots, the archive. */
+const SnapshotRecoveryFields = observer(({ model }: SectionProps) => {
+  const { form, inputs } = model;
+  const errors = clusterFormErrors(inputs, form);
+  const warnings = clusterFormWarnings(inputs, form);
+  const choicesOf = (role: SnapshotRole, tablespace?: string) =>
+    orderSnapshots(inputs.volumeSnapshots, role, tablespace).map((facts) => ({
+      name: facts.name,
+      label: snapshotLabel(facts),
+      reason: snapshotReason(facts, role, tablespace),
+    }));
+  const unverified = "The snapshots could not be listed: the name goes unverified.";
+  return (
+    <>
+      <ObjectChoiceField
+        id={`${TEST_ID}-recovery-data-snapshot`}
+        testId={`${TEST_ID}-recovery-data-snapshot`}
+        label="Data snapshot"
+        value={form.recoveryDataSnapshot}
+        onChange={(recoveryDataSnapshot) => update(model, { recoveryDataSnapshot })}
+        choices={choicesOf("PG_DATA")}
+        read={inputs.reads.volumeSnapshots}
+        typed={typing(model, "recoveryDataSnapshot")}
+        onTyped={(value) => setTyping(model, "recoveryDataSnapshot", value)}
+        placeholder="Pick the snapshot of the data volume"
+        unverifiedHint={unverified}
+        hint="The PG_DATA snapshot of a backup taken with the volume snapshot method."
+        error={errors.recoveryDataSnapshot}
+        warning={warnings.recoveryDataSnapshot}
+      />
+      {form.walEnabled ? (
+        <ObjectChoiceField
+          id={`${TEST_ID}-recovery-wal-snapshot`}
+          testId={`${TEST_ID}-recovery-wal-snapshot`}
+          label="WAL snapshot"
+          value={form.recoveryWalSnapshot}
+          onChange={(recoveryWalSnapshot) => update(model, { recoveryWalSnapshot })}
+          choices={choicesOf("PG_WAL")}
+          read={inputs.reads.volumeSnapshots}
+          typed={typing(model, "recoveryWalSnapshot")}
+          onTyped={(value) => setTyping(model, "recoveryWalSnapshot", value)}
+          placeholder="Optional: the snapshot of the WAL volume"
+          unverifiedHint={unverified}
+          hint="The PG_WAL snapshot of the same backup, restored as the WAL volume."
+          error={errors.recoveryWalSnapshot}
+          warning={warnings.recoveryWalSnapshot}
+        />
+      ) : null}
+      {form.tablespaces.map((row) => {
+        const tablespace = row.name.trim();
+        if (tablespace === "") return null;
+        return (
+          <ObjectChoiceField
+            key={tablespace}
+            id={`${TEST_ID}-recovery-tablespace-snapshot-${tablespace}`}
+            testId={`${TEST_ID}-recovery-tablespace-snapshot-${tablespace}`}
+            label={`Snapshot of the tablespace ${tablespace}`}
+            value={form.recoveryTablespaceSnapshots[tablespace] ?? ""}
+            onChange={(name) =>
+              update(model, {
+                recoveryTablespaceSnapshots: { ...form.recoveryTablespaceSnapshots, [tablespace]: name },
+              })
+            }
+            choices={choicesOf("PG_TABLESPACE", tablespace)}
+            read={inputs.reads.volumeSnapshots}
+            typed={typing(model, `recoveryTablespaceSnapshots.${tablespace}`)}
+            onTyped={(value) => setTyping(model, `recoveryTablespaceSnapshots.${tablespace}`, value)}
+            placeholder="Optional: the snapshot of this tablespace"
+            unverifiedHint={unverified}
+            hint="A tablespace of the backup with no snapshot here makes the recovery fail on the missing volume."
+            warning={warnings[`recoveryTablespaceSnapshots.${tablespace}`]}
+          />
+        );
+      })}
+      <CollapsibleSection
+        title="WAL archive of the source"
+        hint={
+          form.recoveryWalArchive
+            ? `The WAL of ${form.recoveryServerName || "?"} in ${form.recoveryObjectStore || "?"} finishes the recovery.`
+            : "Optional: what finishes a hot snapshot, and what a point in time needs."
+        }
+        open={model.open.recoveryArchive}
+        onToggle={() => toggle(model, "recoveryArchive")}
+        testId={`${TEST_ID}-recovery-archive-section`}
+      >
+        <CheckboxField
+          label="Give the WAL archive of the source"
+          checked={form.recoveryWalArchive}
+          onChange={(recoveryWalArchive) => update(model, { recoveryWalArchive })}
+          hint="The object store the source archived to and the name it archived under, sent as the recovery source and an external cluster."
+          testId={`${TEST_ID}-recovery-wal-archive`}
+        />
+        {form.recoveryWalArchive ? <RecoveryArchiveFields model={model} /> : null}
+      </CollapsibleSection>
+    </>
+  );
+});
+
 const BootstrapSection = observer(({ model }: SectionProps) => {
   const { form, inputs } = model;
   const errors = clusterFormErrors(inputs, form);
@@ -617,6 +896,15 @@ const BootstrapSection = observer(({ model }: SectionProps) => {
             choices={[
               { value: "backup", label: "A completed backup of this namespace" },
               { value: "objectStore", label: "An object store, by the name the source cluster archived under" },
+              {
+                value: "volumeSnapshots",
+                label: "The volume snapshots of a backup",
+                hint: "The data snapshot becomes the volume of the first instance; a hot snapshot is finished with the WAL archive of the source.",
+                disabledReason:
+                  inputs.volumeSnapshotCrd === false
+                    ? "The VolumeSnapshot CRD is not installed in this Kubernetes cluster"
+                    : undefined,
+              },
             ]}
           />
           {form.recoverySource === "backup" ? (
@@ -648,34 +936,10 @@ const BootstrapSection = observer(({ model }: SectionProps) => {
                 error={errors.recoveryBackup}
               />
             )
+          ) : form.recoverySource === "volumeSnapshots" ? (
+            <SnapshotRecoveryFields model={model} />
           ) : (
-            <Inline>
-              <ObjectPicker
-                id={`${TEST_ID}-recovery-store`}
-                inputTestId={`${TEST_ID}-recovery-store-input`}
-                label="Object store"
-                value={form.recoveryObjectStore}
-                onChange={(recoveryObjectStore) => update(model, { recoveryObjectStore })}
-                names={inputs.objectStores}
-                read={inputs.reads.objectStores}
-                typed={typing(model, "recoveryObjectStore")}
-                onTyped={(value) => setTyping(model, "recoveryObjectStore", value)}
-                placeholder="Pick an object store"
-                unverifiedHint="The object stores could not be listed: the name goes unverified."
-                error={errors.recoveryObjectStore}
-                warning={warnings.recoveryObjectStore}
-              />
-              <TextField
-                label="Source server name"
-                value={form.recoveryServerName}
-                onChange={(recoveryServerName) => update(model, { recoveryServerName })}
-                placeholder="The name of the cluster that wrote the backups"
-                inputTestId={`${TEST_ID}-recovery-server`}
-                testId={`${TEST_ID}-recovery-server-field`}
-                hint="The folder in the store: the source cluster's name, unless it archived under another."
-                error={errors.recoveryServerName}
-              />
-            </Inline>
+            <RecoveryArchiveFields model={model} />
           )}
           <TextField
             label="Recover up to"
@@ -717,7 +981,7 @@ const BackupSection = observer(({ model }: SectionProps) => {
       />
       <CollapsibleSection
         title="Backup options"
-        hint={`Backups are taken from ${form.backupTarget || effective.backupTarget}.`}
+        hint={`Backups are taken from ${form.backupTarget || effective.backupTarget}${form.snapshotsEnabled ? `, as ${form.snapshotMode} volume snapshots` : ""}.`}
         open={model.open.backupOptions}
         onToggle={() => toggle(model, "backupOptions")}
         testId={`${TEST_ID}-backup-options-section`}
@@ -734,6 +998,113 @@ const BackupSection = observer(({ model }: SectionProps) => {
           onChange={(backupTarget) => update(model, { backupTarget })}
           effective={effective.backupTarget}
         />
+        <CheckboxField
+          label="Take backups as volume snapshots"
+          checked={form.snapshotsEnabled}
+          onChange={(snapshotsEnabled) => update(model, { snapshotsEnabled })}
+          hint={
+            inputs.reads.crds === "unavailable"
+              ? "Whether the VolumeSnapshot CRD is installed could not be checked: the operator refuses the method without it. Back up now and the schedules can then pick the volumeSnapshot method."
+              : "Back up now and the schedules can then pick the volumeSnapshot method; the plugin method stays available with an object store."
+          }
+          testId={`${TEST_ID}-snapshots-enabled`}
+          disabledReason={
+            inputs.volumeSnapshotCrd === false
+              ? "The VolumeSnapshot CRD is not installed in this Kubernetes cluster: the operator refuses the volumeSnapshot method"
+              : undefined
+          }
+        />
+        {form.snapshotsEnabled ? (
+          <>
+            <Inline>
+              <ObjectPicker
+                id={`${TEST_ID}-snapshot-class`}
+                inputTestId={`${TEST_ID}-snapshot-class-input`}
+                label="Snapshot class"
+                value={form.snapshotClass}
+                onChange={(snapshotClass) => update(model, { snapshotClass })}
+                names={inputs.snapshotClasses.map((choice) => choice.name)}
+                read={inputs.reads.snapshotClasses}
+                typed={typing(model, "snapshotClass")}
+                onTyped={(value) => setTyping(model, "snapshotClass", value)}
+                noneLabel="The default snapshot class of the CSI driver"
+                placeholder="The default snapshot class of the CSI driver"
+                effective={effective.snapshotClass}
+                hint="It must belong to the CSI driver of the storage class; the form cannot check that."
+                unverifiedHint="The snapshot classes could not be listed: the name goes unverified."
+                warning={warnings.snapshotClass}
+              />
+              {form.walEnabled ? (
+                <ObjectPicker
+                  id={`${TEST_ID}-snapshot-wal-class`}
+                  inputTestId={`${TEST_ID}-snapshot-wal-class-input`}
+                  label="WAL snapshot class"
+                  value={form.snapshotWalClass}
+                  onChange={(snapshotWalClass) => update(model, { snapshotWalClass })}
+                  names={inputs.snapshotClasses.map((choice) => choice.name)}
+                  read={inputs.reads.snapshotClasses}
+                  typed={typing(model, "snapshotWalClass")}
+                  onTyped={(value) => setTyping(model, "snapshotWalClass", value)}
+                  noneLabel="The snapshot class of the data volume"
+                  placeholder="The snapshot class of the data volume"
+                  effective={effective.snapshotWalClass}
+                  unverifiedHint="The snapshot classes could not be listed: the name goes unverified."
+                  warning={warnings.snapshotWalClass}
+                />
+              ) : null}
+            </Inline>
+            <RadioField
+              label="Hot or cold"
+              name={`${TEST_ID}-snapshot-mode`}
+              value={form.snapshotMode}
+              onChange={(snapshotMode) => update(model, { snapshotMode })}
+              testId={`${TEST_ID}-snapshot-mode`}
+              choices={[
+                {
+                  value: "hot",
+                  label: "Hot: PostgreSQL stays open",
+                  hint: "The WAL of the snapshot window is kept with a temporary slot; the operator's default.",
+                },
+                {
+                  value: "cold",
+                  label: "Cold: the target is fenced for the duration of the snapshot",
+                  hint: "On a cluster of one instance the database is unavailable meanwhile, and the operator refuses a cold snapshot while an instance is fenced.",
+                },
+              ]}
+            />
+            {form.snapshotMode === "hot" ? (
+              <Inline>
+                <CheckboxField
+                  label="Wait for the WAL archive"
+                  checked={form.snapshotWaitForArchive}
+                  onChange={(snapshotWaitForArchive) => update(model, { snapshotWaitForArchive })}
+                  hint="pg_backup_stop waits for the last segment to be archived; the operator's default."
+                  testId={`${TEST_ID}-snapshot-wait-for-archive`}
+                />
+                <CheckboxField
+                  label="Immediate checkpoint"
+                  checked={form.snapshotImmediateCheckpoint}
+                  onChange={(snapshotImmediateCheckpoint) => update(model, { snapshotImmediateCheckpoint })}
+                  hint="The checkpoint that starts the backup runs as fast as possible instead of being spread out."
+                  testId={`${TEST_ID}-snapshot-immediate-checkpoint`}
+                />
+              </Inline>
+            ) : null}
+            <ChoiceField
+              id={`${TEST_ID}-snapshot-owner`}
+              label="Owner of the snapshots"
+              value={form.snapshotOwner}
+              options={[
+                { value: "", label: "The operator's default" },
+                { value: "none", label: "Nobody: the snapshots outlive the backup and the cluster" },
+                { value: "cluster", label: "The cluster: deleted with it" },
+                { value: "backup", label: "The backup: deleted with it" },
+              ]}
+              onChange={(snapshotOwner) => update(model, { snapshotOwner })}
+              effective={effective.snapshotOwner}
+            />
+          </>
+        ) : null}
       </CollapsibleSection>
     </>
   );
@@ -1033,6 +1404,7 @@ const ClusterCreateForm = observer(({ model }: SectionProps) => (
     <IdentitySection model={model} />
     <ImageSection model={model} />
     <StorageSection model={model} />
+    <TablespacesSection model={model} />
     <BootstrapSection model={model} />
     <BackupSection model={model} />
     <SuperuserSection model={model} />

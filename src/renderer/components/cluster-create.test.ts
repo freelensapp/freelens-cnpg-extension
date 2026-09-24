@@ -16,6 +16,9 @@ import {
   clusterFormWarnings,
   defaultClusterForm,
   emptyClusterCreateInputs,
+  emptyTablespaceRow,
+  tablespaceNameError,
+  tablespaceVolumeName,
 } from "./cluster-create";
 import { toYaml } from "./create-forms";
 
@@ -38,6 +41,49 @@ const READY: ClusterCreateInputs = {
     { name: "pg-old-20260920174036", cluster: "pg-old", phase: "completed" },
     { name: "pg-old-pending", cluster: "pg-old", phase: "pending" },
   ],
+  snapshotClasses: [{ name: "csi-hostpath-snapclass", driver: "hostpath.csi.k8s.io" }],
+  volumeSnapshots: [
+    {
+      name: "snap-ok",
+      role: "PG_DATA",
+      backup: "snap-ok",
+      cluster: "pg-old",
+      date: "2026-09-24",
+      hot: false,
+      ready: true,
+    },
+    {
+      name: "snap-ok-wal",
+      role: "PG_WAL",
+      backup: "snap-ok",
+      cluster: "pg-old",
+      date: "2026-09-24",
+      hot: false,
+      ready: true,
+    },
+    {
+      name: "snap-ok-tbs-analytics",
+      role: "PG_TABLESPACE",
+      tablespace: "analytics",
+      backup: "snap-ok",
+      cluster: "pg-old",
+      date: "2026-09-24",
+      hot: false,
+      ready: true,
+    },
+    {
+      name: "snap-hot",
+      role: "PG_DATA",
+      backup: "snap-hot",
+      cluster: "pg-old",
+      date: "2026-09-23",
+      hot: true,
+      ready: true,
+    },
+    { name: "snap-pending", role: "PG_DATA", backup: "snap-pending", cluster: "pg-old", hot: false, ready: false },
+    { name: "someone-else", ready: true },
+  ],
+  volumeSnapshotCrd: true,
   operatorImage: "ghcr.io/cloudnative-pg/postgresql:18.4-system-trixie",
   reads: {
     clusters: "ready",
@@ -46,6 +92,9 @@ const READY: ClusterCreateInputs = {
     storageClasses: "ready",
     secrets: "ready",
     backups: "ready",
+    snapshotClasses: "ready",
+    volumeSnapshots: "ready",
+    crds: "ready",
   },
 };
 
@@ -484,5 +533,246 @@ describe("the summary", () => {
     expect(facts.warnings).toContain(
       "No resource requests: the pods get the BestEffort class and are the first evicted under pressure.",
     );
+  });
+});
+
+describe("tablespaces (SPEC-0029)", () => {
+  it("checks a tablespace name as the operator does", () => {
+    expect(tablespaceNameError("")).toBe("A tablespace name is required");
+    expect(tablespaceNameError("pg_fast")).toContain("reserved for PostgreSQL");
+    expect(tablespaceNameError("1data")).toContain("PostgreSQL identifier");
+    expect(tablespaceNameError("da-ta")).toContain("PostgreSQL identifier");
+    expect(tablespaceNameError("a".repeat(64))).toBe("A tablespace name is 63 characters at most");
+    expect(tablespaceNameError("Ok_1$")).toBeUndefined();
+  });
+
+  it("derives the volume name the operator derives", () => {
+    expect(tablespaceVolumeName("analytics")).toBe("tbs-analytics");
+    expect(tablespaceVolumeName("_Big$Data")).toBe("tbs-1big-data");
+  });
+
+  it("refuses duplicate names ignoring case, names that become one volume, a missing size and a bad owner", () => {
+    const errors = clusterFormErrors(
+      READY,
+      filled({
+        tablespaces: [
+          { name: "Data", size: "1Gi", storageClass: "", owner: "", temporary: false },
+          { name: "data", size: "1Gi", storageClass: "", owner: "", temporary: false },
+          { name: "a_b", size: "", storageClass: "", owner: "bad owner", temporary: false },
+          { name: "a$b", size: "1Gi", storageClass: "", owner: "", temporary: false },
+        ],
+      }),
+    );
+    expect(errors["tablespaces.1.name"]).toBe("data is declared twice (tablespace names are compared ignoring case)");
+    expect(errors["tablespaces.2.size"]).toBe("A size is required");
+    expect(errors["tablespaces.2.owner"]).toBeDefined();
+    expect(errors["tablespaces.3.name"]).toBe("a$b and a_b become the same volume name (tbs-a-b)");
+    expect(errors.tablespaces).toBe("A tablespace is wrong");
+    expect(clusterFormErrors(READY, filled({ tablespaces: [emptyTablespaceRow()] }))["tablespaces.0.name"]).toBe(
+      "A tablespace name is required",
+    );
+    expect(clusterCreateBlockReason(READY, filled({ tablespaces: [emptyTablespaceRow()] }))).toBe(
+      "A tablespace is wrong",
+    );
+  });
+
+  it("sends the rows as spec.tablespaces, with only what was decided", () => {
+    const form = filled({
+      tablespaces: [
+        { name: "reports", size: "2Gi", storageClass: "fast", owner: "reporter", temporary: false },
+        { name: "scratch", size: "1Gi", storageClass: "", owner: "", temporary: true },
+      ],
+    });
+    expect(clusterFormErrors(READY, form)).toEqual({});
+    const spec = clusterCreateBody(form).spec as Record<string, unknown>;
+    expect(spec.tablespaces).toEqual([
+      { name: "reports", storage: { size: "2Gi", storageClass: "fast" }, owner: { name: "reporter" } },
+      { name: "scratch", storage: { size: "1Gi" }, temporary: true },
+    ]);
+    expect((clusterCreateBody(filled()).spec as Record<string, unknown>).tablespaces).toBeUndefined();
+    expect(clusterCreateNotes(READY, form).some((note) => note.startsWith("2 tablespaces (reports, scratch)"))).toBe(
+      true,
+    );
+    expect(clusterCreateFacts(READY, form).writes[0].text).toContain("2 tablespaces");
+    expect(
+      clusterFormWarnings(READY, filled({ tablespaces: [{ ...emptyTablespaceRow(), storageClass: "nope" }] }))[
+        "tablespaces.0.storageClass"
+      ],
+    ).toContain("No storage class named nope");
+  });
+});
+
+describe("volume snapshot backups (SPEC-0029)", () => {
+  it("sends only what differs from the operator's defaults", () => {
+    const enabled = filled({ snapshotsEnabled: true });
+    expect((clusterCreateBody(enabled).spec as Record<string, unknown>).backup).toEqual({ volumeSnapshot: {} });
+    const cold = filled({ snapshotsEnabled: true, snapshotClass: "csi-hostpath-snapclass", snapshotMode: "cold" });
+    expect((clusterCreateBody(cold).spec as Record<string, unknown>).backup).toEqual({
+      volumeSnapshot: { className: "csi-hostpath-snapclass", online: false },
+    });
+    const hot = filled({
+      snapshotsEnabled: true,
+      snapshotWaitForArchive: false,
+      snapshotImmediateCheckpoint: true,
+      snapshotOwner: "backup",
+      backupTarget: "primary",
+      walEnabled: true,
+      walSize: "1Gi",
+      snapshotWalClass: "wal-class",
+    });
+    expect((clusterCreateBody(hot).spec as Record<string, unknown>).backup).toEqual({
+      target: "primary",
+      volumeSnapshot: {
+        walClassName: "wal-class",
+        onlineConfiguration: { waitForArchive: false, immediateCheckpoint: true },
+        snapshotOwnerReference: "backup",
+      },
+    });
+    // The WAL class goes only with a WAL volume; nothing is sent while the box is unchecked.
+    expect(
+      (
+        clusterCreateBody(filled({ snapshotsEnabled: true, snapshotWalClass: "wal-class" })).spec as Record<
+          string,
+          unknown
+        >
+      ).backup,
+    ).toEqual({ volumeSnapshot: {} });
+    expect((clusterCreateBody(filled({ snapshotClass: "x" })).spec as Record<string, unknown>).backup).toBeUndefined();
+  });
+
+  it("refuses the method without the CRD, and says what hot and cold cost", () => {
+    expect(
+      clusterFormErrors({ ...READY, volumeSnapshotCrd: false }, filled({ snapshotsEnabled: true })).snapshotsEnabled,
+    ).toContain("VolumeSnapshot CRD is not installed");
+    expect(clusterFormErrors(READY, filled({ snapshotsEnabled: true }))).toEqual({});
+    expect(
+      clusterFormWarnings(READY, filled({ snapshotsEnabled: true, snapshotClass: "nope" })).snapshotClass,
+    ).toContain("No snapshot class named nope");
+    const hot = clusterCreateWarnings(READY, filled({ snapshotsEnabled: true, objectStore: "" }));
+    expect(hot.some((warning) => warning.startsWith("Hot snapshots without WAL archiving"))).toBe(true);
+    const cold = clusterCreateWarnings(READY, filled({ snapshotsEnabled: true, snapshotMode: "cold", instances: "1" }));
+    expect(cold.some((warning) => warning.startsWith("Cold snapshots fence the only instance"))).toBe(true);
+    expect(
+      clusterCreateWarnings(READY, filled({ snapshotsEnabled: true, snapshotMode: "cold", instances: "3" })).some(
+        (warning) => warning.startsWith("Cold snapshots fence"),
+      ),
+    ).toBe(false);
+    expect(
+      clusterCreateNotes(READY, filled({ snapshotsEnabled: true, snapshotClass: "csi-hostpath-snapclass" })).some(
+        (note) => note.startsWith("Backups by volume snapshot are available (class csi-hostpath-snapclass, hot)"),
+      ),
+    ).toBe(true);
+  });
+});
+
+describe("recovery from volume snapshots (SPEC-0029)", () => {
+  const snapshots = (overrides: Partial<ClusterForm> = {}) =>
+    filled({ bootstrap: "recovery", recoverySource: "volumeSnapshots", recoveryDataSnapshot: "snap-ok", ...overrides });
+
+  it("requires a ready data snapshot, a WAL volume for a WAL snapshot, and the archive for a point in time", () => {
+    expect(clusterCreateBlockReason(READY, snapshots({ recoveryDataSnapshot: "" }))).toBe(
+      "Pick the data snapshot to recover from",
+    );
+    expect(clusterFormErrors(READY, snapshots({ recoveryDataSnapshot: "snap-pending" })).recoveryDataSnapshot).toBe(
+      "snap-pending is not ready to use yet: the recovery would wait on it",
+    );
+    expect(clusterFormErrors(READY, snapshots({ recoveryWalSnapshot: "snap-ok-wal" })).recoveryWalSnapshot).toContain(
+      "needs a WAL volume of its own",
+    );
+    expect(
+      clusterFormErrors(READY, snapshots({ walEnabled: true, walSize: "1Gi", recoveryWalSnapshot: "snap-ok-wal" })),
+    ).toEqual({});
+    expect(
+      clusterFormErrors(READY, snapshots({ recoveryTargetTime: "2026-09-24T10:00:00Z" })).recoveryTargetTime,
+    ).toContain("give the WAL archive of the source");
+    const withArchive = snapshots({
+      recoveryTargetTime: "2026-09-24T10:00:00Z",
+      recoveryWalArchive: true,
+      recoveryObjectStore: "minio-store",
+      recoveryServerName: "pg-old",
+    });
+    expect(clusterFormErrors(READY, withArchive)).toEqual({});
+    expect(clusterFormErrors(READY, snapshots({ recoveryWalArchive: true })).recoveryObjectStore).toBe(
+      "Pick the object store that holds the backups",
+    );
+  });
+
+  it("sends the snapshot references, the tablespace map and the WAL archive of the source", () => {
+    const form = snapshots({
+      walEnabled: true,
+      walSize: "1Gi",
+      recoveryWalSnapshot: "snap-ok-wal",
+      tablespaces: [{ name: "analytics", size: "512Mi", storageClass: "", owner: "", temporary: false }],
+      recoveryTablespaceSnapshots: { analytics: "snap-ok-tbs-analytics" },
+      recoveryWalArchive: true,
+      recoveryObjectStore: "minio-store",
+      recoveryServerName: "pg-old",
+    });
+    const spec = clusterCreateBody(form).spec as Record<string, unknown>;
+    const ref = (name: string) => ({ name, kind: "VolumeSnapshot", apiGroup: "snapshot.storage.k8s.io" });
+    expect(spec.bootstrap).toEqual({
+      recovery: {
+        source: "pg-old",
+        volumeSnapshots: {
+          storage: ref("snap-ok"),
+          walStorage: ref("snap-ok-wal"),
+          tablespaceStorage: { analytics: ref("snap-ok-tbs-analytics") },
+        },
+      },
+    });
+    expect(spec.externalClusters).toEqual([
+      {
+        name: "pg-old",
+        plugin: {
+          name: "barman-cloud.cloudnative-pg.io",
+          parameters: { barmanObjectName: "minio-store", serverName: "pg-old" },
+        },
+      },
+    ]);
+    const bare = clusterCreateBody(snapshots()).spec as Record<string, unknown>;
+    expect(bare.bootstrap).toEqual({ recovery: { volumeSnapshots: { storage: ref("snap-ok") } } });
+    expect(bare.externalClusters).toBeUndefined();
+    expect(clusterCreateFacts(READY, snapshots()).writes[0].text).toContain(
+      "recovery from the volume snapshot snap-ok (cold, backup snap-ok of pg-old)",
+    );
+  });
+
+  it("warns on a hot snapshot without the archive, on the wrong kind of snapshot, and on the replicas", () => {
+    expect(clusterFormWarnings(READY, snapshots({ recoveryDataSnapshot: "snap-hot" })).recoveryDataSnapshot).toContain(
+      "snap-hot is a hot snapshot",
+    );
+    expect(
+      clusterCreateWarnings(READY, snapshots({ recoveryDataSnapshot: "snap-hot" })).some((warning) =>
+        warning.startsWith("The data snapshot was hot"),
+      ),
+    ).toBe(true);
+    expect(clusterFormWarnings(READY, snapshots({ recoveryDataSnapshot: "snap-ok-wal" })).recoveryDataSnapshot).toBe(
+      "snap-ok-wal is a PG_WAL snapshot, not PG_DATA",
+    );
+    expect(
+      clusterFormWarnings(READY, snapshots({ recoveryDataSnapshot: "someone-else" })).recoveryDataSnapshot,
+    ).toContain("was not taken by the operator");
+    expect(clusterFormWarnings(READY, snapshots({ recoveryDataSnapshot: "unknown" })).recoveryDataSnapshot).toContain(
+      "No snapshot named unknown was found",
+    );
+    expect(
+      clusterFormWarnings(
+        READY,
+        snapshots({
+          tablespaces: [{ name: "other", size: "1Gi", storageClass: "", owner: "", temporary: false }],
+          recoveryTablespaceSnapshots: { other: "snap-ok-tbs-analytics" },
+        }),
+      )["recoveryTablespaceSnapshots.other"],
+    ).toContain("the snapshot of the tablespace analytics, not other");
+    expect(
+      clusterCreateWarnings(READY, snapshots({ instances: "3" })).some((warning) =>
+        warning.startsWith("The replicas of a cluster recovered from a snapshot"),
+      ),
+    ).toBe(true);
+    expect(
+      clusterCreateWarnings(READY, snapshots({ instances: "1" })).some((warning) =>
+        warning.startsWith("The replicas of a cluster recovered from a snapshot"),
+      ),
+    ).toBe(false);
   });
 });

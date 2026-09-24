@@ -1,0 +1,34 @@
+# The cluster of the volume snapshot cases (SPEC-0029), next to the cluster of
+# the write cases: one instance, because the volumes of the CSI hostpath driver
+# live on the node the driver runs on; a tablespace, so a snapshot backup has
+# more than one element and a recovery restores more than one volume; cold
+# snapshots, so the recovery of the fixture backup needs no WAL archive; WAL
+# archiving all the same, so the plugin method stays available on it.
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-snapshots
+  namespace: cnpg-e2e-actions
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+    storageClass: csi-hostpath-sc
+  tablespaces:
+    - name: analytics
+      storage:
+        size: 512Mi
+        storageClass: csi-hostpath-sc
+  backup:
+    volumeSnapshot:
+      className: csi-hostpath-snapclass
+      online: false
+  plugins:
+    - name: barman-cloud.cloudnative-pg.io
+      isWALArchiver: true
+      parameters:
+        barmanObjectName: actions-store
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi

@@ -39,12 +39,33 @@ export interface PluginConfiguration {
   parameters?: Record<string, string>;
 }
 
+/** `spec.backup.volumeSnapshot` (SPEC-0029): the stanza that makes the volumeSnapshot method available. */
+export interface VolumeSnapshotConfiguration {
+  className?: string;
+  walClassName?: string;
+  tablespaceClassName?: Record<string, string>;
+  snapshotOwnerReference?: "none" | "cluster" | "backup";
+  /** Hot (`true`, the default) or cold. */
+  online?: boolean;
+  onlineConfiguration?: { waitForArchive?: boolean; immediateCheckpoint?: boolean };
+  labels?: Record<string, string>;
+  annotations?: Record<string, string>;
+}
+
 export interface BackupConfiguration {
   target?: "primary" | "prefer-standby";
   retentionPolicy?: string;
   /** Deprecated in-tree method (SPEC-0001 R8): shown with a "deprecated" badge, never generated. */
   barmanObjectStore?: Record<string, unknown>;
-  volumeSnapshot?: Record<string, unknown>;
+  volumeSnapshot?: VolumeSnapshotConfiguration;
+}
+
+/** One entry of `spec.tablespaces` (SPEC-0029): a volume per instance and a `CREATE TABLESPACE`. */
+export interface TablespaceConfiguration {
+  name: string;
+  storage: StorageConfiguration;
+  owner?: { name?: string };
+  temporary?: boolean;
 }
 
 export interface SynchronousReplicaConfiguration {
@@ -117,6 +138,7 @@ export interface ClusterSpec {
   postgresql?: PostgresConfiguration;
   storage?: StorageConfiguration;
   walStorage?: StorageConfiguration;
+  tablespaces?: TablespaceConfiguration[];
   backup?: BackupConfiguration;
   plugins?: PluginConfiguration[];
   monitoring?: MonitoringConfiguration;

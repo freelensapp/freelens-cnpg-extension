@@ -7,10 +7,13 @@ declare const classNames: {
   readonly instances: "instances";
   readonly certificates: "certificates";
   readonly plugins: "plugins";
+  readonly tablespaces: "tablespaces";
   readonly tableCell: "tableCell";
   readonly type: "type";
   readonly role: "role";
   readonly name: "name";
+  readonly size: "size";
+  readonly owner: "owner";
   readonly status: "status";
   readonly state: "state";
   readonly health: "health";
