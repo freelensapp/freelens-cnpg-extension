@@ -1,0 +1,107 @@
+# In-cluster object store for the Barman Cloud plugin: one SeaweedFS server
+# with its S3 gateway on 9000 and one static identity, and the two credential
+# Secrets the ObjectStore fixtures reference (one valid, one wrong on purpose,
+# so that a backup and the WAL archiving of one cluster fail). The `backups`
+# bucket is created by cluster-up.sh through the shell of the server.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: s3-identities
+  namespace: cnpg-e2e
+data:
+  s3.json: |
+    {
+      "identities": [
+        {
+          "name": "e2e",
+          "credentials": [{ "accessKey": "e2e-s3", "secretKey": "e2e-s3-secret-1" }],
+          "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+        }
+      ]
+    }
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-store-creds
+  namespace: cnpg-e2e
+type: Opaque
+stringData:
+  ACCESS_KEY_ID: e2e-s3
+  ACCESS_SECRET_KEY: e2e-s3-secret-1
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: e2e-store-broken-creds
+  namespace: cnpg-e2e
+type: Opaque
+stringData:
+  ACCESS_KEY_ID: e2e-s3
+  ACCESS_SECRET_KEY: wrong-password-on-purpose
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: s3
+  namespace: cnpg-e2e
+  labels:
+    app: s3
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: s3
+  template:
+    metadata:
+      labels:
+        app: s3
+    spec:
+      containers:
+        - name: seaweedfs
+          image: __S3_IMAGE__
+          args:
+            - server
+            - -dir=/data
+            - -ip.bind=0.0.0.0
+            - -master.volumeSizeLimitMB=64
+            - -volume.max=0
+            - -s3
+            - -s3.port=9000
+            - -s3.config=/etc/seaweedfs/s3.json
+          ports:
+            - name: s3
+              containerPort: 9000
+          readinessProbe:
+            tcpSocket:
+              port: 9000
+            periodSeconds: 5
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: identities
+              mountPath: /etc/seaweedfs
+              readOnly: true
+      volumes:
+        - name: data
+          emptyDir: {}
+        - name: identities
+          configMap:
+            name: s3-identities
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: s3
+  namespace: cnpg-e2e
+spec:
+  selector:
+    app: s3
+  ports:
+    - name: s3
+      port: 9000
+      targetPort: 9000

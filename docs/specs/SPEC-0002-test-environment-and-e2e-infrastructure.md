@@ -45,7 +45,7 @@ spec adds its own cases to the suite).
 | CloudNativePG operator | 1.30.0 | `releases/cnpg-1.30.0.yaml` at the tag |
 | cert-manager | v1.21.2 | `cert-manager/cert-manager` release manifest |
 | Barman Cloud plugin | v0.15.0 | release asset `manifest.yaml` |
-| MinIO | `RELEASE.2025-09-07T16-13-09Z` (the newest tag published on quay.io) | `quay.io/minio/minio` |
+| S3 object store | SeaweedFS 4.47 (one process with its S3 gateway, amd64 and arm64) | `chrislusf/seaweedfs` |
 | CSI hostpath driver | v1.18.0 (the version the CloudNativePG testing tools pin) | `kubernetes-csi/csi-driver-host-path`, `deploy/kubernetes-1.34/hostpath` |
 | External snapshotter (CRDs, snapshot controller, sidecar RBAC) | v8.6.0 | `kubernetes-csi/external-snapshotter` |
 | CSI sidecar RBAC | provisioner v6.3.0, attacher v4.13.0, resizer v2.2.1, health monitor v0.18.0 | each sidecar's own release |
@@ -84,10 +84,12 @@ Local prerequisites: Docker with at least 8 GB for its VM, `kind`,
    `deployment/barman-cloud` available and for the `Cluster` webhook to
    accept a plugin reference (retry on the "unknown plugin" admission
    error).
-5. MinIO: one Deployment plus Service `minio` on 9000, a bucket created by
-   a Job with the `mc` client, credentials in a Secret; wait for the Job.
+5. The S3 store: one SeaweedFS Deployment plus Service `s3` on 9000, one
+   static identity from a ConfigMap, the credentials the object stores
+   reference in a Secret; wait for the rollout, then create the `backups`
+   bucket through the shell of the server (`weed shell`), once.
 6. Fixtures (numbered files, `kubectl apply`), then waits:
-   - `ObjectStore` `e2e-store` (MinIO endpoint, bucket `backups`) and
+   - `ObjectStore` `e2e-store` (the S3 store, bucket `backups`) and
      `e2e-store-broken` (wrong credentials, for the failed backup);
    - `Cluster` `e2e-main`: 3 instances, plugin WAL archiving on
      `e2e-store`, monitoring enabled with plaintext metrics, small
@@ -177,11 +179,13 @@ The scripts only ever touch the `cnpg-e2e` kind cluster and the
 
 - First bring-up on macOS (Docker Desktop, 12 CPUs and 7.8 GB for the VM,
   2026-09-18): about 10 minutes end to end across the fixes below (the
-  kind node image pull, cert-manager, the operator, the plugin, MinIO,
+  kind node image pull, cert-manager, the operator, the plugin, the S3 store,
   four clusters healthy, two backups, the pooler, hibernation and
   fencing); a re-run against the existing cluster takes 12 seconds.
-- The MinIO GitHub release tag is not always published as an image on
-  quay.io: the pin is the newest tag quay.io actually serves.
+- The store was MinIO until 2026-09-24, when its images disappeared from
+  quay.io and Docker Hub (every tag, `latest` included) and every bring-up
+  from scratch failed on the pull: SeaweedFS took its place, pinned to a
+  release tag, with the same S3 credentials shape for the plugin.
 - The cert-manager webhook probe targets the `default` namespace, because
   the fixture namespace does not exist yet at that point.
 - `Cluster.status.readyInstances` is omitted when zero, so the fencing wait

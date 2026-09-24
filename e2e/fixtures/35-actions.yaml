@@ -2,7 +2,7 @@
 # in a namespace of its own, so the clusters the read-only cases assert stay
 # exactly as their fixtures left them, whatever a write case does or leaves
 # behind. Two instances, so there is a standby to promote, to restart and to
-# fence; the working object store of MinIO, so a backup requested by hand
+# fence; the working object store of the fixtures, so a backup requested by hand
 # completes; a weekly schedule that never fires during a run, to suspend,
 # resume and run by hand (SPEC-0021).
 apiVersion: v1
@@ -17,8 +17,8 @@ metadata:
   namespace: cnpg-e2e-actions
 type: Opaque
 stringData:
-  ACCESS_KEY_ID: e2e-minio
-  ACCESS_SECRET_KEY: e2e-minio-secret-1
+  ACCESS_KEY_ID: e2e-s3
+  ACCESS_SECRET_KEY: e2e-s3-secret-1
 ---
 apiVersion: barmancloud.cnpg.io/v1
 kind: ObjectStore
@@ -28,7 +28,7 @@ metadata:
 spec:
   configuration:
     destinationPath: s3://backups/
-    endpointURL: http://minio.cnpg-e2e.svc:9000
+    endpointURL: http://s3.cnpg-e2e.svc:9000
     s3Credentials:
       accessKeyId:
         name: actions-store-creds
