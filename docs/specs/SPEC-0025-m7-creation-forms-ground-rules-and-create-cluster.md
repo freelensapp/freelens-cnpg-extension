@@ -1,6 +1,6 @@
 # SPEC-0025: Creation forms, the ground rules, and the Create Cluster form
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -376,3 +376,7 @@ section 14 ("Creation forms"), next to the write actions.
   the body of a form grows with every field: the pane gives the editor the
   height of its box, and the pre-review pass checks that the editor fills
   it (found on the screenshots of the M7 pre-review pass, fixed in #61).
+- M7 milestone review: 2026-09-24, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.

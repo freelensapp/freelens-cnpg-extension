@@ -1,6 +1,6 @@
 # SPEC-0028: Metrics charts on the Live View (ad hoc, read-only)
 
-- **Status:** Implemented
+- **Status:** Verified
 - **Milestone:** `M7` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.0`
 - **Author / date:** freelensapp core team, 2026-09-22
@@ -235,3 +235,7 @@ click loses its tooltip.
   operable from the keyboard as DESIGN.md section 12 asks.
 - The poller's own memory of the sparklines grew from 120 to 720 points as
   the spec asked (an hour at five seconds).
+- M7 milestone review: 2026-09-24, lead maintainer, on the screenshots of the
+  pre-review pass on both themes (gallery on an ephemeral branch, deleted
+  after the review). Verdict: approved, no blocking finding. Status moved to
+  Verified.
