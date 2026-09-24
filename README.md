@@ -36,7 +36,7 @@ no database credential is ever read, stored or asked for.
 
 ![The trends of the Live View of a cluster, dark theme](docs/screenshots/live-view-trends-dark.png)
 
-![The Create Cluster form, with the exact YAML the create sends, dark theme](docs/screenshots/create-cluster-form-dark.png)
+![The Create Cluster form with its YAML pane, dark theme](docs/screenshots/create-cluster-form-dark.png)
 
 The goal is the most complete and usable graphical interface for
 CloudNativePG. The extension is a from-scratch MIT implementation: it does
@@ -48,12 +48,12 @@ product.
 ### Status
 
 > **Feature complete for v1.0.0: every milestone of the roadmap, M1 to M7,
-> is implemented and verified.** The repository is developed spec-first: one spec per feature
-> under [docs/specs](docs/specs/), each one implemented behind an approved
-> spec and verified by unit tests, by an E2E suite that drives the packaged
-> extension in the real Freelens against a kind cluster with the real
-> operator, and by an agent pass that walks every view on both themes before
-> the review of the lead maintainer. See the
+> is implemented and verified.** The repository is developed spec-first: one
+> spec per feature under [docs/specs](docs/specs/), each one implemented
+> behind an approved spec and verified by unit tests, by an E2E suite that
+> drives the packaged extension in the real Freelens against a kind cluster
+> with the real operator, and by an agent pass that walks every view on both
+> themes before the review of the lead maintainer. See the
 > [roadmap](docs/development/ROADMAP.md).
 
 ## Requirements
