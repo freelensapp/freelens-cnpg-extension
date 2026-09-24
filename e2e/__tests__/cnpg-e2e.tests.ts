@@ -883,7 +883,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         "Store",
         "In use",
         "S3 compatible",
-        "http://minio.cnpg-e2e.svc:9000",
+        "http://s3.cnpg-e2e.svc:9000",
         "Credentials",
         "e2e-store-creds",
         "ACCESS_KEY_ID",
@@ -912,7 +912,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       // first recoverability point is compared with the plugin's in the Cluster drawer below.
       expect(shown).toMatch(/e2e-main .*ago .*Protected/);
       // The secret is a link by name: the drawer never shows a value.
-      expect(await drawer.innerText()).not.toContain("e2e-minio-secret-1");
+      expect(await drawer.innerText()).not.toContain("e2e-s3-secret-1");
       await cluster.closeDetails(frame);
     },
     TIMEOUT,
@@ -3347,7 +3347,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
-    "creates an object store on the MinIO of the fixtures, with its credentials picked from a secret, and deletes it (SPEC-0026)",
+    "creates an object store on the S3 store of the fixtures, with its credentials picked from a secret, and deletes it (SPEC-0026)",
     async () => {
       const name = "e2e-created-store";
       const stores = "objectstores.barmancloud.cnpg.io";
@@ -3366,7 +3366,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe("A name is required");
       await dialog.locator('[data-testid="cnpg-create-object-store-name"]').fill(name);
       await dialog.locator('[data-testid="cnpg-create-object-store-destination"]').fill("s3://backups/e2e-created/");
-      await dialog.locator('[data-testid="cnpg-create-object-store-endpoint"]').fill("http://minio.cnpg-e2e.svc:9000");
+      await dialog.locator('[data-testid="cnpg-create-object-store-endpoint"]').fill("http://s3.cnpg-e2e.svc:9000");
 
       // F7: the secret from the read on open, the key from the keys the secret carries.
       for (const field of ["s3AccessKeyId", "s3SecretAccessKey"]) {
@@ -3386,7 +3386,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         "spec:",
         "  configuration:",
         "    destinationPath: s3://backups/e2e-created/",
-        "    endpointURL: http://minio.cnpg-e2e.svc:9000",
+        "    endpointURL: http://s3.cnpg-e2e.svc:9000",
         "    s3Credentials:",
         "      accessKeyId:",
         "        name: actions-store-creds",
@@ -3430,7 +3430,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         "s3://backups/e2e-created/",
       );
       expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.endpointURL}")).toBe(
-        "http://minio.cnpg-e2e.svc:9000",
+        "http://s3.cnpg-e2e.svc:9000",
       );
       expect(cluster.kubectlActionsField(stores, name, "{.spec.configuration.s3Credentials.accessKeyId.name}")).toBe(
         "actions-store-creds",

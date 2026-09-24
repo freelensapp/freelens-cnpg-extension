@@ -242,7 +242,7 @@ As SPEC-0025; no new deviation.
   `status.nextScheduleTime` (the operator writes it only once a backup was
   created), delete the schedule and see the backup go with it; create a
   pooler of type `rw` with one instance, read it back, wait for its
-  Deployment, delete it; create an object store on the MinIO of the
+  Deployment, delete it; create an object store on the S3 store of the
   fixtures with the credentials secret of the write namespace, read it
   back, delete it; the name of an existing schedule warns; a five field
   cron is refused at the field.

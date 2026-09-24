@@ -9,7 +9,7 @@ metadata:
 spec:
   configuration:
     destinationPath: s3://backups/
-    endpointURL: http://minio.cnpg-e2e.svc:9000
+    endpointURL: http://s3.cnpg-e2e.svc:9000
     s3Credentials:
       accessKeyId:
         name: e2e-store-creds
@@ -28,7 +28,7 @@ metadata:
 spec:
   configuration:
     destinationPath: s3://backups/
-    endpointURL: http://minio.cnpg-e2e.svc:9000
+    endpointURL: http://s3.cnpg-e2e.svc:9000
     s3Credentials:
       accessKeyId:
         name: e2e-store-broken-creds
