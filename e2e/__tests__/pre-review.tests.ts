@@ -380,9 +380,11 @@ describe("pre-review pass of the CloudNativePG extension", () => {
       // SPEC-0029: the drawer of the snapshot cluster, with its tablespace and its snapshot settings.
       await table(frame, cluster.E2E_SNAPSHOT_CLUSTER).click();
       await frame.locator(".Drawer.KubeObjectDetails").waitFor({ state: "visible", timeout: 60_000 });
+      // The host's Table forwards no data attribute: the row of the Storage section is the anchor.
       await frame
         .locator(".Drawer.KubeObjectDetails")
-        .locator('[data-testid="cnpg-cluster-tablespaces"]')
+        .locator(".DrawerItem", { hasText: "Tablespaces" })
+        .first()
         .scrollIntoViewIfNeeded();
       await frame.waitForTimeout(500);
       await shot(`${theme}-drawer-cluster-tablespaces`);

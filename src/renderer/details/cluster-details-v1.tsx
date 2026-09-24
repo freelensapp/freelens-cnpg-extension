@@ -611,12 +611,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
           {tablespaces.length}
         </DrawerItem>
         {tablespaces.length > 0 ? (
-          <Table
-            scrollable={false}
-            sortSyncWithUrl={false}
-            className={styles.tablespaces}
-            data-testid="cnpg-cluster-tablespaces"
-          >
+          <Table scrollable={false} sortSyncWithUrl={false} className={styles.tablespaces}>
             <TableHead flat sticky={false}>
               <TableCell className={styles.name}>Tablespace</TableCell>
               <TableCell className={styles.size}>Volume</TableCell>
