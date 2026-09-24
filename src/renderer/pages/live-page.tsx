@@ -61,7 +61,7 @@ import type { PollTarget } from "../components/live/live-poller";
 const { observer } = MobxReact;
 
 const {
-  Component: { Badge, Icon, MaybeLink, Select, TabLayout },
+  Component: { Badge, Icon, MaybeLink, NamespaceSelectFilter, Select, TabLayout },
   K8sApi: { podsStore },
   Navigation: { createPageParam },
 } = Renderer;
@@ -162,7 +162,7 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
 
   // The poolers in front of the cluster: doors to their own live figures (SPEC-0012).
   const poolerStore = maybe(() => Pooler.getStore<Pooler>());
-  const poolers = poolersOfCluster(cluster, (poolerStore?.items ?? []) as Pooler[]);
+  const poolers = poolersOfCluster(cluster, (poolerStore?.contextItems ?? []) as Pooler[]);
 
   const now = new Date();
   const health = classifyCluster(cluster);
@@ -290,7 +290,7 @@ export const LivePage = observer((props: LivePageProps) =>
       { label: Pooler.crd.plural, store: maybe(() => Pooler.getStore<Pooler>()) },
     ]);
 
-    const clusters = [...(clusterStore.items as Cluster[])].sort(
+    const clusters = [...(clusterStore.contextItems as Cluster[])].sort(
       (a, b) => (a.getNs() ?? "").localeCompare(b.getNs() ?? "") || a.getName().localeCompare(b.getName()),
     );
     const cluster = selected ? clusterStore.getByName(selected.name, selected.namespace) : undefined;
@@ -320,6 +320,10 @@ export const LivePage = observer((props: LivePageProps) =>
                 themeName="lens"
               />
             </div>
+            {/* The host's own namespace filter, the one of every list: the picker follows it, so it is here to move it. */}
+            <div className={styles.namespaces} data-testid="cnpg-live-namespaces">
+              <NamespaceSelectFilter id="cnpg-live-namespace-filter" />
+            </div>
           </div>
 
           {cluster ? (
@@ -339,7 +343,9 @@ export const LivePage = observer((props: LivePageProps) =>
           {!cluster && !loading ? (
             clusters.length === 0 ? (
               <div className={styles.panel} data-testid="cnpg-live-empty">
-                No PostgreSQL cluster in the selected namespaces.
+                No PostgreSQL cluster in the selected namespaces. The namespaces are the filter of Freelens above, the
+                one at the top of every list: on a first connection to a Kubernetes cluster it selects only{" "}
+                <code>default</code>.
               </div>
             ) : (
               <div className={styles.doors} data-testid="cnpg-live-doors">

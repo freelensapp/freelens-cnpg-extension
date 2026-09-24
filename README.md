@@ -135,7 +135,10 @@ You can also build and pack the extension yourself, see
 ## Getting started
 
 1. Connect to a Kubernetes cluster that runs the operator. A
-   **CloudNativePG** group appears in the cluster's left sidebar.
+   **CloudNativePG** group appears in the cluster's left sidebar. Pick the
+   namespaces of your PostgreSQL clusters in the namespace filter, at the
+   top of the Overview and of every list: on a first connection Freelens
+   selects only `default`.
 2. Open **Overview**: one tile per PostgreSQL cluster, ordered by urgency,
    with counters for the instances that are not ready, the archiving that
    fails, the backups that are overdue, the certificates that expire and the

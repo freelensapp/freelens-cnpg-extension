@@ -357,6 +357,64 @@ describe("CloudNativePG extension against the fixture cluster", () => {
   );
 
   it(
+    "carries the namespace filter of Freelens on the Overview and on the pages with a cluster picker (SPEC-0004)",
+    async () => {
+      await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+      expect(
+        await frame.locator('[data-testid="cnpg-overview-namespaces"] [data-testid="namespace-select-filter"]').count(),
+      ).toBe(1);
+      // Whatever the filter was left at, it is set from the Overview itself: the only control on the page is ours.
+      await cluster.selectNamespace(frame);
+      await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.captureScreenshot(frame, "overview-namespace-filter-dark");
+
+      // The filter on the page is the host's own: moved to a namespace without clusters, from the page itself, the
+      // Overview empties and says which filter it follows; moved back, the tiles return.
+      await cluster.selectNamespace(frame, "default");
+      await frame.locator('[data-testid="cnpg-overview-empty"]').waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.captureScreenshot(frame, "overview-namespace-filter-empty-dark");
+      await frame.locator('[data-testid="cnpg-overview-empty"]').waitFor({ state: "visible", timeout: 60_000 });
+      expect(await frame.locator('[data-testid="cnpg-overview-empty"]').innerText()).toContain(
+        "namespace filter of Freelens",
+      );
+      // A namespace the Overview never loaded before: the filter moved to it loads its clusters.
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await waitUntil(
+          async () => frame.locator('[data-testid="cnpg-overview-grid"]').innerText(),
+          (text) => text.includes(cluster.E2E_SNAPSHOT_CLUSTER) && !text.includes("e2e-main"),
+          60_000,
+        ),
+      ).toContain(cluster.E2E_SNAPSHOT_CLUSTER);
+      await cluster.selectNamespace(frame);
+      await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
+      expect(
+        await waitUntil(
+          async () => frame.locator('[data-testid="cnpg-overview-grid"]').innerText(),
+          (text) => text.includes("e2e-main") && !text.includes(cluster.E2E_SNAPSHOT_CLUSTER),
+          60_000,
+        ),
+      ).toContain("e2e-main");
+
+      // The pages with a cluster picker carry the same filter next to the picker.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+      expect(
+        await frame.locator('[data-testid="cnpg-live-namespaces"] [data-testid="namespace-select-filter"]').count(),
+      ).toBe(1);
+      await cluster.openCnpgPage(frame, "cnpg-clusters-logs", "Logs");
+      expect(
+        await frame.locator('[data-testid="cnpg-logs-namespaces"] [data-testid="namespace-select-filter"]').count(),
+      ).toBe(1);
+      await cluster.openCnpgPage(frame, "cnpg-clusters-timeline", "Timeline");
+      expect(
+        await frame.locator('[data-testid="cnpg-timeline-namespaces"] [data-testid="namespace-select-filter"]').count(),
+      ).toBe(1);
+    },
+    TIMEOUT,
+  );
+
+  it(
     "opens the list filtered on the failing clusters from the Overview strip (SPEC-0004)",
     async () => {
       await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");

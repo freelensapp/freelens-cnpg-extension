@@ -11,6 +11,20 @@
   margin: 0;
 }
 
+// The title and the host's namespace filter on one line; the filter wraps under the title when the page is narrow.
+.header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: $unit calc($unit * 2);
+}
+
+.namespaces {
+  flex: 0 1 320px;
+  min-width: 220px;
+}
+
 .strip {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));

@@ -102,6 +102,13 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
     await frame.locator('[data-testid="cnpg-overview-grid"]').waitFor({ state: "visible", timeout: 60_000 });
     await shot(`${theme}-overview`);
+    await record("Overview: the namespace filter of the host is on the page (SPEC-0004)", async () => {
+      const count = await frame
+        .locator('[data-testid="cnpg-overview-namespaces"] [data-testid="namespace-select-filter"]')
+        .count();
+
+      if (count !== 1) throw new Error(`expected one namespace filter on the Overview, found ${count}`);
+    });
 
     await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
     await cluster.expectRow(frame, "e2e-main", "Healthy");

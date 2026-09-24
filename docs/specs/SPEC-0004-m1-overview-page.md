@@ -166,3 +166,10 @@ Reads only, from stores; no network call of its own.
 - M4 added a sixth counter to the strip and a line to the tiles: the declared
   databases, roles, publications and subscriptions that failed (SPEC-0013,
   notes).
+- 2026-09-24, from the manual test of the lead maintainer: the page followed
+  the namespace filter of the host without showing it, and its empty state
+  told the user to widen a filter that was nowhere on the page (on a first
+  connection Freelens selects only `default`). The header now carries the
+  host's own `NamespaceSelectFilter`, the one of every list, and the empty
+  state says which filter the page follows; the pages with a cluster picker
+  (Live View, Logs, Timeline) carry it next to the picker for the same reason.

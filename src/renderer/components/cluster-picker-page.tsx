@@ -20,7 +20,7 @@ import stylesInline from "./live/live.module.scss?inline";
 const { observer } = MobxReact;
 
 const {
-  Component: { Badge, MaybeLink, Select, TabLayout },
+  Component: { Badge, MaybeLink, NamespaceSelectFilter, Select, TabLayout },
   Navigation: { createPageParam },
 } = Renderer;
 
@@ -65,7 +65,7 @@ export const ClusterPickerPage = observer(
     const selectedKey = param.get() ?? "";
     const selected = splitClusterKey(selectedKey);
 
-    const clusters = [...(clusterStore.items as Cluster[])].sort(
+    const clusters = [...(clusterStore.contextItems as Cluster[])].sort(
       (a, b) => (a.getNs() ?? "").localeCompare(b.getNs() ?? "") || a.getName().localeCompare(b.getName()),
     );
     const cluster = selected ? clusterStore.getByName(selected.name, selected.namespace) : undefined;
@@ -95,6 +95,10 @@ export const ClusterPickerPage = observer(
                 themeName="lens"
               />
             </div>
+            {/* The host's own namespace filter, the one of every list: the picker follows it, so it is here to move it. */}
+            <div className={styles.namespaces} data-testid={`${testId}-namespaces`}>
+              <NamespaceSelectFilter id={`${testId}-namespace-filter`} />
+            </div>
           </div>
 
           {cluster ? (
@@ -113,7 +117,9 @@ export const ClusterPickerPage = observer(
           {!cluster && !loading ? (
             clusters.length === 0 ? (
               <div className={styles.panel} data-testid={`${testId}-empty`}>
-                No PostgreSQL cluster in the selected namespaces.
+                No PostgreSQL cluster in the selected namespaces. The namespaces are the filter of Freelens above, the
+                one at the top of every list: on a first connection to a Kubernetes cluster it selects only{" "}
+                <code>default</code>.
               </div>
             ) : (
               <div className={styles.doors} data-testid={`${testId}-doors`}>
