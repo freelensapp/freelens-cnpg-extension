@@ -11,9 +11,9 @@ This repository contains the official Freelens extension for CloudNativePG
 CloudNativePG resources (Cluster, Backup, ScheduledBackup, Pooler and the
 other CRDs of `postgresql.cnpg.io`) and the live state of the databases inside
 Freelens. The goal is the most complete and usable graphical interface for
-CloudNativePG. It was scaffolded from freelens-example-extension; the example
-content is being replaced milestone by milestone (see
-`docs/development/ROADMAP.md` once present).
+CloudNativePG. It was scaffolded from freelens-example-extension and built
+spec by spec; the roadmap to v1.0.0 (`docs/development/ROADMAP.md`) is
+complete and every spec under `docs/specs/` is verified.
 
 - **Language**: TypeScript 5.9.3
 - **Runtime**: Node.js >= 22.0.0, Freelens >= 1.10.3
