@@ -32,6 +32,8 @@ switchover, restart, reload, fencing, hibernation, the schedules) and the
 creation forms write only after a dialog has listed the exact API calls, and
 no database credential is ever read, stored or asked for.
 
+[Video Demo](https://github.com/user-attachments/assets/fa708e56-a775-4bf7-827f-a1a8b461b9a1)
+
 ![The Overview: the health of every PostgreSQL cluster at a glance, dark theme](docs/screenshots/overview-dark.png)
 
 ![The trends of the Live View of a cluster, dark theme](docs/screenshots/live-view-trends-dark.png)
