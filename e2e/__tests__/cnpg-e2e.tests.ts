@@ -20,7 +20,7 @@ import * as checks from "../helpers/cnpg-design-checks";
 import * as cnpg from "../helpers/cnpg-extension";
 import * as utils from "../helpers/utils";
 
-import type { ElectronApplication, Frame, Page } from "playwright";
+import type { ElectronApplication, Frame, Locator, Page } from "playwright";
 
 const TIMEOUT = 10 * 60 * 1000;
 
@@ -92,6 +92,23 @@ async function waitUntil<T>(read: () => Promise<T>, accept: (value: T) => boolea
   }
 
   return value;
+}
+
+/**
+ * Scrolls to an element that a re-render may replace under the call: the drawers redraw their lists when a
+ * watch event lands, and `scrollIntoViewIfNeeded` gives up on a node that detached instead of resolving the
+ * locator again. Each attempt resolves it afresh.
+ */
+async function scrollIntoView(locator: Locator, attempts = 5): Promise<void> {
+  for (let attempt = 1; ; attempt += 1) {
+    try {
+      await locator.scrollIntoViewIfNeeded();
+      return;
+    } catch (error) {
+      if (attempt >= attempts || !/not attached|detached|not stable/i.test(String(error))) throw error;
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+  }
 }
 
 /** The visible text of the dock terminal, whitespace dropped: xterm's DOM renderer splits and pads the rows. */
@@ -472,7 +489,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
         const history = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-backup-history"]');
 
         await history.waitFor({ state: "visible", timeout: 60_000 });
-        await history.scrollIntoViewIfNeeded();
+        await scrollIntoView(history);
         await cluster.captureScreenshot(frame, "scheduled-backup-history-light");
         await cluster.closeDetails(frame);
 
@@ -619,7 +636,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(text).toContain("Next run: in");
       expect(text).toContain("e2e-nightly");
       expect(text).toContain("e2e-immediate");
-      await history.scrollIntoViewIfNeeded();
+      await scrollIntoView(history);
       await cluster.captureScreenshot(frame, "cluster-drawer-history-dark");
 
       await drawer.getByText("All backups of this cluster", { exact: false }).click();
@@ -735,8 +752,8 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(await frame.locator('[data-testid="cnpg-live-manager"]').innerText()).toContain("1.30.0");
       expect(await frame.locator('[data-testid="cnpg-live-last-read"]').innerText()).toContain("last read");
       await cluster.captureScreenshot(frame, "live-main-dark");
-      await frame.locator('[data-testid="cnpg-live-tiles"]').scrollIntoViewIfNeeded();
-      await frame.locator('[data-testid="cnpg-live-manager"]').scrollIntoViewIfNeeded();
+      await scrollIntoView(frame.locator('[data-testid="cnpg-live-tiles"]'));
+      await scrollIntoView(frame.locator('[data-testid="cnpg-live-manager"]'));
       await cluster.captureScreenshot(frame, "live-main-tiles-dark");
     },
     TIMEOUT,
@@ -881,7 +898,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       const button = frame.locator(`.Drawer.KubeObjectDetails [data-testid="cnpg-psql-${standby}"]`);
 
       await button.waitFor({ state: "visible", timeout: 60_000 });
-      await button.scrollIntoViewIfNeeded();
+      await scrollIntoView(button);
       await button.click();
       await frame
         .locator(".Dock .Tab", { hasText: `psql: ${standby}` })
@@ -958,7 +975,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       const drawer = frame.locator(".Drawer.KubeObjectDetails", { hasText: "Recovery windows" });
 
       await drawer.waitFor({ state: "visible", timeout: 60_000 });
-      await drawer.getByText("Recovery windows").scrollIntoViewIfNeeded();
+      await scrollIntoView(drawer.getByText("Recovery windows"));
       await cluster.captureScreenshot(frame, "object-store-drawer-dark");
 
       const shown = (await drawer.locator(".TableRow", { hasText: "e2e-main" }).first().innerText()).replace(
@@ -1173,7 +1190,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
 
       expect(text).toMatch(/Clients \d+ active, \d+ waiting for a server connection, \d+ free/);
       expect(text).toMatch(/Servers \d+ active, \d+ idle/);
-      await live.scrollIntoViewIfNeeded();
+      await scrollIntoView(live);
       await cluster.captureScreenshot(frame, "pooler-drawer-dark");
       await cluster.closeDetails(frame);
 
@@ -1263,7 +1280,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-database-size"]').innerText()).toMatch(
         /^\d+(\.\d+)? (KiB|MiB|GiB)$/,
       );
-      await frame.locator(".Drawer.KubeObjectDetails .Table").last().scrollIntoViewIfNeeded();
+      await scrollIntoView(frame.locator(".Drawer.KubeObjectDetails .Table").last());
       await cluster.captureScreenshot(frame, "database-drawer-dark");
       await cluster.closeDetails(frame);
 
@@ -1362,7 +1379,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect((await drawer.innerText()).replace(/\s+/g, " ")).toMatch(/Client certificate Expires in \d+d/);
       expect(await drawer.locator("a", { hasText: "e2e-role-reporting-client-cert" }).count()).toBeGreaterThan(0);
       expect(await drawer.locator("a", { hasText: "e2e-role-reporting-password" }).count()).toBeGreaterThan(0);
-      await drawer.locator(".DrawerItem", { hasText: "Certificate expires" }).scrollIntoViewIfNeeded();
+      await scrollIntoView(drawer.locator(".DrawerItem", { hasText: "Certificate expires" }));
       await cluster.captureScreenshot(frame, "database-role-drawer-dark");
       await cluster.closeDetails(frame);
 
@@ -1391,7 +1408,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(
         await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-database-roles"]').innerText(),
       ).toBe("1 failed");
-      await inline.scrollIntoViewIfNeeded();
+      await scrollIntoView(inline);
       await cluster.captureScreenshot(frame, "cluster-declarative-dark");
       await cluster.closeDetails(frame);
     },
@@ -1444,7 +1461,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
 
       await slots.first().waitFor({ state: "visible", timeout: 60_000 });
       expect(await slots.first().locator("a", { hasText: "e2e-sub-numbers" }).count()).toBe(1);
-      await publicationLive.scrollIntoViewIfNeeded();
+      await scrollIntoView(publicationLive);
       await cluster.captureScreenshot(frame, "publication-drawer-dark");
       await cluster.closeDetails(frame);
 
@@ -1494,7 +1511,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(
         await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-subscription-slot-active"]').innerText(),
       ).toBe("True");
-      await path.scrollIntoViewIfNeeded();
+      await scrollIntoView(path);
       await cluster.captureScreenshot(frame, "subscription-drawer-dark");
       await cluster.closeDetails(frame);
 
@@ -1546,7 +1563,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(await frame.locator(".Drawer.KubeObjectDetails").innerText()).toContain(
         "holds a promotion back for up to 15 s",
       );
-      await badge.scrollIntoViewIfNeeded();
+      await scrollIntoView(badge);
       await cluster.captureScreenshot(frame, "cluster-drawer-lease-dark");
       await cluster.closeDetails(frame);
 
@@ -2057,7 +2074,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       expect(
         await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-backup-history-by-hand"]').innerText(),
       ).toMatch(/^Requested by hand: \d+$/);
-      await mark.scrollIntoViewIfNeeded();
+      await scrollIntoView(mark);
       await cluster.captureScreenshot(frame, "schedule-drawer-by-hand-dark");
       await cluster.closeDetails(frame);
 
@@ -2964,9 +2981,10 @@ describe("CloudNativePG extension against the fixture cluster", () => {
           5 * 60_000,
         ),
       ).toBe("completed");
-      expect(cluster.kubectlActionsField(backup, name, "{.status.snapshotBackupStatus.elements[*].type}")).toBe(
-        "PG_DATA PG_TABLESPACE",
-      );
+      // One snapshot per volume; the operator lists them in no promised order.
+      expect(
+        cluster.kubectlActionsField(backup, name, "{.status.snapshotBackupStatus.elements[*].type}").split(" ").sort(),
+      ).toEqual(["PG_DATA", "PG_TABLESPACE"]);
       expect(
         await waitUntil(
           async () => cluster.kubectlActionsField(clusters, cluster.E2E_SNAPSHOT_CLUSTER, "{.status.phase}"),
@@ -3912,7 +3930,7 @@ describe("CloudNativePG extension against the fixture cluster", () => {
       const trends = frame.locator('[data-testid="cnpg-trends"]');
 
       await trends.waitFor({ state: "visible", timeout: 60_000 });
-      await trends.scrollIntoViewIfNeeded();
+      await scrollIntoView(trends);
       const keys = [
         "sessions",
         "lag",
