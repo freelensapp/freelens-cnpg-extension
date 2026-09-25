@@ -28,13 +28,13 @@ importers:
         version: 17.0.93
       '@vitejs/plugin-react':
         specifier: ^6.1.1
-        version: 6.1.1(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
+        version: 6.1.1(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
       cronstrue:
         specifier: 3.27.0
         version: 3.27.0
       electron-vite:
         specifier: ^5.0.0
-        version: 5.0.0(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
+        version: 5.0.0(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
       js-yaml:
         specifier: ^5.4.2
         version: 5.4.2
@@ -60,14 +60,14 @@ importers:
         specifier: 5.9.3
         version: 5.9.3
       vite:
-        specifier: ^8.3.0
-        version: 8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
+        specifier: ^8.3.1
+        version: 8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
       vite-plugin-sass-dts:
         specifier: ^1.3.39
-        version: 1.3.39(postcss@8.5.28)(prettier@3.6.2)(sass-embedded@1.89.2)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
+        version: 1.3.39(postcss@8.5.28)(prettier@3.6.2)(sass-embedded@1.89.2)(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
       vitest:
         specifier: ^4.1.11
-        version: 4.1.11(@types/node@24.12.4)(jsdom@29.1.1)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
+        version: 4.1.11(@types/node@24.12.4)(jsdom@29.1.1)(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
 
 packages:
 
@@ -3374,8 +3374,8 @@ packages:
       '@biomejs/wasm-nodejs':
         optional: true
 
-  vite@8.3.0:
-    resolution: {integrity: sha512-lhZBVvEHefgE+HQZC9O7EBJgCU/nVzFNl7vkS4RE0APtWLP02/8QVIkQtzBxPquh7lq5/78NHipTj7ODQ6XuyQ==}
+  vite@8.3.1:
+    resolution: {integrity: sha512-/bvH9E9tmCXRGp2uXY3WbOldqpTwFkbha/8ANaEQ6VkxhH60KyqLwgZq6lG2y+4uT55x9+9eUHMpQ7uGnOCKjA==}
     engines: {node: ^20.19.0 || >=22.12.0}
     hasBin: true
     peerDependencies:
@@ -5017,10 +5017,10 @@ snapshots:
   '@types/trusted-types@2.0.7':
     optional: true
 
-  '@vitejs/plugin-react@6.1.1(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))':
+  '@vitejs/plugin-react@6.1.1(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))':
     dependencies:
       '@rolldown/pluginutils': 1.0.1
-      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
+      vite: 8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
 
   '@vitest/expect@4.1.11':
     dependencies:
@@ -5031,13 +5031,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.11(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))':
+  '@vitest/mocker@4.1.11(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))':
     dependencies:
       '@vitest/spy': 4.1.11
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
+      vite: 8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
 
   '@vitest/pretty-format@4.1.11':
     dependencies:
@@ -5449,7 +5449,7 @@ snapshots:
 
   electron-to-chromium@1.5.187: {}
 
-  electron-vite@5.0.0(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)):
+  electron-vite@5.0.0(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)):
     dependencies:
       '@babel/core': 7.29.0
       '@babel/plugin-transform-arrow-functions': 7.27.1(@babel/core@7.29.0)
@@ -5457,7 +5457,7 @@ snapshots:
       esbuild: 0.25.12
       magic-string: 0.30.21
       picocolors: 1.1.1
-      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
+      vite: 8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
     transitivePeerDependencies:
       - supports-color
 
@@ -7063,15 +7063,15 @@ snapshots:
 
   varint@6.0.0: {}
 
-  vite-plugin-sass-dts@1.3.39(postcss@8.5.28)(prettier@3.6.2)(sass-embedded@1.89.2)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)):
+  vite-plugin-sass-dts@1.3.39(postcss@8.5.28)(prettier@3.6.2)(sass-embedded@1.89.2)(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)):
     dependencies:
       postcss: 8.5.28
       postcss-js: 4.0.1(postcss@8.5.28)
       prettier: 3.6.2
       sass-embedded: 1.89.2
-      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
+      vite: 8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
 
-  vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0):
+  vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0):
     dependencies:
       lightningcss: 1.33.0
       picomatch: 4.0.7
@@ -7089,10 +7089,10 @@ snapshots:
       stylus: 0.62.0
       terser: 5.39.0
 
-  vitest@4.1.11(@types/node@24.12.4)(jsdom@29.1.1)(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)):
+  vitest@4.1.11(@types/node@24.12.4)(jsdom@29.1.1)(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)):
     dependencies:
       '@vitest/expect': 4.1.11
-      '@vitest/mocker': 4.1.11(vite@8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
+      '@vitest/mocker': 4.1.11(vite@8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0))
       '@vitest/pretty-format': 4.1.11
       '@vitest/runner': 4.1.11
       '@vitest/snapshot': 4.1.11
@@ -7109,7 +7109,7 @@ snapshots:
       tinyexec: 1.2.4
       tinyglobby: 0.2.17
       tinyrainbow: 3.1.0
-      vite: 8.3.0(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
+      vite: 8.3.1(@types/node@24.12.4)(esbuild@0.27.2)(jiti@2.4.2)(less@4.4.0)(sass-embedded@1.89.2)(sass@1.105.0)(stylus@0.62.0)(terser@5.39.0)
       why-is-node-running: 2.3.0
     optionalDependencies:
       '@types/node': 24.12.4
