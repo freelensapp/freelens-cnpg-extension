@@ -36,3 +36,16 @@
 
 # Screenshots the E2E suite takes when an assertion fails
 /e2e-artifacts/
+
+# Credentials and keys. Keep in sync with the Security section of AGENTS.md
+# and the permissions.deny rules in .claude/settings.json.
+.env
+.env.*
+.envrc
+.npmrc
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.pem
+*.key
