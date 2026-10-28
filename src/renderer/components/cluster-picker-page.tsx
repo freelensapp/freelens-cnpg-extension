@@ -15,7 +15,6 @@ import { Cluster } from "../api/cnpg/cluster-v1";
 import { CLUSTERS_PAGE_ID, extensionPageUrl } from "../navigation";
 import { classifyCluster } from "./cluster-health";
 import styles from "./live/live.module.scss";
-import stylesInline from "./live/live.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -54,12 +53,11 @@ export interface ClusterPickerPageProps {
   /** The URL of this page for a cluster, for the doors. */
   urlOf: (namespace: string, name: string) => string;
   /** Extra styles of the page that uses the frame. */
-  extraStyles?: string;
   children: (cluster: Cluster, key: string) => React.ReactNode;
 }
 
 export const ClusterPickerPage = observer(
-  ({ extension, title, testId, paramName, urlOf, extraStyles, children }: ClusterPickerPageProps) => {
+  ({ extension, title, testId, paramName, urlOf, children }: ClusterPickerPageProps) => {
     const clusterStore = Cluster.getStore<Cluster>();
     const param = pageParam(paramName);
     const selectedKey = param.get() ?? "";
@@ -80,8 +78,6 @@ export const ClusterPickerPage = observer(
 
     return (
       <TabLayout scrollable>
-        <style>{stylesInline}</style>
-        {extraStyles ? <style>{extraStyles}</style> : null}
         <div className={styles.page} data-testid={testId}>
           <h5 className={styles.title}>{title}</h5>
           <div className={styles.header}>

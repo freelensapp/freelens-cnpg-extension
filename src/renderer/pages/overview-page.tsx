@@ -22,7 +22,6 @@ import { withErrorPage } from "../components/error-page";
 import { ClusterTile } from "../components/overview/cluster-tile";
 import { HealthPie, StatTile } from "../components/overview/stat-tile";
 import styles from "../components/overview/tile-grid.module.scss";
-import stylesInline from "../components/overview/tile-grid.module.scss?inline";
 import { summarize } from "../components/overview-model";
 import { useReferenceStores } from "../components/reference-loader";
 import {
@@ -120,7 +119,6 @@ export const OverviewPage = observer((props: OverviewPageProps) =>
 
     return (
       <TabLayout scrollable>
-        <style>{stylesInline}</style>
         <div className={styles.overview} data-testid="cnpg-overview">
           <div className={styles.header}>
             <h5 className={styles.title}>Overview</h5>

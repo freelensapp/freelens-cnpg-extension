@@ -53,7 +53,7 @@ export async function readInto<T, Inputs extends { reads: Record<string, ReadSta
 export function listClusterFacts(namespace: string): Promise<DeclarativeClusterFacts[]> {
   return Cluster.getStore<Cluster>()
     .api.list({ namespace })
-    .then((items) => (items ?? []).map(declarativeClusterFacts));
+    .then((items: Cluster[] | null) => (items ?? []).map(declarativeClusterFacts));
 }
 
 export interface NamespaceAndClusterProps {

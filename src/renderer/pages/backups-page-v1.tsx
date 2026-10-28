@@ -19,7 +19,6 @@ import { MethodLabel } from "../components/method-label";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./backups-page.module.scss";
-import stylesInline from "./backups-page.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -95,7 +94,6 @@ export const BackupsPage = observer((props: BackupsPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgBackupsTable"
           className={styles.page}

@@ -18,7 +18,6 @@ import { clusterOfQuorum, quorumFacts } from "../components/failover-quorum";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./image-catalog-details.module.scss";
-import stylesInline from "./image-catalog-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -53,8 +52,6 @@ export const FailoverQuorumDetails = observer((props: FailoverQuorumDetailsProps
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Quorum</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={facts.className} label={facts.label} tooltip={facts.reason} />

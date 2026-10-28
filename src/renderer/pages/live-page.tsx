@@ -27,7 +27,6 @@ import { classifyCluster, instanceFacts } from "../components/cluster-health";
 import { parseGoDuration } from "../components/cron-text";
 import { withErrorPage } from "../components/error-page";
 import styles from "../components/live/live.module.scss";
-import stylesInline from "../components/live/live.module.scss?inline";
 import { buildLiveView } from "../components/live/live-model";
 import { LivePoller, METRICS_INTERVAL_MS, STATUS_INTERVAL_MS } from "../components/live/live-poller";
 import {
@@ -117,7 +116,7 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
   latest.current = cluster;
 
   const trends = React.useMemo(
-    () => Mobx.observable(createTrendMemory(Date.now()), { metrics: Mobx.observable.ref, lags: Mobx.observable.ref }),
+    () => Mobx.observable(createTrendMemory(Date.now()), { metrics: Mobx.observableRef, lags: Mobx.observableRef }),
     [],
   );
   const poller = React.useMemo(
@@ -306,7 +305,6 @@ export const LivePage = observer((props: LivePageProps) =>
 
     return (
       <TabLayout scrollable>
-        <style>{stylesInline}</style>
         <div className={styles.page} data-testid="cnpg-live">
           <h5 className={styles.title}>Live View</h5>
           <div className={styles.header}>

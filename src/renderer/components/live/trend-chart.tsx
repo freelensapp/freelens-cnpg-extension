@@ -26,13 +26,10 @@ export interface TrendChartProps {
   startedAt: number;
 }
 
+// The tooltip item of Chart.js v4, as far as the label reads it.
 interface TooltipItem {
-  datasetIndex?: number;
-  yLabel?: string | number;
-}
-
-interface TooltipData {
-  datasets?: Array<{ label?: string }>;
+  dataset: { label?: string };
+  parsed: { y: number | null };
 }
 
 export function TrendChart({ card, range, now, startedAt }: TrendChartProps) {
@@ -47,26 +44,24 @@ export function TrendChart({ card, range, now, startedAt }: TrendChartProps) {
       ...(series.secondAxis ? { yAxisID: "second" } : {}),
     };
   });
-  const label = (item: TooltipItem, data: TooltipData) =>
-    `${data.datasets?.[item.datasetIndex ?? 0]?.label ?? ""}: ${card.format(Number(item.yLabel ?? 0))}`;
+  const label = (item: TooltipItem) => `${item.dataset.label ?? ""}: ${card.format(Number(item.parsed.y ?? 0))}`;
   const textColor = themeColor("--textColorPrimary");
   const gridColor = themeColor("--borderFaintColor");
   const secondAxis = card.series.some((series) => series.secondAxis)
-    ? [
-        {
-          id: "second",
-          position: "right",
-          gridLines: { display: false },
+    ? {
+        second: {
+          position: "right" as const,
+          min: 0,
+          grid: { display: false },
           ticks: {
-            min: 0,
             maxTicksLimit: 4,
-            fontColor: textColor,
-            fontSize: 11,
-            callback: (value: number) => card.format(value),
+            color: textColor,
+            font: { size: 11 },
+            callback: (value: number | string) => card.format(Number(value)),
           },
         },
-      ]
-    : [];
+      }
+    : {};
 
   if (card.kind === "bars") {
     return (
@@ -76,8 +71,8 @@ export function TrendChart({ card, range, now, startedAt }: TrendChartProps) {
         maxTime={maxTime}
         showLegend
         options={{
-          tooltips: { callbacks: { label } },
-          scales: { yAxes: [{ ticks: { callback: (value: number) => card.format(value) } }, ...secondAxis] },
+          plugins: { tooltip: { callbacks: { label } } },
+          scales: { y: { ticks: { callback: (value: number | string) => card.format(Number(value)) } }, ...secondAxis },
         }}
       />
     );
@@ -90,7 +85,7 @@ export function TrendChart({ card, range, now, startedAt }: TrendChartProps) {
         datasets: datasets.map((dataset) => ({
           ...dataset,
           fill: false,
-          lineTension: 0,
+          tension: 0,
           pointRadius: 0,
           pointHoverRadius: 3,
           borderWidth: 2,
@@ -100,38 +95,32 @@ export function TrendChart({ card, range, now, startedAt }: TrendChartProps) {
         maintainAspectRatio: false,
         responsive: true,
         animation: { duration: 0 },
-        legend: { display: false },
-        tooltips: { mode: "index", intersect: false, callbacks: { label } },
+        plugins: {
+          legend: { display: false },
+          tooltip: { mode: "index", intersect: false, callbacks: { label } },
+        },
         scales: {
-          xAxes: [
-            {
-              type: "time",
-              gridLines: { display: false },
-              ticks: {
-                min: minTime * 1000,
-                max: maxTime * 1000,
-                maxTicksLimit: 6,
-                fontColor: textColor,
-                fontSize: 11,
-                maxRotation: 0,
-              },
-              time: { unit: "minute", displayFormats: { minute: "HH:mm" } },
+          x: {
+            type: "time",
+            min: minTime * 1000,
+            max: maxTime * 1000,
+            grid: { display: false },
+            ticks: { maxTicksLimit: 6, color: textColor, font: { size: 11 }, maxRotation: 0 },
+            time: { unit: "minute", displayFormats: { minute: "HH:mm" } },
+          },
+          y: {
+            min: 0,
+            grid: { color: gridColor, tickLength: 0 },
+            border: { display: false },
+            ticks: {
+              maxTicksLimit: 5,
+              color: textColor,
+              font: { size: 11 },
+              padding: 8,
+              callback: (value: number | string) => card.format(Number(value)),
             },
-          ],
-          yAxes: [
-            {
-              gridLines: { color: gridColor, drawBorder: false, tickMarkLength: 0, zeroLineWidth: 0 },
-              ticks: {
-                min: 0,
-                maxTicksLimit: 5,
-                fontColor: textColor,
-                fontSize: 11,
-                padding: 8,
-                callback: (value: number) => card.format(value),
-              },
-            },
-            ...secondAxis,
-          ],
+          },
+          ...secondAxis,
         },
       }}
     />

@@ -101,7 +101,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref, clusterFacts: Mobx.observable.ref },
+    { inputs: Mobx.observableRef, clusterFacts: Mobx.observableRef },
   );
 }
 

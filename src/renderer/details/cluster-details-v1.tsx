@@ -46,7 +46,6 @@ import { PsqlButton } from "../menus/open-psql";
 import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
-import stylesInline from "./cluster-details.module.scss?inline";
 import { ClusterLeaseRows } from "./cluster-lease-rows";
 
 import type { CertificateFact, InstanceFact } from "../components/cluster-health";
@@ -296,8 +295,6 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Health</DrawerTitle>
         <DrawerItem name="Live view" hidden={hibernated}>
           <MaybeLink

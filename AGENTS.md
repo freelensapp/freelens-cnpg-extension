@@ -174,7 +174,9 @@ Each CRD file exports three classes: the KubeObject, the KubeApi, and the KubeOb
 ## Renderer Components
 
 - Detail views and pages are wrapped with `observer` from `mobx-react` and render through `withErrorPage` (see `src/renderer/components/error-page.tsx`).
-- SCSS modules generate TypeScript type files (`*.module.d.scss.ts`) via `vite-plugin-sass-dts`. These are auto-generated and should be cleaned with `pnpm clean:dts` when SCSS changes.
+- SCSS modules generate TypeScript type files (`*.module.d.scss.ts`) through `build/vite-plugin-css-module-declarations.mjs` on every build; they are committed. Only local classes are declared: a host class under `:global()` is not. Every module ends up in `dist/renderer.css`, which the host links; nothing injects a `<style>`.
+- mobx 7: field annotations are `observable`, `observableRef`, `computed`, `action` in `makeObservable`; `observable.ref` and the other dotted forms are gone.
+- Chart.js v4 for the host's `Chart` and `BarChart`: keyed `scales` (`x`, `y`), `grid`, `ticks.color`/`ticks.font`, `plugins.tooltip` and `plugins.legend`.
 
 ## Key Dependencies (provided by Freelens host at runtime)
 

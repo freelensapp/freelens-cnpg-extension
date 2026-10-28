@@ -8,7 +8,7 @@
 // every few seconds while the page follows and the window is visible. One
 // request per pod at a time; a pod that fails does not hide the others.
 
-import { action, makeObservable, observable, runInAction } from "mobx";
+import { action, makeObservable, observable, observableRef, runInAction } from "mobx";
 import { documentVisibility } from "../live/live-poller";
 import { lastStamp, mergeLines } from "./log-buffer";
 import { parseLogText } from "./log-line";
@@ -64,7 +64,7 @@ export class LogsPoller {
     this.visibility = options.visibility ?? documentVisibility;
     this.now = options.now ?? Date.now;
     makeObservable(this, {
-      lines: observable.ref,
+      lines: observableRef,
       following: observable,
       answered: observable,
       lastRead: observable,

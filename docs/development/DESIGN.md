@@ -257,10 +257,9 @@ non-happy states, none of which may render a blank area:
 ## 8. SCSS rules
 
 - CSS Modules only (`*.module.scss` + generated `*.module.d.scss.ts`),
-  one module per component, plus the `?inline` + `<style>` injection
-  idiom required by the v1 extension API. When the project migrates to
-  the v2 API, the injection idiom is removed (v2 auto-injects the built
-  CSS); track it in the migration, do not mix styles of the two eras.
+  one module per component. The build extracts every module into
+  `dist/renderer.css`, which Freelens 2 links next to the renderer entry;
+  nothing injects a `<style>`.
 - Page modules contain column sizing almost exclusively, as
   `.page { :global(.TableCell) { &.<column> { flex-grow: ...; } } }`.
   Host class selectors must be wrapped in `:global()` (without it the

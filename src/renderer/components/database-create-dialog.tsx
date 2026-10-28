@@ -107,7 +107,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref, clusterFacts: Mobx.observable.ref, roleObjects: Mobx.observable.ref },
+    { inputs: Mobx.observableRef, clusterFacts: Mobx.observableRef, roleObjects: Mobx.observableRef },
   );
 }
 
@@ -146,7 +146,7 @@ function loadNamespaced(model: DatabaseCreateModel, namespace: string): void {
   );
   DatabaseRole.getStore<DatabaseRole>()
     .api.list({ namespace })
-    .then((items) => {
+    .then((items: DatabaseRole[] | null) => {
       Mobx.runInAction(() => {
         model.roleObjects = (items ?? []).map((item) => ({
           cluster: item.spec?.cluster?.name ?? "",

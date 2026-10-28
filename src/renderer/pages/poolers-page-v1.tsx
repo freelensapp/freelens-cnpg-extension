@@ -18,7 +18,6 @@ import { classifyPooler, poolerInstances, poolerTypeWords } from "../components/
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./poolers-page.module.scss";
-import stylesInline from "./poolers-page.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -69,7 +68,6 @@ export const PoolersPage = observer((props: PoolersPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgPoolersTable"
           className={styles.page}

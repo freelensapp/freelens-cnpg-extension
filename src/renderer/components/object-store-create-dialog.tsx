@@ -84,7 +84,7 @@ function createModel(namespace: string, fixedNamespace: string | undefined): Sto
       accessReason: undefined,
       fixedNamespace,
     },
-    { inputs: Mobx.observable.ref },
+    { inputs: Mobx.observableRef },
   );
 }
 

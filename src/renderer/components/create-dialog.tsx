@@ -16,7 +16,6 @@ import * as MobxReact from "mobx-react";
 import React from "react";
 import { ActionFactsBlock, kubernetesClusterWords, openActionDialog } from "./action-dialog";
 import styles from "./create-dialog.module.scss";
-import stylesInline from "./create-dialog.module.scss?inline";
 
 import type { ActionDialogModel, ActionDialogParams } from "./action-dialog";
 import type { KeyValue } from "./create-forms";
@@ -498,7 +497,6 @@ export const CreateDialogMessage = observer(
     void model;
     return (
       <div className={`${styles.dialog} cnpgCreateDialog`} data-testid={params.testId}>
-        <style>{stylesInline}</style>
         <p className={styles.lead}>
           {`${params.title} `}
           <b data-testid="cnpg-action-subject">{facts.subject}</b>

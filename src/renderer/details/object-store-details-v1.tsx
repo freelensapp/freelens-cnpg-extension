@@ -20,7 +20,6 @@ import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { BACKUPS_PAGE_ID, extensionPageUrl } from "../navigation";
 import styles from "./backup-details.module.scss";
-import stylesInline from "./backup-details.module.scss?inline";
 
 import type { SecretKeySelector } from "../api/barmancloud/object-store-v1";
 import type { RecoveryWindowState } from "../components/object-stores";
@@ -99,8 +98,6 @@ export const ObjectStoreDetails = observer((props: ObjectStoreDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Store</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />

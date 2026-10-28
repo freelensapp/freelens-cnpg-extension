@@ -128,7 +128,7 @@ function createModel(namespace: string, fixedNamespace?: string): ClusterCreateM
       accessReason: undefined,
       fixedNamespace,
     },
-    { inputs: Mobx.observable.ref },
+    { inputs: Mobx.observableRef },
   );
 }
 
@@ -225,7 +225,7 @@ function loadNamespaced(model: ClusterCreateModel, namespace: string): void {
     model,
     "catalogs",
     async () => {
-      const [namespaced, clusterWide] = await Promise.all([
+      const [namespaced, clusterWide]: [ImageCatalog[] | null, ClusterImageCatalog[]] = await Promise.all([
         ImageCatalog.getStore<ImageCatalog>().api.list({ namespace }),
         ClusterImageCatalog.getStore<ClusterImageCatalog>()
           .api.list()

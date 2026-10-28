@@ -19,7 +19,6 @@ import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { openCreateSubscriptionDialog } from "../components/subscription-create-dialog";
 import styles from "./logical-replication-page.module.scss";
-import stylesInline from "./logical-replication-page.module.scss?inline";
 
 import type { ClusterLookup } from "../components/declarative";
 import type { PublisherView } from "../components/logical-replication";
@@ -89,7 +88,6 @@ export const SubscriptionsPage = observer((props: SubscriptionsPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgSubscriptionsTable"
           className={styles.page}

@@ -21,7 +21,6 @@ import { humanizeRelative } from "../components/backup-health";
 import { withErrorPage } from "../components/error-page";
 import { formatCount } from "../components/live/format";
 import liveStyles from "../components/live/live.module.scss";
-import liveStylesInline from "../components/live/live.module.scss?inline";
 import { METRICS_INTERVAL_MS } from "../components/live/live-poller";
 import { SamplesPoller } from "../components/live/samples-poller";
 import {
@@ -33,7 +32,6 @@ import {
   reconcileFacts,
 } from "../components/operator";
 import styles from "../components/operator.module.scss";
-import stylesInline from "../components/operator.module.scss?inline";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 
@@ -232,8 +230,6 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
 
     return (
       <TabLayout scrollable>
-        <style>{liveStylesInline}</style>
-        <style>{stylesInline}</style>
         <div className={liveStyles.page} data-testid="cnpg-operator">
           <h5 className={liveStyles.title}>Operator</h5>
 

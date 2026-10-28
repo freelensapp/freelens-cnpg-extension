@@ -22,7 +22,6 @@ import liveStyles from "../components/live/live.module.scss";
 import { MAX_LINES } from "../components/logs/log-buffer";
 import { filterLines, levelCounts, sourceCounts } from "../components/logs/log-filter";
 import styles from "../components/logs/logs.module.scss";
-import stylesInline from "../components/logs/logs.module.scss?inline";
 import { LogsPoller } from "../components/logs/logs-poller";
 import { useReferenceStores } from "../components/reference-loader";
 import { LIVE_CLUSTER_PARAM, LOGS_INSTANCE_PARAM, logsUrl } from "../navigation";
@@ -403,7 +402,6 @@ export const LogsPage = observer((props: LogsPageProps) =>
         testId="cnpg-logs"
         paramName={LIVE_CLUSTER_PARAM}
         urlOf={(namespace, name) => logsUrl(extension.name, namespace, name)}
-        extraStyles={stylesInline}
       >
         {(cluster, key) => (
           // The key gives every cluster and container a panel, a poller and a buffer of its own.

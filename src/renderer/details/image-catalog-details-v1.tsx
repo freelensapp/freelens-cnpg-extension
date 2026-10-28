@@ -18,7 +18,6 @@ import { poolersOfCatalog } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./image-catalog-details.module.scss";
-import stylesInline from "./image-catalog-details.module.scss?inline";
 
 import type { AnyImageCatalog } from "../api/cnpg/image-catalog-v1";
 import type { FollowerState } from "../components/image-catalogs";
@@ -77,8 +76,6 @@ export const ImageCatalogDetails = observer((props: ImageCatalogDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Catalog</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />

@@ -19,7 +19,6 @@ import { withErrorPage } from "../components/error-page";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./database-roles-page.module.scss";
-import stylesInline from "./database-roles-page.module.scss?inline";
 
 import type { ClusterLookup } from "../components/declarative";
 
@@ -77,7 +76,6 @@ export const DatabaseRolesPage = observer((props: DatabaseRolesPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgDatabaseRolesTable"
           className={styles.page}

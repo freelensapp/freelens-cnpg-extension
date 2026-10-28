@@ -30,7 +30,6 @@ import { classifyPooler, poolerInstances, poolerServiceHost, poolerTypeWords } f
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./pooler-details.module.scss";
-import stylesInline from "./pooler-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -195,8 +194,6 @@ export const PoolerDetails = observer((props: PoolerDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Pooler</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />

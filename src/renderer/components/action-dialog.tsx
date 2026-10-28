@@ -25,7 +25,6 @@ import * as MobxReact from "mobx-react";
 import React from "react";
 import { maybe } from "../../common/utils";
 import styles from "./action-dialog.module.scss";
-import stylesInline from "./action-dialog.module.scss?inline";
 import { DIALOG_REOPEN_DELAY_MS, typedNameMatches } from "./write-actions";
 
 import type { ActionDialogFacts } from "./write-actions";
@@ -73,7 +72,7 @@ export interface ActionDialogParams {
   /** Called once when the dialog goes away, confirmed or not: where an action stops what it started on open. */
   onClose?: () => void;
   /** A message of its own (the creation forms of SPEC-0025), over the same model and machinery. */
-  message?: (params: ActionDialogParams, model: ActionDialogModel) => React.ReactNode;
+  message?: (params: ActionDialogParams, model: ActionDialogModel) => React.ReactElement;
 }
 
 interface MessageProps {
@@ -97,7 +96,6 @@ const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
 
   return (
     <div className={styles.dialog} data-testid={params.testId} ref={body}>
-      <style>{stylesInline}</style>
       <p className={styles.lead}>
         {`${params.title} `}
         <b data-testid="cnpg-action-subject">{facts.subject}</b>?

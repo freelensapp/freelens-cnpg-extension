@@ -19,7 +19,6 @@ import { withErrorPage } from "../components/error-page";
 import { InstanceBricks } from "../components/instance-bricks";
 import { useReferenceStores } from "../components/reference-loader";
 import styles from "./clusters-page.module.scss";
-import stylesInline from "./clusters-page.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -100,7 +99,6 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgClustersTable"
           className={styles.page}

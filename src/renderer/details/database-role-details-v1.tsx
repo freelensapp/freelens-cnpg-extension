@@ -26,7 +26,6 @@ import { ReconciliationSection } from "../components/reconciliation-section";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./declarative-details.module.scss";
-import stylesInline from "./declarative-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -79,8 +78,6 @@ export const DatabaseRoleDetails = observer((props: DatabaseRoleDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <ReconciliationSection object={object} health={health} rivals={rivals} store={roleStore}>
           <DrawerItem name="Cluster spec" hidden={!inline}>
             <span data-testid="cnpg-role-inline-rival">

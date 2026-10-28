@@ -17,7 +17,6 @@ import { withErrorPage } from "../components/error-page";
 import { catalogMajors, classifyCatalog, clustersOfCatalog } from "../components/image-catalogs";
 import { useReferenceStores } from "../components/reference-loader";
 import styles from "./image-catalogs-page.module.scss";
-import stylesInline from "./image-catalogs-page.module.scss?inline";
 
 import type { AnyImageCatalog, ImageCatalogStore } from "../api/cnpg/image-catalog-v1";
 
@@ -90,7 +89,6 @@ function createCatalogsPage(kubeObjectClass: typeof ImageCatalog | typeof Cluste
 
       return (
         <>
-          <style>{stylesInline}</style>
           <KubeObjectListLayout
             tableId={tableId}
             className={styles.page}

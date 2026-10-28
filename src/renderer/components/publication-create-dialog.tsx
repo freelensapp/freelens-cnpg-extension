@@ -118,7 +118,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref, clusterFacts: Mobx.observable.ref, databaseObjects: Mobx.observable.ref },
+    { inputs: Mobx.observableRef, clusterFacts: Mobx.observableRef, databaseObjects: Mobx.observableRef },
   );
 }
 
@@ -158,7 +158,7 @@ function loadNamespaced(model: PublicationCreateModel, namespace: string): void 
   );
   Database.getStore<Database>()
     .api.list({ namespace })
-    .then((items) => {
+    .then((items: Database[] | null) => {
       Mobx.runInAction(() => {
         model.databaseObjects = (items ?? []).map((item) => ({
           cluster: item.spec?.cluster?.name ?? "",
