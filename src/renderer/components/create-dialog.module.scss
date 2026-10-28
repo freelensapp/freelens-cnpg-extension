@@ -12,7 +12,7 @@ $line: rgba(0, 0, 0, 0.12);
 // which is too narrow for a form and its preview side by side. The rule
 // widens the box only while it holds a creation form (`:has`), and the panes
 // stack under 900 px.
-:global(.ConfirmDialog .box:has(.cnpgCreateDialog)) {
+:global(.ConfirmDialog .box):has(.dialog) {
   width: min(1100px, 90vw);
   max-width: min(1100px, 90vw);
 }

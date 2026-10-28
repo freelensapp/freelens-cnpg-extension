@@ -496,7 +496,7 @@ export const CreateDialogMessage = observer(
     const blocked = params.blockReason?.();
     void model;
     return (
-      <div className={`${styles.dialog} cnpgCreateDialog`} data-testid={params.testId}>
+      <div className={styles.dialog} data-testid={params.testId}>
         <p className={styles.lead}>
           {`${params.title} `}
           <b data-testid="cnpg-action-subject">{facts.subject}</b>
