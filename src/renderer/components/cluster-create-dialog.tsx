@@ -342,7 +342,7 @@ const IdentitySection = observer(({ model }: SectionProps) => {
         <Field label="Namespace" error={errors.namespace} testId={`${TEST_ID}-namespace`}>
           <NamespaceSelect
             id={`${TEST_ID}-namespace-select`}
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={form.namespace || null}
             onChange={(option: { value: string } | null) => changeNamespace(model, option?.value ?? "")}

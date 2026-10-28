@@ -97,4 +97,29 @@ each is read back on the kind cluster before and after the port.
 
 ## Notes and deviations
 
-Filled during implementation.
+- **Dialogs follow the theme (feature C).** In Freelens 1.x the box of `ConfirmDialog` was white in both
+  themes, so the action dialogs and the creation forms carried a dark ink of their own, light selects
+  (`themeName="light"`) and a light YAML pane (`theme="vs"`). Freelens 2 paints the box with the theme
+  (`--dialogBackground`, freelensapp/freelens#2257) and moved its own dialogs to `themeName="lens"`: on
+  the dark theme the forms showed black text and white controls on a dark box. The dialogs now take
+  their ink from the theme's tokens (`--textColorAccent`, `--textColorSecondary`, `--borderFaintColor`,
+  fills mixed from the ink), the selects use the `lens` theme, the YAML pane follows the theme, and the
+  warning ink stays the darker orange of 1.0.0 on the light theme only. On the light theme the dialogs
+  look as in 1.0.0. DESIGN.md (creation forms) describes the new rule; SPEC-0020 and SPEC-0027 keep
+  their facts of Freelens 1.10.3.
+- **The width of a creation form (F3, feature C).** Freelens 2 renamed the inner box of `Dialog` from
+  `.box` to `.dialog-content`: the rule that widens it while it holds a form matched nothing and the
+  forms stopped at half the window. The rule names `.dialog-content`.
+- **The re-read of W6 (feature C).** The retry after a conflict re-read the cluster with the store's
+  `load`, which returns the object the store holds without asking the API server, so every attempt sent
+  the version that was refused. Seen as a random failure of the lift of a fence (SPEC-0024, notes); the
+  switchover and the restart of the primary shared it. The re-read now asks the API server.
+- **Reload of the cluster frame (feature B).** A reload of the cluster frame on a page of the extension
+  lands on the cluster's Overview after a few seconds, as on Freelens 1.10.3: the host redirects to its
+  start URL before the extensions register their routes. Not a requirement of any spec; a question for
+  the host.
+- **The E2E suite on v2 (feature C, then E).** The scenarios run on the template's harness: Vitest
+  attaches over CDP to Freelens dev (`integration/`, `vitest.integration.config.ts`,
+  `pnpm test:integration`), with the lab's kubeconfig only, refused when it names a server that is not
+  local. The write cases of M6 and M7 moved first (`cnpg-writes.tests.ts`); a `409` on a cluster, the
+  conflict of W6 that the action retries, is not counted as an error of the run.

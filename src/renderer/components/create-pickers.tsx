@@ -170,7 +170,7 @@ export function SecretKeyField({
           <Field label="Key">
             <Select
               id={`${testId}-key`}
-              themeName="light"
+              themeName="lens"
               menuClass={styles.selectMenu}
               placeholder="Pick a key"
               value={value.key || null}

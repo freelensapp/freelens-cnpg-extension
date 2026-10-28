@@ -125,7 +125,7 @@ export function ChoiceField<T extends string>({
     <Field {...field} hint={picked?.reason ? `${field.hint ? `${field.hint} ` : ""}${picked.reason}` : field.hint}>
       <Select
         id={id}
-        themeName="light"
+        themeName="lens"
         menuClass={styles.selectMenu}
         placeholder={placeholder}
         value={value || null}
@@ -215,7 +215,7 @@ export function ObjectPicker({
     <Field {...field}>
       <Select
         id={id}
-        themeName="light"
+        themeName="lens"
         menuClass={styles.selectMenu}
         placeholder={placeholder}
         value={value === "" && !noneLabel ? null : value}
@@ -465,7 +465,6 @@ function YamlPane({ yaml, testId }: YamlPaneProps) {
           id={`${testId}-editor`}
           readOnly
           language="yaml"
-          theme="vs"
           value={yaml}
           // The host sizes its editor from the line count of the value it mounted with (90, 180 or 360 px)
           // unless a height is given: the pane would show the first lines of a body that grew and hide the rest.

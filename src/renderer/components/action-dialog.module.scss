@@ -2,14 +2,19 @@
 
 // The body of every write action dialog (SPEC-0020, W4 and W5).
 //
-// The host paints the box of its ConfirmDialog white in BOTH themes, so
-// nothing in here may follow the theme's text tokens: in the dark theme
-// `--textColorPrimary` is a light grey, unreadable on that box. The dialog
-// carries its own ink and pulls back the host controls that override the
-// inherited color (the value of a select, the label an input is wrapped in,
-// the global grey of `code`, a checked radio).
-$ink: rgba(0, 0, 0, 0.87);
-$ink-secondary: rgba(0, 0, 0, 0.6);
+// Since Freelens 2.0 the box of the host's ConfirmDialog follows the theme
+// (`--dialogBackground`), as do its selects (`themeName="lens"`). The dialog
+// takes its ink from the theme's tokens and pulls back the host controls that
+// paint their own color (the value of a select, the label an input is wrapped
+// in, the global grey of `code`, a checked radio). On the light theme the
+// tokens give the ink of 1.0.0 on its white box.
+$ink: var(--textColorAccent);
+$ink-secondary: var(--textColorSecondary);
+// A faint fill and a rule drawn with the ink, so they read on either surface.
+$tint: color-mix(in srgb, var(--textColorAccent) 4%, transparent);
+$rule: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
+$warning-ink: var(--colorWarning);
+$warning-ink-light: #b26a00;
 
 .dialog {
   display: flex;
@@ -81,7 +86,7 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
   margin: 0;
   padding: $unit $unit $unit calc($unit * 3.5);
   border-radius: calc($unit / 2);
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: $tint;
   list-style: decimal outside;
 
   &.single {
@@ -100,18 +105,28 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
   align-items: flex-start;
   font-weight: 500;
 
-  // `--colorWarning` is a yellow picked for dark surfaces; on white it needs a darker ink.
+  // `--colorWarning` is an orange picked for dark surfaces; on the white box
+  // of the light theme it needs a darker ink.
   :global(.Icon) {
     flex: none;
-    color: #b26a00;
+    color: $warning-ink;
+
+    :global(.theme-light) & {
+      color: $warning-ink-light;
+    }
   }
 }
 
 .changed {
   padding: $unit;
-  border-left: 3px solid #b26a00;
-  background-color: rgba(178, 106, 0, 0.08);
+  border-left: 3px solid $warning-ink;
+  background-color: color-mix(in srgb, $warning-ink 8%, transparent);
   font-weight: 500;
+
+  :global(.theme-light) & {
+    border-left-color: $warning-ink-light;
+    background-color: color-mix(in srgb, $warning-ink-light 8%, transparent);
+  }
 }
 
 .field {
@@ -157,7 +172,7 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
 
   td {
     padding: calc($unit / 2) $unit;
-    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    border-top: 1px solid $rule;
     vertical-align: top;
   }
 
@@ -172,7 +187,7 @@ $ink-secondary: rgba(0, 0, 0, 0.6);
   cursor: pointer;
 
   &.chosen {
-    background-color: rgba(0, 0, 0, 0.04);
+    background-color: $tint;
   }
 
   &.ineligible {

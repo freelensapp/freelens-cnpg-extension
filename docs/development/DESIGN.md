@@ -416,8 +416,10 @@ own on top of the write rules.
 - **Width, the one declared deviation.** The host's confirmation box stops
   at half the window: a creation dialog widens it, only while it holds a
   form (`:has`), to `min(1100px, 90vw)`, and stacks its panes under
-  900 px. The box is white in both themes, so the form carries its own
-  ink, like every dialog of the extension.
+  900 px. The box follows the theme (since Freelens 2.0; it was white in
+  both themes in 1.x), so the form takes its ink from the theme's tokens
+  and its selects use the host's `lens` theme, like every dialog of the
+  extension.
 - **Validation before the submit.** Every rule of the operator's admission
   the form can express is enforced inline, with the reason at the field,
   before the submit; the OK button carries the verb and is disabled with
@@ -446,10 +448,11 @@ own on top of the write rules.
 - **Access.** The `create` verb is asked as in W3 when the form opens; a
   denial disables OK with the verb and the resource in the reason, and the
   form stays readable so the YAML can still be copied.
-- **Native controls on the white box.** Radios and checkboxes are native
-  inputs with the host's accent color and one sentence per option: the
-  host's `RadioGroup` takes its radios as direct children and cannot carry
-  a line each, and the host's `Button` paints itself for a dark surface.
+- **Native controls.** Radios and checkboxes are native inputs with the
+  host's accent color and one sentence per option: the host's `RadioGroup`
+  takes its radios as direct children and cannot carry a line each. The
+  small buttons of a form (Copy YAML, Add and Remove of a list) are plain
+  buttons drawn with the dialog's ink, quieter than its OK and Cancel.
 - **Tests.** Every rule, every message and every body is a unit case of
   the pure module of the kind; every form has an E2E case that fills it in
   the real Freelens, compares the YAML pane with the body, creates the
