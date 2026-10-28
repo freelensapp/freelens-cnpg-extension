@@ -3,35 +3,31 @@
  * Licensed under MIT License. See LICENSE in root directory for more information.
  */
 
-// Helpers for driving a connected cluster: putting the E2E kubeconfig where
-// Freelens finds it, opening the cluster from the catalog, navigating the
-// CloudNativePG sidebar group and asserting list rows and detail panels.
-//
-// See `cnpg-extension.ts` for why these files live next to the Freelens
-// integration helpers at run time.
+// Helpers for driving the connected lab cluster: navigating the CloudNativePG
+// sidebar group, asserting list rows and detail panels, the dialogs and the
+// notifications of the writes, and reading the cluster back with kubectl on
+// the lab's own kubeconfig (`cnpg-session.ts`). Its name does not match
+// `*.tests.ts`, so Vitest does not collect it as a test file.
 
 import { spawnSync } from "node:child_process";
-import { createHash } from "node:crypto";
-import { copyFile, mkdir } from "node:fs/promises";
+import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import { EXTENSION_NAME } from "./cnpg-extension";
+import { EXTENSION_NAME, labContext, labKubeconfig, labKubeconfigProblem } from "./cnpg-session";
 
-import type { Frame, Locator, Page } from "playwright";
+import type { Frame, Locator } from "playwright";
 
 /** Cluster provisioned by `e2e/scripts/cluster-up.sh`. */
 export const E2E_CLUSTER_NAME = process.env.E2E_CLUSTER_NAME || "cnpg-e2e";
-export const E2E_KUBE_CONTEXT = process.env.E2E_KUBE_CONTEXT || `kind-${E2E_CLUSTER_NAME}`;
+export const E2E_KUBE_CONTEXT = labContext;
 export const E2E_NAMESPACE = process.env.E2E_NAMESPACE || "cnpg-e2e";
 
-/** Connecting a cluster involves starting a proxy, so it is not quick. */
-const CLUSTER_TIMEOUT = 5 * 60 * 1000;
 const ELEMENT_TIMEOUT = 60 * 1000;
 /** What Escape gets before `closeDetails` reaches for the drawer's close icon. */
 const DRAWER_ESCAPE_TIMEOUT = 5 * 1000;
 
 /**
- * Where failure screenshots go. run-suite.sh points this at the repository
- * root so that CI can upload the directory as an artifact.
+ * Where screenshots go: `e2e-artifacts/` of the directory the run starts in
+ * (the repository root), which CI uploads as an artifact.
  */
 const ARTIFACTS_DIR = process.env.E2E_ARTIFACTS_DIR || path.join(process.cwd(), "e2e-artifacts");
 
@@ -74,14 +70,15 @@ async function sidebarTestIds(frame: Frame): Promise<string[]> {
   }
 }
 
+/** The lab's kubeconfig, refused when it names a server that is not local. */
 export function kubeconfigPath(): string {
-  const value = process.env.E2E_KUBECONFIG;
+  const problem = labKubeconfigProblem();
 
-  if (!value) {
-    throw new Error("E2E_KUBECONFIG is not set. Run the suite through `pnpm e2e` or e2e/scripts/run-suite.sh.");
+  if (problem) {
+    throw new Error(problem);
   }
 
-  return value;
+  return labKubeconfig;
 }
 
 /**
@@ -211,68 +208,6 @@ export function kubectlField(resource: string, name: string, jsonPath: string): 
 /** True when the object is still in the cluster. The negative half of a write assert. */
 export function kubectlExists(resource: string, name: string): boolean {
   return kubectlE2E("get", resource, name).status === 0;
-}
-
-/**
- * Copies the E2E kubeconfig into the sandboxed Freelens user data directory,
- * which Freelens always watches, so that the cluster shows up in the catalog
- * without touching the developer's own kubeconfig.
- */
-export async function publishKubeconfig(fileName = "cnpg-e2e"): Promise<string> {
-  const testingDirectory = process.env.FREELENS_INTEGRATION_TESTING_DIR;
-
-  if (!testingDirectory) {
-    throw new Error("FREELENS_INTEGRATION_TESTING_DIR is not set. Launch the app with the Freelens `start()` helper.");
-  }
-
-  // The user data directory is <testing dir>/<app name>, and the app name is
-  // the product name of the packaged build.
-  const appName = process.env.FREELENS_APP_NAME || "Freelens";
-  const directory = path.join(testingDirectory, appName, "kubeconfigs");
-
-  await mkdir(directory, { recursive: true });
-
-  const destination = path.join(directory, fileName);
-
-  await copyFile(kubeconfigPath(), destination);
-
-  return destination;
-}
-
-/**
- * Id Freelens gives to a cluster entity: the md5 of the kubeconfig path and the
- * context name. It ends up in the id of the cluster iframe.
- */
-export function clusterEntityId(kubeconfigFilePath: string, contextName: string): string {
-  return createHash("md5").update(`${kubeconfigFilePath}:${contextName}`).digest("hex");
-}
-
-/** Clicks the cluster in the catalog and waits for its frame to be usable. */
-export async function openClusterFromCatalog(
-  window: Page,
-  kubeconfigFilePath: string,
-  contextName = E2E_KUBE_CONTEXT,
-): Promise<Frame> {
-  const rowSelector = `div.TableCell >> text='${contextName}'`;
-
-  // The catalog only lists the cluster once the kubeconfig watcher has seen the
-  // file, which happens shortly after it is written.
-  await window.waitForSelector(rowSelector, { timeout: CLUSTER_TIMEOUT });
-  await window.click(rowSelector);
-
-  const frameElement = await window.waitForSelector(
-    `#cluster-frame-${clusterEntityId(kubeconfigFilePath, contextName)}`,
-    { timeout: CLUSTER_TIMEOUT },
-  );
-  const frame = await frameElement.contentFrame();
-
-  if (!frame) {
-    throw new Error(`No iframe found for cluster ${contextName}`);
-  }
-
-  await frame.waitForSelector("[data-testid=cluster-sidebar]", { timeout: CLUSTER_TIMEOUT });
-
-  return frame;
 }
 
 // Freelens derives the sidebar test ids from the extension name, dropping the
