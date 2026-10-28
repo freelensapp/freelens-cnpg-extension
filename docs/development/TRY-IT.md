@@ -34,12 +34,12 @@ DEMO_CLUSTER_NAME=cnpg-e2e DEMO_STATE_DIR=.e2e pnpm demo:up
 
 What is in the namespace `cnpg-e2e`:
 
-| Cluster | State | What it is there to show |
-| --- | --- | --- |
-| `e2e-main` | healthy, three instances, archiving, backups, two schedules, a `pgbench` load | the happy path: topology, lag, sessions, backup history |
-| `e2e-single` | degraded, archiving into a broken object store, a failed backup, a suspended schedule | failures that must be impossible to miss |
-| `e2e-hibernated` | hibernated | a cluster with no instances |
-| `e2e-fenced` | its only instance fenced | an instance manager that answers while PostgreSQL does not |
+| Cluster          | State                                                                                 | What it is there to show                                   |
+| ---------------- | ------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `e2e-main`       | healthy, three instances, archiving, backups, two schedules, a `pgbench` load         | the happy path: topology, lag, sessions, backup history    |
+| `e2e-single`     | degraded, archiving into a broken object store, a failed backup, a suspended schedule | failures that must be impossible to miss                   |
+| `e2e-hibernated` | hibernated                                                                            | a cluster with no instances                                |
+| `e2e-fenced`     | its only instance fenced                                                              | an instance manager that answers while PostgreSQL does not |
 
 ## 2. Install the extension in Freelens
 

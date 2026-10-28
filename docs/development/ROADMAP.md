@@ -29,57 +29,57 @@ the `kubectl cnpg` plugin and the instance manager contracts recorded in
 
 ### M1 - Cluster views (read-only)
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Recon digest, data access architecture, health model | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md) | Approved |
-| Test environment and E2E infrastructure (kind, operator, fixtures) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md) | Done |
-| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | [SPEC-0003](../specs/SPEC-0003-m1-cluster-list-and-detail.md) | Done |
-| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers | [SPEC-0004](../specs/SPEC-0004-m1-overview-page.md) | Done |
+| Feature                                                                                                                                          | Spec                                                                       | Status   |
+| ------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- | -------- |
+| Recon digest, data access architecture, health model                                                                                             | [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md)                  | Approved |
+| Test environment and E2E infrastructure (kind, operator, fixtures)                                                                               | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md) | Done     |
+| Cluster list with health summary + detail drawer (instances and roles, replication topology, storage, certificates, conditions, related objects) | [SPEC-0003](../specs/SPEC-0003-m1-cluster-list-and-detail.md)              | Done     |
+| Overview page (ad hoc): health of every cluster at a glance, drill-down to lists and drawers                                                     | [SPEC-0004](../specs/SPEC-0004-m1-overview-page.md)                        | Done     |
 
 ### M2 - Backups, live view, psql (read-only)
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Backup and ScheduledBackup lists + details, backup history strip, backup-derived health | [SPEC-0005](../specs/SPEC-0005-m2-backups-and-scheduled-backups.md) | Done |
-| Live database view (instance status and metrics through the API server pod proxy: replication topology, sessions, replication lag, database sizes, WAL, slots) | [SPEC-0006](../specs/SPEC-0006-m2-live-database-view.md) | Done |
-| Open psql in a Freelens terminal tab (primary or replica) | [SPEC-0007](../specs/SPEC-0007-m2-open-psql.md) | Done |
-| Pre-review agent pass and local demo cluster | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md) | Done |
+| Feature                                                                                                                                                        | Spec                                                                   | Status |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ------ |
+| Backup and ScheduledBackup lists + details, backup history strip, backup-derived health                                                                        | [SPEC-0005](../specs/SPEC-0005-m2-backups-and-scheduled-backups.md)    | Done   |
+| Live database view (instance status and metrics through the API server pod proxy: replication topology, sessions, replication lag, database sizes, WAL, slots) | [SPEC-0006](../specs/SPEC-0006-m2-live-database-view.md)               | Done   |
+| Open psql in a Freelens terminal tab (primary or replica)                                                                                                      | [SPEC-0007](../specs/SPEC-0007-m2-open-psql.md)                        | Done   |
+| Pre-review agent pass and local demo cluster                                                                                                                   | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md) | Done   |
 
 ### M3 - Pooling, images, quorum, object stores (read-only)
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Pooler list + detail (PgBouncer, referring cluster, live pooler figures through the pod proxy) | [SPEC-0012](../specs/SPEC-0012-m3-poolers.md) | Done |
-| ImageCatalog and ClusterImageCatalog list + detail, with the clusters that follow them | [SPEC-0010](../specs/SPEC-0010-m3-image-catalogs.md) | Done |
-| FailoverQuorum list + detail, with the quorum check in words | [SPEC-0011](../specs/SPEC-0011-m3-failover-quorums.md) | Done |
-| ObjectStore (Barman Cloud plugin) list + detail with referring clusters and the plugin's recovery windows | [SPEC-0009](../specs/SPEC-0009-m3-object-stores.md) | Done |
+| Feature                                                                                                   | Spec                                                   | Status |
+| --------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------ |
+| Pooler list + detail (PgBouncer, referring cluster, live pooler figures through the pod proxy)            | [SPEC-0012](../specs/SPEC-0012-m3-poolers.md)          | Done   |
+| ImageCatalog and ClusterImageCatalog list + detail, with the clusters that follow them                    | [SPEC-0010](../specs/SPEC-0010-m3-image-catalogs.md)   | Done   |
+| FailoverQuorum list + detail, with the quorum check in words                                              | [SPEC-0011](../specs/SPEC-0011-m3-failover-quorums.md) | Done   |
+| ObjectStore (Barman Cloud plugin) list + detail with referring clusters and the plugin's recovery windows | [SPEC-0009](../specs/SPEC-0009-m3-object-stores.md)    | Done   |
 
 ### M4 - Declarative database management (read-only)
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Database list + detail with reconciliation status | [SPEC-0013](../specs/SPEC-0013-m4-databases.md) | Done |
-| DatabaseRole list + detail | [SPEC-0014](../specs/SPEC-0014-m4-database-roles.md) | Done |
-| Publication and Subscription list + detail | [SPEC-0015](../specs/SPEC-0015-m4-publications-and-subscriptions.md) | Done |
+| Feature                                           | Spec                                                                 | Status |
+| ------------------------------------------------- | -------------------------------------------------------------------- | ------ |
+| Database list + detail with reconciliation status | [SPEC-0013](../specs/SPEC-0013-m4-databases.md)                      | Done   |
+| DatabaseRole list + detail                        | [SPEC-0014](../specs/SPEC-0014-m4-database-roles.md)                 | Done   |
+| Publication and Subscription list + detail        | [SPEC-0015](../specs/SPEC-0015-m4-publications-and-subscriptions.md) | Done   |
 
 ### M5 - Operations views (ad hoc)
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Operator status page (deployment, version, CRDs, detected plugins, listening namespaces, reconciles right now) | [SPEC-0016](../specs/SPEC-0016-m5-operator-page.md) | Done |
-| Cluster events timeline (Kubernetes events, backups, switchovers, phase changes) | [SPEC-0017](../specs/SPEC-0017-m5-cluster-timeline.md) | Done |
-| Instance logs made readable, every instance of a cluster on one time axis | [SPEC-0018](../specs/SPEC-0018-m5-instance-logs.md) | Done |
-| Leader election lease of the operator and of a cluster (holder, acquire and renew time, transitions) | [SPEC-0019](../specs/SPEC-0019-m5-leases.md) | Done |
+| Feature                                                                                                        | Spec                                                   | Status |
+| -------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ | ------ |
+| Operator status page (deployment, version, CRDs, detected plugins, listening namespaces, reconciles right now) | [SPEC-0016](../specs/SPEC-0016-m5-operator-page.md)    | Done   |
+| Cluster events timeline (Kubernetes events, backups, switchovers, phase changes)                               | [SPEC-0017](../specs/SPEC-0017-m5-cluster-timeline.md) | Done   |
+| Instance logs made readable, every instance of a cluster on one time axis                                      | [SPEC-0018](../specs/SPEC-0018-m5-instance-logs.md)    | Done   |
+| Leader election lease of the operator and of a cluster (holder, acquire and renew time, transitions)           | [SPEC-0019](../specs/SPEC-0019-m5-leases.md)           | Done   |
 
 ### M6 - Write actions (behind explicit confirmation)
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Write actions ground rules, and the on-demand backup | [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md) | Done |
-| Switchover, with the candidates and their lag in the dialog | [SPEC-0022](../specs/SPEC-0022-m6-switchover.md) | Done |
-| Restart (cluster, standby, primary in place) and reload | [SPEC-0023](../specs/SPEC-0023-m6-restart-and-reload.md) | Done |
-| Fencing and hibernation, with their consequences listed | [SPEC-0024](../specs/SPEC-0024-m6-fencing-and-hibernation.md) | Done |
-| ScheduledBackup suspend, resume and run now | [SPEC-0021](../specs/SPEC-0021-m6-scheduled-backup-actions.md) | Done |
+| Feature                                                     | Spec                                                                            | Status |
+| ----------------------------------------------------------- | ------------------------------------------------------------------------------- | ------ |
+| Write actions ground rules, and the on-demand backup        | [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md) | Done   |
+| Switchover, with the candidates and their lag in the dialog | [SPEC-0022](../specs/SPEC-0022-m6-switchover.md)                                | Done   |
+| Restart (cluster, standby, primary in place) and reload     | [SPEC-0023](../specs/SPEC-0023-m6-restart-and-reload.md)                        | Done   |
+| Fencing and hibernation, with their consequences listed     | [SPEC-0024](../specs/SPEC-0024-m6-fencing-and-hibernation.md)                   | Done   |
+| ScheduledBackup suspend, resume and run now                 | [SPEC-0021](../specs/SPEC-0021-m6-scheduled-backup-actions.md)                  | Done   |
 
 The first write spec sets the ground rules for every action of this
 milestone: confirmation dialogs that name the CloudNativePG cluster and the
@@ -90,13 +90,13 @@ the cluster.
 
 ### M7 - Creation forms and metrics charts
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Creation forms ground rules and shared machinery, Create Cluster form with live YAML preview (plugin-based backups by default) | [SPEC-0025](../specs/SPEC-0025-m7-creation-forms-ground-rules-and-create-cluster.md) | Done |
-| Create ScheduledBackup (cron editor), Pooler, ObjectStore | [SPEC-0026](../specs/SPEC-0026-m7-create-scheduled-backup-pooler-and-object-store.md) | Done |
-| Create Database, DatabaseRole, Publication, Subscription | [SPEC-0027](../specs/SPEC-0027-m7-create-declarative-objects.md) | Done |
-| Metrics charts (host chart components over the live view data) | [SPEC-0028](../specs/SPEC-0028-m7-metrics-charts.md) | Done |
-| Tablespaces, volume snapshot backups and recovery from volume snapshots in the Create Cluster form, with a CSI driver in the E2E cluster | [SPEC-0029](../specs/SPEC-0029-m7-create-cluster-tablespaces-and-volume-snapshots.md) | Done |
+| Feature                                                                                                                                  | Spec                                                                                  | Status |
+| ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- | ------ |
+| Creation forms ground rules and shared machinery, Create Cluster form with live YAML preview (plugin-based backups by default)           | [SPEC-0025](../specs/SPEC-0025-m7-creation-forms-ground-rules-and-create-cluster.md)  | Done   |
+| Create ScheduledBackup (cron editor), Pooler, ObjectStore                                                                                | [SPEC-0026](../specs/SPEC-0026-m7-create-scheduled-backup-pooler-and-object-store.md) | Done   |
+| Create Database, DatabaseRole, Publication, Subscription                                                                                 | [SPEC-0027](../specs/SPEC-0027-m7-create-declarative-objects.md)                      | Done   |
+| Metrics charts (host chart components over the live view data)                                                                           | [SPEC-0028](../specs/SPEC-0028-m7-metrics-charts.md)                                  | Done   |
+| Tablespaces, volume snapshot backups and recovery from volume snapshots in the Create Cluster form, with a CSI driver in the E2E cluster | [SPEC-0029](../specs/SPEC-0029-m7-create-cluster-tablespaces-and-volume-snapshots.md) | Done   |
 
 The first spec of the milestone sets the ground rules of every form: the
 form is the confirmation, with the exact YAML it sends in view; every rule
@@ -107,8 +107,8 @@ real Freelens and reads it back from the cluster.
 
 ### M8 - Freelens v2
 
-| Feature | Spec | Status |
-| --- | --- | --- |
+| Feature                                                                                                 | Spec                                                      | Status   |
+| ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- | -------- |
 | Port to the Freelens v2 extension API: stack, build, source, tests on the template's harness, workflows | [SPEC-0030](../specs/SPEC-0030-m8-port-to-freelens-v2.md) | Approved |
 
 ### M9 - Beyond the other user interfaces
@@ -116,24 +116,24 @@ real Freelens and reads it back from the cluster.
 Scope from a feature comparison with the CloudNativePG plugin for Headlamp (v0.1.6) on the same
 kind cluster, the `kubectl cnpg` plugin and the k9s plugin (CloudNativePG v1.30.1).
 
-| Feature | Spec | Status |
-| --- | --- | --- |
-| Connect section from the application Secret, and a local port forwarded to a service | [SPEC-0031](../specs/SPEC-0031-m9-connect-and-port-forward.md) | Approved |
-| Creation forms: server-side validation, parameter presets, recovery from an object store's recovery window, image catalogs | [SPEC-0032](../specs/SPEC-0032-m9-creation-forms-validation-presets-recovery-catalogs.md) | Approved |
-| Live view: multixact age, extension updates, checkpoints per instance, write, flush and replay lag per standby | [SPEC-0033](../specs/SPEC-0033-m9-live-view-wraparound-checkpoints-lags.md) | Approved |
-| Storage table, bootstrap and join jobs, replica clusters, role client certificates, counts of the cluster list | [SPEC-0034](../specs/SPEC-0034-m9-storage-jobs-replica-clusters-role-certificates-counts.md) | Approved |
-| PostgreSQL configuration and HBA rules of the primary | [SPEC-0035](../specs/SPEC-0035-m9-postgresql-configuration-and-hba.md) | Approved |
-| Operator page: install guide, plugin capabilities, Klio | [SPEC-0036](../specs/SPEC-0036-m9-operator-install-guide-plugins-klio.md) | Approved |
-| Pooler pause and resume, maintenance window, destroy an instance | [SPEC-0037](../specs/SPEC-0037-m9-pooler-pause-maintenance-window-destroy-instance.md) | Approved |
-| Diagnostic report of a cluster | [SPEC-0038](../specs/SPEC-0038-m9-diagnostic-report.md) | Approved |
-| Links to Grafana dashboards | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md) | Approved |
+| Feature                                                                                                                    | Spec                                                                                         | Status   |
+| -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | -------- |
+| Connect section from the application Secret, and a local port forwarded to a service                                       | [SPEC-0031](../specs/SPEC-0031-m9-connect-and-port-forward.md)                               | Approved |
+| Creation forms: server-side validation, parameter presets, recovery from an object store's recovery window, image catalogs | [SPEC-0032](../specs/SPEC-0032-m9-creation-forms-validation-presets-recovery-catalogs.md)    | Approved |
+| Live view: multixact age, extension updates, checkpoints per instance, write, flush and replay lag per standby             | [SPEC-0033](../specs/SPEC-0033-m9-live-view-wraparound-checkpoints-lags.md)                  | Approved |
+| Storage table, bootstrap and join jobs, replica clusters, role client certificates, counts of the cluster list             | [SPEC-0034](../specs/SPEC-0034-m9-storage-jobs-replica-clusters-role-certificates-counts.md) | Approved |
+| PostgreSQL configuration and HBA rules of the primary                                                                      | [SPEC-0035](../specs/SPEC-0035-m9-postgresql-configuration-and-hba.md)                       | Approved |
+| Operator page: install guide, plugin capabilities, Klio                                                                    | [SPEC-0036](../specs/SPEC-0036-m9-operator-install-guide-plugins-klio.md)                    | Approved |
+| Pooler pause and resume, maintenance window, destroy an instance                                                           | [SPEC-0037](../specs/SPEC-0037-m9-pooler-pause-maintenance-window-destroy-instance.md)       | Approved |
+| Diagnostic report of a cluster                                                                                             | [SPEC-0038](../specs/SPEC-0038-m9-diagnostic-report.md)                                      | Approved |
+| Links to Grafana dashboards                                                                                                | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md)                                          | Approved |
 
 ### Cross-cutting
 
-| Item | Status |
-| --- | --- |
+| Item                                                              | Status                                                                           |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
 | E2E test infrastructure (kind + operator + fixtures + Playwright) | [SPEC-0002](../specs/SPEC-0002-test-environment-and-e2e-infrastructure.md), Done |
-| Local demo cluster and milestone review gate (`pnpm demo:up`) | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md), Done |
+| Local demo cluster and milestone review gate (`pnpm demo:up`)     | [SPEC-0008](../specs/SPEC-0008-m2-pre-review-pass-and-demo-cluster.md), Done     |
 
 ## Out of scope for v1
 

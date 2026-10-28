@@ -91,18 +91,18 @@ fractional seconds and with named and numeric zones, and LSN ordering.
 
 Columns, in the grammar of DESIGN.md section 1:
 
-| Column | Content | Sort |
-| --- | --- | --- |
-| Name | name | name |
-| Namespace | `NamespaceSelectBadge` | namespace |
-| Instances | `readyInstances/instances` as text, plus one `StatusBrick` per instance (primary marked) | ready instances |
-| Primary | `status.currentPrimary`; when `targetPrimary` differs, an inline warning icon with tooltip "switching to the target primary" | primary |
-| PostgreSQL | major version from `status.pgDataImageInfo.majorVersion`, tooltip with the image | major |
-| Archiving | `BadgeBoolean` from `archivingState` (positive phrasing "Archiving") | archiving |
-| Last backup | `ReactiveDuration` of `backupFacts.lastSuccessful` from the cluster's backups, tooltip with the exact time and the source; "N/A" when none | time |
-| Condition | `Badge` with `classifyCluster(cluster).label` in its class | state |
-| Status | `classifyCluster(cluster).reason` truncated with tooltip | reason |
-| Age | `KubeObjectAge` | creation |
+| Column      | Content                                                                                                                                    | Sort            |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------- |
+| Name        | name                                                                                                                                       | name            |
+| Namespace   | `NamespaceSelectBadge`                                                                                                                     | namespace       |
+| Instances   | `readyInstances/instances` as text, plus one `StatusBrick` per instance (primary marked)                                                   | ready instances |
+| Primary     | `status.currentPrimary`; when `targetPrimary` differs, an inline warning icon with tooltip "switching to the target primary"               | primary         |
+| PostgreSQL  | major version from `status.pgDataImageInfo.majorVersion`, tooltip with the image                                                           | major           |
+| Archiving   | `BadgeBoolean` from `archivingState` (positive phrasing "Archiving")                                                                       | archiving       |
+| Last backup | `ReactiveDuration` of `backupFacts.lastSuccessful` from the cluster's backups, tooltip with the exact time and the source; "N/A" when none | time            |
+| Condition   | `Badge` with `classifyCluster(cluster).label` in its class                                                                                 | state           |
+| Status      | `classifyCluster(cluster).reason` truncated with tooltip                                                                                   | reason          |
+| Age         | `KubeObjectAge`                                                                                                                            | creation        |
 
 The list reads the `Backup` store to feed "Last backup"; the store is
 registered by this spec (SPEC-0005 adds its own page on top).

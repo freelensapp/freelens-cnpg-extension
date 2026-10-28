@@ -17,8 +17,8 @@ PRE_REVIEW_SCRIPTS_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 PRE_REVIEW_REPO_ROOT="$(cd -- "${PRE_REVIEW_SCRIPTS_DIR}/../.." && pwd)"
 export E2E_CLUSTER_NAME="${DEMO_CLUSTER_NAME:-cnpg-demo}"
 case "${DEMO_STATE_DIR:-.demo}" in
-/*) export E2E_STATE_DIR="${DEMO_STATE_DIR}" ;;
-*) export E2E_STATE_DIR="${PRE_REVIEW_REPO_ROOT}/${DEMO_STATE_DIR:-.demo}" ;;
+  /*) export E2E_STATE_DIR="${DEMO_STATE_DIR}" ;;
+  *) export E2E_STATE_DIR="${PRE_REVIEW_REPO_ROOT}/${DEMO_STATE_DIR:-.demo}" ;;
 esac
 export E2E_ARTIFACTS_DIR="${PRE_REVIEW_REPO_ROOT}/e2e-artifacts/pre-review"
 export E2E_TEST_PATTERN="pre-review"

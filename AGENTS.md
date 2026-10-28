@@ -187,6 +187,20 @@ devDependencies, for their types.
 
 Other dependencies ARE bundled into the extension output (`cronstrue`, `js-yaml`), and are `dependencies`.
 
+## Lint and CI
+
+- **Biome** (`biome.jsonc`, the template's) formats and lints TypeScript, JavaScript, JSON, CSS/SCSS, Markdown and
+  YAML, the Kubernetes manifests of `e2e/fixtures/` included.
+- **Trunk** (`.trunk/trunk.yaml`) runs Biome, shellcheck, shfmt (which follows `.editorconfig`), yamllint, taplo,
+  actionlint and the git checks on the changed files, in the hooks and in CI.
+- **Knip** (`knip.jsonc`, `pnpm knip:check`) reports unused files and dependencies, for development and for
+  production; `e2e/` and `integration/` are left out until they move to this repository's own harness.
+- **Renovate** (`.renovaterc.json`, the template's): every library and tool that Freelens also has takes the version
+  Freelens has on `main`.
+- **Workflows** (`.github/workflows/`): build and checks, type check, unit tests, Trunk, mise.lock, OSV, the E2E and
+  integration suites, npm audit, dedupe, version, tag and release, the Claude agent. A change to a workflow is
+  proposed under `github-workflow-fix/` (see "Modifying GitHub Actions Workflows").
+
 ## Code Style
 
 - **Biome** formats **TypeScript/TSX, JS, JSON, CSS/SCSS, HTML**: double quotes, semicolons, trailing commas, 2-space indent, 120 char line width, use `pnpm biome:fix`
@@ -284,6 +298,7 @@ When reviewing code and proposing fixes:
    ```
 
    You can generate this from the terminal with:
+
    ```bash
    git diff -u -- path/to/file
    ```
@@ -315,9 +330,9 @@ When reviewing code and proposing fixes:
    - Use GitHub's `suggestion` block for small targeted fixes so the PR
      author can accept the change with a single click:
 
-     ````suggestion
+     ```suggestion
      <same unified-diff format as shown above>
-     ````
+     ```
 
    - For larger multi-file changes, use `diff -u` blocks in a regular
      comment instead, with the proposed commit subject shown first
@@ -334,6 +349,28 @@ When asked to implement a change on a PR:
    separately. Do not batch multiple independent fixes into a single
    commit. This keeps the history bisectable and makes each change easy
    to revert individually.
+
+### Modifying GitHub Actions Workflows
+
+Claude cannot push changes to files under `.github/workflows/` directly,
+because the GitHub token used by the action lacks the `workflows` permission.
+Any patch to a workflow file MUST therefore be delivered as a new, complete
+file under the `github-workflow-fix/` directory in the repository root instead
+of editing the file in place:
+
+1. Write the full, final contents of the workflow to
+   `github-workflow-fix/<workflow-file-name>`, with the same file name as in
+   `.github/workflows/` (e.g. `github-workflow-fix/check.yaml`). Do **not**
+   edit the original file under `.github/workflows/`.
+2. Make it a **complete** file — the entire workflow as it should look after
+   the change, not just a diff or fragment — so it can be copied verbatim.
+3. Commit it with the change that needs it, and list it in the report. In the
+   PR description, note it as a proposed workflow change that a maintainer
+   must move from `github-workflow-fix/` to `.github/workflows/`.
+
+A maintainer moves the file into `.github/workflows/` in a separate commit and
+removes `github-workflow-fix/`. Pull before continuing on the branch, as it may
+have gained such a commit.
 
 ### Branch Naming Conventions
 

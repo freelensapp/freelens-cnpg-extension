@@ -1,34 +1,86 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema-jsonc.json",
 
+  // The extension is not a library: its entry points are the `main` and
+  // `renderer` manifest fields, which point at build output, and knip does not
+  // read `renderer` at all, so the sources are listed instead. The Vitest
+  // plugin adds vitest.config.ts, vitest.integration.config.ts and the test
+  // files.
   "entry": [
-    "out/{main,preload}/index.js!",
-    "src/main/index.ts",
-    "src/renderer/index.tsx",
-    "src/**/*.{test,spec}.{ts,tsx}",
-    "test/**/*.{ts,tsx}"
+    "vite.config.mjs",
+    "src/main/index.ts!",
+    "src/renderer/index.tsx!",
+    // the Vitest alias for @freelensapp/extensions, which knip does not follow
+    "test/freelens-extensions.ts",
+    // compiled by `type:check:environments` only, with no importer
+    "environment-tests/*.ts"
   ],
-  "project": ["*.{js,mjs,ts}", "out/**/*.js!", "src/**/*.{ts,tsx,sass,scss}"],
+  "project": [
+    "*.{js,mjs,ts}",
+    "build/*.mjs",
+    "environment-tests/*.ts",
+    "src/**/*.{scss,ts,tsx}!",
+    // the CSS module declarations. TypeScript reaches them through
+    // allowArbitraryExtensions, while knip resolves `import styles from
+    // "./x.module.scss"` to the stylesheet, so it would report them as unused
+    "!src/**/*.d.scss.ts",
+    "test/**/*.ts"
+  ],
 
-  "ignoreBinaries": ["electron-rebuild"],
+  // The Vite plugin adds the renderer entry of vite.config.mjs as an entry of
+  // its own, which is not a production one, and it replaces the
+  // `src/renderer/index.tsx!` above: the --production pass would then skip the
+  // whole renderer. vite.config.mjs is listed as an entry instead.
+  "vite": false,
+
+  // Trunk runs SVGO, so no dependency turns on the plugin that finds
+  // svgo.config.mjs.
+  "svgo": true,
+
+  // The build output. The `main` field of package.json makes dist/main.js an
+  // entry once it exists, and the `knip` script runs with --no-gitignore, so
+  // after `pnpm build` knip would report what the bundle inlines from its
+  // libraries, such as a binary a bundled library spawns.
+  "ignore": [
+    "dist/**",
+    // The E2E suite and the integration test still run on the v1 harness (a
+    // Freelens v1.10.3 checkout); the port moves them to this repository's
+    // own harness in its test suites issue, with their entries.
+    "e2e/**",
+    "integration/**"
+  ],
+
+  // Binaries that no dependency provides: yq, which the workflows call, comes
+  // from mise (see mise.toml), and kubectl, which the integration tests call,
+  // from the system, or from helm/kind-action in CI.
+  // electron-rebuild: the E2E and integration workflows of the v1 harness,
+  // replaced in the port's test suites issue.
+  "ignoreBinaries": ["electron-rebuild", "kubectl", "yq"],
+
   "ignoreDependencies": [
-    // Build-only plugins of the electron-vite and vitest configs: Knip 6.35+
-    // executes those configs to find them and trips on the ESM-only
-    // @vitejs/plugin-react, so the configs stay unread (below) and the plugins
-    // are listed here instead.
-    "@babel/plugin-proposal-decorators",
-    "@vitejs/plugin-react",
-    "vite-plugin-sass-dts"
+    // host-provided modules. The bundle maps them onto
+    // globalThis.FreelensExtensionApi (see build/vite-plugin-host-modules.mjs),
+    // and Freelens installs no dependencies of an extension, so they are
+    // declared as devDependencies for their types alone, which the
+    // --production --strict pass reports as unlisted
+    "@freelensapp/extensions",
+    "@types/react",
+    "mobx",
+    "mobx-react",
+    "react"
   ],
 
   "typescript": {
-    "config": ["tsconfig.json"]
+    // one program per runtime environment, one for the tests, one for the
+    // integration tests and one for the tooling files
+    "config": [
+      "src/main/tsconfig.json",
+      "src/renderer/tsconfig.json",
+      "src/common/tsconfig.json",
+      "src/tsconfig.json",
+      "tsconfig.json"
+    ]
   },
-  // See ignoreDependencies: the electron-vite and vitest configs import
-  // @vitejs/plugin-react and cannot be executed by Knip's config loader.
-  "electron-vite": false,
-  "vite": false,
-  "vitest": false,
 
   "exclude": ["exports"]
 }

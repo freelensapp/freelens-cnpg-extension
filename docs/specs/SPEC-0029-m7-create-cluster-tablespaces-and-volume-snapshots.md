@@ -122,11 +122,11 @@ objects of the Kubernetes cluster, F7 applies: a typed name is accepted;
 says the class must belong to the driver of the storage class, which the
 form cannot check); **WAL snapshot class** (offered only with a WAL volume,
 optional, the effective value is the snapshot class); **hot or cold** (a
-radio: *hot*, the default, "PostgreSQL stays open, the WAL of the snapshot
-window is kept with a temporary slot"; *cold*, "the target is fenced for
+radio: _hot_, the default, "PostgreSQL stays open, the WAL of the snapshot
+window is kept with a temporary slot"; _cold_, "the target is fenced for
 the duration of the snapshot: on a cluster of one instance the database is
 unavailable meanwhile, and the operator refuses a cold snapshot while an
-instance is fenced"); with *hot*, two checkboxes with their effective
+instance is fenced"); with _hot_, two checkboxes with their effective
 values, **wait for the WAL archive** (default on: `pg_backup_stop` waits
 for the last segment to be archived) and **immediate checkpoint** (default
 off); **owner of the snapshots** (a choice: none, the cluster, the backup;
@@ -149,8 +149,8 @@ backup".
 
 ### Recovery from volume snapshots
 
-The "Recover from" radio of the bootstrap gains a third choice, *the
-volume snapshots of a backup*. With it: **data snapshot** (a picker over
+The "Recover from" radio of the bootstrap gains a third choice, _the
+volume snapshots of a backup_. With it: **data snapshot** (a picker over
 the `VolumeSnapshot` objects of the namespace, the ones labelled
 `PG_DATA` by the operator listed first with their backup name and date,
 hot or cold from the annotation, a snapshot not ready to use dimmed with
@@ -212,8 +212,8 @@ hidden without the stanza: the class (or "the driver's default"), "hot" or
 - A target time with snapshots requires the WAL archive of the source
   (the operator would start the cluster and fail to reach the target).
 - A cold snapshot with `waitForArchive` or `immediateCheckpoint` is
-  meaningless: the two checkboxes are offered with *hot* only, and never
-  sent with *cold*.
+  meaningless: the two checkboxes are offered with _hot_ only, and never
+  sent with _cold_.
 
 ### Non-happy states
 

@@ -83,13 +83,13 @@ from extension pages goes through links, not through `navigate`).
 - Every request has a 5 second timeout (`AbortController`) and ends in a
   typed result, never in a throw that reaches a component:
 
-  | Failure | Detected by | What the card says |
-  | --- | --- | --- |
-  | `forbidden` | 403 | "Reading live data needs `get` on `pods/proxy` in `<namespace>`" |
-  | `unreachable` | 502, 503, 504 | "The instance manager of `<pod>` does not answer (pod not ready, fenced or restarting)" |
-  | `scheme` | both schemes failed | "Neither `http` nor `https` worked on port `<port>` of `<pod>`" |
-  | `timeout` | abort | "No answer from `<pod>` within 5 s" |
-  | `parse` | contract guard | "Unexpected answer from `<pod>`: the instance manager `<version>` may be newer than this extension knows" |
+  | Failure       | Detected by         | What the card says                                                                                        |
+  | ------------- | ------------------- | --------------------------------------------------------------------------------------------------------- |
+  | `forbidden`   | 403                 | "Reading live data needs `get` on `pods/proxy` in `<namespace>`"                                          |
+  | `unreachable` | 502, 503, 504       | "The instance manager of `<pod>` does not answer (pod not ready, fenced or restarting)"                   |
+  | `scheme`      | both schemes failed | "Neither `http` nor `https` worked on port `<port>` of `<pod>`"                                           |
+  | `timeout`     | abort               | "No answer from `<pod>` within 5 s"                                                                       |
+  | `parse`       | contract guard      | "Unexpected answer from `<pod>`: the instance manager `<version>` may be newer than this extension knows" |
 
 ### Contracts and parsers (pure, unit-tested)
 

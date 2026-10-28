@@ -92,7 +92,7 @@ cluster set and shown as a fact).
    VolumeSnapshot CRD exists in the Kubernetes cluster, else dimmed with
    the reason; the method is always sent, with the plugin name, because
    the API's own default is the deprecated in-tree one); target (the cluster's default, `primary`, `prefer-standby`);
-   *collapsed, volume snapshots only*: online, immediate checkpoint, wait
+   _collapsed, volume snapshots only_: online, immediate checkpoint, wait
    for archive.
 4. **Behaviour.** Take a first backup right away (`immediate`); create
    suspended (`suspend`); who owns the backups (`backupOwnerReference`,
@@ -131,7 +131,7 @@ door of the Poolers row of the Cluster drawer.
    (`pool_mode`, `auth_user`, `auth_query`, `listen_addr`, `listen_port`
    and the file paths belong to the operator); the operator does not check
    the values, and the hint says that a wrong value crash loops every
-   pod; *collapsed*: paused; auth query secret (picker) and auth query,
+   pod; _collapsed_: paused; auth query secret (picker) and auth query,
    given together or not at all as the webhook demands, with the effective
    default (the operator's own query, user and secret) shown when empty.
 
@@ -154,7 +154,7 @@ has no object store (a page, not a nested dialog).
    IAM role"); Azure (connection string, or storage account with a key or
    a SAS token, each a secret and a key; or "inherit from Azure AD
    workload identity"); Google (application credentials as a secret and
-   key, or "GKE environment"); *collapsed*: endpoint CA (secret and key).
+   key, or "GKE environment"); _collapsed_: endpoint CA (secret and key).
    There is no server name here: the folder a cluster writes to is the
    cluster's own plugin parameter, and the API refuses the field on a
    store.
@@ -164,7 +164,7 @@ has no object store (a page, not a nested dialog).
    than for WAL), data encryption, jobs, immediate checkpoint.
 4. **Retention.** Retention policy as a number and a unit (days, weeks,
    months), sent as `30d`; empty means "keep forever" and the summary says
-   so; *collapsed*: retention check interval of the sidecar (the effective
+   so; _collapsed_: retention check interval of the sidecar (the effective
    default of 1800 seconds shown); tags and history tags as key value
    pairs.
 

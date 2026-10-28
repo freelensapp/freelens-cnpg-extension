@@ -190,25 +190,25 @@ in order, the collapsed ones marked:
    most, the operator's own limit, because it becomes the prefix of the
    pods, the volumes, the services and the secrets); description; instances
    (integer, 1 or more, default 3; the hint says what 1 means).
-2. **Image.** A radio: *the operator's default* (nothing is sent; the
+2. **Image.** A radio: _the operator's default_ (nothing is sent; the
    effective image is read from the operator deployment when SPEC-0016 can
-   read it, else named as "the operator's default"), *an image catalog*
+   read it, else named as "the operator's default"), _an image catalog_
    (picker over the `ImageCatalog` of the namespace and the
    `ClusterImageCatalog` of the cluster, then the major among the ones the
-   catalog lists), *an image name* (free text: a reference whose tag is a PostgreSQL
+   catalog lists), _an image name_ (free text: a reference whose tag is a PostgreSQL
    version, because the operator refuses `latest` and a digest alone).
    Exactly one is sent; a catalog that lacks the major is not checked by
    the API server (the cluster would report an invalid catalog), so the
    picker offers only the majors the catalog lists.
 3. **Storage.** Size (required quantity, cannot shrink later); storage
-   class (picker, "the cluster's default" sends nothing); *collapsed*: WAL
+   class (picker, "the cluster's default" sends nothing); _collapsed_: WAL
    on its own volume (size and class; it can be added later, never removed
    once set).
-4. **Bootstrap.** A radio, exactly one sent: *a new database* (`initdb`:
+4. **Bootstrap.** A radio, exactly one sent: _a new database_ (`initdb`:
    database and owner, default `app` and `app`, the owner's secret as a
    picker of `kubernetes.io/basic-auth` secrets or nothing so the operator
-   generates it, *collapsed*: encoding, locale provider and locale, data
-   checksums); *recovery* (`recovery`: either a completed `Backup` of the
+   generates it, _collapsed_: encoding, locale provider and locale, data
+   checksums); _recovery_ (`recovery`: either a completed `Backup` of the
    namespace as a picker, or an object store of the namespace with the
    server name of the source cluster, which sends the `externalClusters`
    entry with the plugin parameters; then an optional target time; the
@@ -219,28 +219,28 @@ in order, the collapsed ones marked:
    `ObjectStore` of the namespace) that becomes the plugin entry with
    `isWALArchiver: true`; "none" is allowed and the summary warns that
    without archiving there is no backup and no point in time recovery;
-   *collapsed*: backup target (`prefer-standby` or `primary`, the
+   _collapsed_: backup target (`prefer-standby` or `primary`, the
    effective default shown).
 6. **Superuser.** Enable superuser access (checkbox, the effective default
    shown) and, when enabled, the superuser secret as a picker or nothing.
-7. **Replication** (*collapsed*, offered when instances is 2 or more).
+7. **Replication** (_collapsed_, offered when instances is 2 or more).
    Synchronous replication: method (`any` or `first`), number, data
    durability (`required` or `preferred`, the effective default shown),
    with the rule that the number must be below the instances enforced
    inline; the deprecated pair of minimum and maximum sync replicas is not
    offered.
-8. **Resources** (*collapsed*). Requests and limits of CPU and memory,
+8. **Resources** (_collapsed_). Requests and limits of CPU and memory,
    quantities, with the note that equal requests and limits give the
    Guaranteed class the operator recommends, and the warning of the
    summary when nothing is set.
-9. **Updates and PostgreSQL** (*collapsed*). Primary update strategy
+9. **Updates and PostgreSQL** (_collapsed_). Primary update strategy
    (`unsupervised` or `supervised`, the latter dimmed with one instance)
    and method (`restart` or `switchover`), effective defaults shown;
    PostgreSQL parameters as a key value editor that refuses the parameters
    the operator fixes itself and says which ones the operator writes on
    its own (about twenty, `wal_level` `logical` among them), so the user
    never mistakes them for input.
-10. **Scheduling** (*collapsed*). Pod anti affinity: preferred or required,
+10. **Scheduling** (_collapsed_). Pod anti affinity: preferred or required,
     and its topology key (`kubernetes.io/hostname` by default); node
     selector as key value pairs.
 

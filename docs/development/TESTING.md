@@ -64,11 +64,11 @@ certificate), and every such fixture says so in a comment.
 
 #### Commands
 
-| Command | What it does |
-| --- | --- |
-| `pnpm e2e:cluster:up` | Creates the cluster, installs the CSI hostpath driver with the snapshot controller, cert-manager, the operator, the Barman Cloud plugin and the object store, applies the fixture clusters (one of them on the CSI storage class, with a cold volume snapshot backup) and waits for them to be ready |
-| `pnpm e2e:cluster:down` | Deletes the cluster and its kubeconfig |
-| `pnpm e2e` | Cluster up, run the suite, cluster down |
+| Command                 | What it does                                                                                                                                                                                                                                                                                         |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm e2e:cluster:up`   | Creates the cluster, installs the CSI hostpath driver with the snapshot controller, cert-manager, the operator, the Barman Cloud plugin and the object store, applies the fixture clusters (one of them on the CSI storage class, with a cold volume snapshot backup) and waits for them to be ready |
+| `pnpm e2e:cluster:down` | Deletes the cluster and its kubeconfig                                                                                                                                                                                                                                                               |
+| `pnpm e2e`              | Cluster up, run the suite, cluster down                                                                                                                                                                                                                                                              |
 
 `E2E_KEEP_CLUSTER=1 pnpm e2e` leaves the cluster running for inspection.
 `pnpm e2e:cluster:up` is idempotent, so it doubles as "re-apply the fixtures".

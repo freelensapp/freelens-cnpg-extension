@@ -86,17 +86,17 @@ This spec adds static helpers only (no instance methods):
 
 - `classifyBackup(backup)`: `{ state, label, className, reason }`.
 
-  | Phase | State | Host class | Reason shown |
-  | --- | --- | --- | --- |
-  | `completed` | Completed | `success` | "Completed in `<duration>`" |
-  | `pending` | Pending | `info` | "Waiting to start" |
-  | `started`, `running` | Running | `info` | "Running for `<duration>`" |
-  | `finalizing` | Running | `info` | "Finalizing the volume snapshots" |
-  | `failed` | Failed | `error` | `status.error`, else `status.commandError` first line, else "Failed" |
-  | `walArchivingFailing` | Failed | `error` | "Not started: WAL archiving is not working on the instance" |
-  | `invalid backup definition` | Failed | `error` | `status.error`, else "Invalid backup definition" |
-  | absent | Pending | `info` | "No status reported yet" |
-  | anything else | Unknown | `info` | the raw phase |
+  | Phase                       | State     | Host class | Reason shown                                                         |
+  | --------------------------- | --------- | ---------- | -------------------------------------------------------------------- |
+  | `completed`                 | Completed | `success`  | "Completed in `<duration>`"                                          |
+  | `pending`                   | Pending   | `info`     | "Waiting to start"                                                   |
+  | `started`, `running`        | Running   | `info`     | "Running for `<duration>`"                                           |
+  | `finalizing`                | Running   | `info`     | "Finalizing the volume snapshots"                                    |
+  | `failed`                    | Failed    | `error`    | `status.error`, else `status.commandError` first line, else "Failed" |
+  | `walArchivingFailing`       | Failed    | `error`    | "Not started: WAL archiving is not working on the instance"          |
+  | `invalid backup definition` | Failed    | `error`    | `status.error`, else "Invalid backup definition"                     |
+  | absent                      | Pending   | `info`     | "No status reported yet"                                             |
+  | anything else               | Unknown   | `info`     | the raw phase                                                        |
 
   In-progress states use `info`, consistent with `Progressing` in the
   cluster classifier of SPEC-0003.
@@ -108,13 +108,13 @@ This spec adds static helpers only (no instance methods):
 - `walDuringBackup(backup)`: `lsnDistance(beginLSN, endLSN)` in bytes.
 - `classifySchedule(schedule, now)`:
 
-  | Condition | State | Host class | Reason shown |
-  | --- | --- | --- | --- |
-  | `status.error` set | Failed | `error` | the error |
-  | `spec.suspend` true | Suspended | `warning` | "Suspended: no backup will be taken" |
-  | `nextScheduleTime` in the past by more than the check tolerance (5 minutes) | Overdue | `warning` | "The next run was due `<duration>` ago" |
-  | `lastCheckTime` absent | Pending | `info` | "Not checked by the operator yet" |
-  | otherwise | Active | `success` | "Next run `<relative time>`", or "Waiting for the first run" |
+  | Condition                                                                   | State     | Host class | Reason shown                                                 |
+  | --------------------------------------------------------------------------- | --------- | ---------- | ------------------------------------------------------------ |
+  | `status.error` set                                                          | Failed    | `error`    | the error                                                    |
+  | `spec.suspend` true                                                         | Suspended | `warning`  | "Suspended: no backup will be taken"                         |
+  | `nextScheduleTime` in the past by more than the check tolerance (5 minutes) | Overdue   | `warning`  | "The next run was due `<duration>` ago"                      |
+  | `lastCheckTime` absent                                                      | Pending   | `info`     | "Not checked by the operator yet"                            |
+  | otherwise                                                                   | Active    | `success`  | "Next run `<relative time>`", or "Waiting for the first run" |
 
   Suspended is `warning`, not neutral, on purpose: a suspended schedule is
   the most common way a cluster silently stops being protected.
@@ -130,19 +130,19 @@ This spec adds static helpers only (no instance methods):
 
 ### Backups list (`src/renderer/pages/backups-page-v1.tsx`)
 
-| Column | Content | Sort |
-| --- | --- | --- |
-| Name | name | name |
-| Namespace | `NamespaceSelectBadge` | namespace |
-| Cluster | `spec.cluster.name`, `MaybeLink` to the Cluster drawer when the cluster exists | cluster |
-| Method | `plugin`, `volumeSnapshot` or `barmanObjectStore`; the last with the "deprecated" badge and a tooltip naming the plugin as the replacement (also when the method is only the CRD default) | method |
-| Schedule | parent `ScheduledBackup` from the label, `MaybeLink` to its drawer; "N/A" for an on-demand backup | schedule |
-| Instance | pod that took the backup (`LinkToPod` idiom when the pod exists), role not shown (it may have changed since) | pod |
-| Started | `ReactiveDuration` since `startedAt`, tooltip with the exact time | time |
-| Duration | `backupDuration` humanized, exact seconds in the tooltip | duration |
-| Condition | `Badge` with `classifyBackup(...).label` | state |
-| Status | `classifyBackup(...).reason` truncated with tooltip | reason |
-| Age | `KubeObjectAge` | creation |
+| Column    | Content                                                                                                                                                                                   | Sort      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
+| Name      | name                                                                                                                                                                                      | name      |
+| Namespace | `NamespaceSelectBadge`                                                                                                                                                                    | namespace |
+| Cluster   | `spec.cluster.name`, `MaybeLink` to the Cluster drawer when the cluster exists                                                                                                            | cluster   |
+| Method    | `plugin`, `volumeSnapshot` or `barmanObjectStore`; the last with the "deprecated" badge and a tooltip naming the plugin as the replacement (also when the method is only the CRD default) | method    |
+| Schedule  | parent `ScheduledBackup` from the label, `MaybeLink` to its drawer; "N/A" for an on-demand backup                                                                                         | schedule  |
+| Instance  | pod that took the backup (`LinkToPod` idiom when the pod exists), role not shown (it may have changed since)                                                                              | pod       |
+| Started   | `ReactiveDuration` since `startedAt`, tooltip with the exact time                                                                                                                         | time      |
+| Duration  | `backupDuration` humanized, exact seconds in the tooltip                                                                                                                                  | duration  |
+| Condition | `Badge` with `classifyBackup(...).label`                                                                                                                                                  | state     |
+| Status    | `classifyBackup(...).reason` truncated with tooltip                                                                                                                                       | reason    |
+| Age       | `KubeObjectAge`                                                                                                                                                                           | creation  |
 
 Default sort: Age, newest first. `searchFilters` extended with the cluster
 name, the parent schedule and the method, so the doors from the other views
@@ -150,19 +150,19 @@ name, the parent schedule and the method, so the doors from the other views
 
 ### Scheduled Backups list (`src/renderer/pages/scheduled-backups-page-v1.tsx`)
 
-| Column | Content | Sort |
-| --- | --- | --- |
-| Name | name | name |
-| Namespace | `NamespaceSelectBadge` | namespace |
-| Cluster | as above | cluster |
-| Schedule | the raw expression, tooltip with `describeSchedule` and a note that the first field is seconds | expression |
-| Method | as above | method |
-| Last run | `ReactiveDuration` since `lastScheduleTime`, "N/A" before the first run | time |
-| Next run | relative time to `nextScheduleTime` ("in 5h"), exact time in the tooltip; "N/A" when suspended | time |
-| Active | `BadgeBoolean` of `!spec.suspend` (positive phrasing) | suspend |
-| Condition | `Badge` with `classifySchedule(...).label` | state |
-| Status | `classifySchedule(...).reason` | reason |
-| Age | `KubeObjectAge` | creation |
+| Column    | Content                                                                                        | Sort       |
+| --------- | ---------------------------------------------------------------------------------------------- | ---------- |
+| Name      | name                                                                                           | name       |
+| Namespace | `NamespaceSelectBadge`                                                                         | namespace  |
+| Cluster   | as above                                                                                       | cluster    |
+| Schedule  | the raw expression, tooltip with `describeSchedule` and a note that the first field is seconds | expression |
+| Method    | as above                                                                                       | method     |
+| Last run  | `ReactiveDuration` since `lastScheduleTime`, "N/A" before the first run                        | time       |
+| Next run  | relative time to `nextScheduleTime` ("in 5h"), exact time in the tooltip; "N/A" when suspended | time       |
+| Active    | `BadgeBoolean` of `!spec.suspend` (positive phrasing)                                          | suspend    |
+| Condition | `Badge` with `classifySchedule(...).label`                                                     | state      |
+| Status    | `classifySchedule(...).reason`                                                                 | reason     |
+| Age       | `KubeObjectAge`                                                                                | creation   |
 
 ### Backup drawer (`src/renderer/details/backup-details-v1.tsx`)
 

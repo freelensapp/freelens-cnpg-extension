@@ -65,15 +65,15 @@ to its declaration, and the exporter of the primary already has them.
 `classifyDeclarative(object, cluster | undefined, words)` for the four
 kinds, closed set of states:
 
-| State | Class | When | Sentence |
-| --- | --- | --- | --- |
-| `Applied` | success | `applied: true` and the observed generation is current | "Applied to PostgreSQL" |
-| `Updating` | info | `applied: true` with an older observed generation | "A change waits to be applied (generation G, applied O)" |
-| `Failed` | error | `applied: false` | the message, first line, with the two known conflicts told in words |
-| `Waiting` | info | `applied` unset with a message | "Waiting for the cluster to become primary: a replica cluster is read-only" (or the message as written) |
-| `Pending` | info | no status, cluster there | "Not applied yet", or "Waiting for a running primary: the cluster is hibernated" when it is |
-| `Orphan` | warning | no status and the cluster is not there | "The Cluster X is not there: nothing applies this object" |
-| `Deleting` | warning | `metadata.deletionTimestamp` set | what the reclaim policy does: "stays in PostgreSQL" or "is dropped first" |
+| State      | Class   | When                                                   | Sentence                                                                                                |
+| ---------- | ------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| `Applied`  | success | `applied: true` and the observed generation is current | "Applied to PostgreSQL"                                                                                 |
+| `Updating` | info    | `applied: true` with an older observed generation      | "A change waits to be applied (generation G, applied O)"                                                |
+| `Failed`   | error   | `applied: false`                                       | the message, first line, with the two known conflicts told in words                                     |
+| `Waiting`  | info    | `applied` unset with a message                         | "Waiting for the cluster to become primary: a replica cluster is read-only" (or the message as written) |
+| `Pending`  | info    | no status, cluster there                               | "Not applied yet", or "Waiting for a running primary: the cluster is hibernated" when it is             |
+| `Orphan`   | warning | no status and the cluster is not there                 | "The Cluster X is not there: nothing applies this object"                                               |
+| `Deleting` | warning | `metadata.deletionTimestamp` set                       | what the reclaim policy does: "stays in PostgreSQL" or "is dropped first"                               |
 
 `Failed` wins over a missing cluster when the operator already said why.
 `databaseHealth(database, cluster)` adds two readings on top:
