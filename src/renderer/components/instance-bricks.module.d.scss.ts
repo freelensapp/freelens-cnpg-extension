@@ -1,6 +1,5 @@
 declare const classNames: {
   readonly bricks: "bricks";
-  readonly statusBrick: "statusBrick";
   readonly healthy: "healthy";
   readonly replicating: "replicating";
   readonly failed: "failed";

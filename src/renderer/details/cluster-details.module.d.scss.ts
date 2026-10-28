@@ -8,7 +8,6 @@ declare const classNames: {
   readonly certificates: "certificates";
   readonly plugins: "plugins";
   readonly tablespaces: "tablespaces";
-  readonly tableCell: "tableCell";
   readonly type: "type";
   readonly role: "role";
   readonly name: "name";

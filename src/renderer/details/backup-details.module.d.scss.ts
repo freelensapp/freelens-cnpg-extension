@@ -5,7 +5,6 @@ declare const classNames: {
   readonly metadata: "metadata";
   readonly generated: "generated";
   readonly windows: "windows";
-  readonly tableCell: "tableCell";
   readonly name: "name";
   readonly key: "key";
   readonly value: "value";

@@ -1,10 +1,5 @@
 declare const classNames: {
   readonly dialog: "dialog";
-  readonly selectSingleValue: "selectSingleValue";
-  readonly input: "input";
-  readonly radio: "radio";
-  readonly checked: "checked";
-  readonly label: "label";
   readonly selectMenu: "selectMenu";
   readonly lead: "lead";
   readonly context: "context";
@@ -12,9 +7,9 @@ declare const classNames: {
   readonly writes: "writes";
   readonly single: "single";
   readonly warning: "warning";
-  readonly icon: "icon";
   readonly changed: "changed";
   readonly field: "field";
+  readonly label: "label";
   readonly hint: "hint";
   readonly error: "error";
   readonly list: "list";

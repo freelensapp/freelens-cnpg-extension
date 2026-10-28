@@ -1,6 +1,5 @@
 declare const classNames: {
   readonly page: "page";
-  readonly tableCell: "tableCell";
   readonly cluster: "cluster";
   readonly method: "method";
   readonly number: "number";

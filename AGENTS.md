@@ -130,7 +130,9 @@ e2e/                        # kind cluster scripts, fixtures and the Playwright 
 docs/                       # Development docs and one spec per feature
 ```
 
-Build output goes to `out/`.
+Build output goes to `dist/`: `renderer.js`, `renderer.css` (the host links it next to the renderer entry) and
+`main.js`, two Vite runs of `vite.config.mjs` (`vite build` for the renderer, `vite build --mode main` for main) with the
+plugins under `build/` (host modules, standard decorators, CSS module declarations). Each entry is one ES module.
 
 ## CRD KubeObject Pattern
 
@@ -176,22 +178,19 @@ Each CRD file exports three classes: the KubeObject, the KubeApi, and the KubeOb
 
 ## Key Dependencies (provided by Freelens host at runtime)
 
-These are NOT bundled, they come from the Freelens host as globals:
-- `@freelensapp/extensions` → `global.LensExtensions`
-- `mobx` → `global.Mobx`
-- `react` → `global.React`
-- `react-dom` → `global.ReactDom`
-- `mobx-react` → `global.MobxReact`
-- `react-router-dom` → `global.ReactRouterDom`
+These are NOT bundled: `build/vite-plugin-host-modules.mjs` maps them onto `globalThis.FreelensExtensionApi`
+(contract C3 of the Freelens extension API): `@freelensapp/extensions`, `react`, `react-dom`, `react/jsx-runtime`,
+`mobx`, `mobx-react` and `monaco-editor`; main gets `@freelensapp/extensions` and `mobx` only. They are
+devDependencies, for their types.
 
-Other dependencies ARE bundled into the extension output.
+Other dependencies ARE bundled into the extension output (`cronstrue`, `js-yaml`), and are `dependencies`.
 
 ## Code Style
 
 - **Biome** formats **TypeScript/TSX, JS, JSON, CSS/SCSS, HTML**: double quotes, semicolons, trailing commas, 2-space indent, 120 char line width, use `pnpm biome:fix`
 - **Trunk** formats **Markdown, YAML**, and other formats not covered by biome, use `pnpm trunk:fix`
 - Import order (enforced by biome organizeImports): built-in modules → `@freelensapp/**` → packages → relative paths
-- React 17 (no `react/jsx-runtime` in tsconfig needed, but handled by build)
+- React 19 with the automatic JSX runtime (`react/jsx-runtime`, provided by the host)
 - **No emoji** in Markdown files (`.md`), comments, or any source code
 
 ## Security
@@ -229,7 +228,7 @@ Code in `src/common/` is shared between both processes.
 
 ### Changes Not Appearing
 
-1. Check that files are not in ignored output directories (`out/`, `dist/`, `node_modules/`)
+1. Check that files are not in ignored output directories (`dist/`, `node_modules/`)
 2. Full clean and rebuild: `pnpm clean:all && pnpm build`
 3. Reinstall the extension in Freelens (or restart the app in dev mode)
 
@@ -246,7 +245,7 @@ Code in `src/common/` is shared between both processes.
 2. Check the terminal where Freelens was launched for main process errors
 3. Look for stack traces with file:line numbers
 4. Verify all CRD objects have proper `static readonly` properties (kind, apiBase, crd)
-5. Validate both with `pnpm type:check` **and** `pnpm build`, runtime failures can appear only in bundled `out/` code
+5. Validate both with `pnpm type:check` **and** `pnpm build`, runtime failures can appear only in bundled `dist/` code
 
 ## Best Practices
 

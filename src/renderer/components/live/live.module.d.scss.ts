@@ -19,7 +19,6 @@ declare const classNames: {
   readonly topology: "topology";
   readonly banner: "banner";
   readonly topologyGrid: "topologyGrid";
-  readonly trendCards: "trendCards";
   readonly primaryColumn: "primaryColumn";
   readonly linesCell: "linesCell";
   readonly lines: "lines";
@@ -65,7 +64,6 @@ declare const classNames: {
   readonly topEntry: "topEntry";
   readonly lagRow: "lagRow";
   readonly nested: "nested";
-  readonly tableCell: "tableCell";
   readonly colName: "colName";
   readonly colWide: "colWide";
   readonly colBar: "colBar";
@@ -77,13 +75,11 @@ declare const classNames: {
   readonly trends: "trends";
   readonly trendsHeader: "trendsHeader";
   readonly trendsRange: "trendsRange";
-  readonly radioGroup: "radioGroup";
-  readonly buttonsView: "buttonsView";
+  readonly trendCards: "trendCards";
   readonly trendCard: "trendCard";
   readonly trendHeader: "trendHeader";
   readonly trendLast: "trendLast";
   readonly trendChart: "trendChart";
-  readonly chart: "chart";
   readonly trendEmpty: "trendEmpty";
 };
 export = classNames;

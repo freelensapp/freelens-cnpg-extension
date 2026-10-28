@@ -1,15 +1,5 @@
 declare const classNames: {
-  readonly confirmDialog: "confirmDialog";
-  readonly box: "box";
-  readonly cnpgCreateDialog: "cnpgCreateDialog";
   readonly dialog: "dialog";
-  readonly selectSingleValue: "selectSingleValue";
-  readonly input: "input";
-  readonly radio: "radio";
-  readonly checkbox: "checkbox";
-  readonly checked: "checked";
-  readonly label: "label";
-  readonly disabled: "disabled";
   readonly selectMenu: "selectMenu";
   readonly lead: "lead";
   readonly context: "context";
@@ -20,13 +10,13 @@ declare const classNames: {
   readonly editor: "editor";
   readonly heading: "heading";
   readonly field: "field";
+  readonly label: "label";
   readonly hint: "hint";
   readonly error: "error";
   readonly warning: "warning";
   readonly effective: "effective";
   readonly fact: "fact";
   readonly inline: "inline";
-  readonly select: "select";
   readonly section: "section";
   readonly sectionHeader: "sectionHeader";
   readonly sectionCaret: "sectionCaret";
