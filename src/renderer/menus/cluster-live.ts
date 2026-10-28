@@ -24,6 +24,38 @@ export function liveCluster(object: Cluster): Cluster {
   return (selfLink ? store?.getByPath(selfLink) : undefined) ?? object;
 }
 
+/** One cluster followed through the attempts of a write (W6). */
+export interface ClusterReader {
+  /** The latest object read from the API server, or else the one the store holds. */
+  current(): Cluster;
+  /** Reads the object from the API server, after a conflict. */
+  reread(): Promise<Cluster>;
+}
+
+/**
+ * The store's `load` returns the object it already holds without asking the
+ * API server, so a retry after a conflict would send again the resource
+ * version that was just refused. The reader asks the API server, and the next
+ * attempt is computed from that read.
+ */
+export function clusterReader(object: Cluster): ClusterReader {
+  let fresh: Cluster | undefined;
+  const current = () => fresh ?? liveCluster(object);
+
+  return {
+    current,
+    reread: async () => {
+      const store = maybe(() => Cluster.getStore<Cluster>());
+      const read: Cluster | null | undefined = await store?.api.get({
+        name: object.getName(),
+        namespace: object.getNs(),
+      });
+      if (read) fresh = read;
+      return current();
+    },
+  };
+}
+
 interface PodShape {
   metadata?: { name?: string; namespace?: string; labels?: Record<string, string | undefined> };
   spec?: { nodeName?: string };

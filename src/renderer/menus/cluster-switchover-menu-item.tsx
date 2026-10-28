@@ -33,7 +33,7 @@ import { failureSentence, firstRefusal, rfc3339Micro, writeWithConflictRetry } f
 import { timelineUrl } from "../navigation";
 import { ActionIcon } from "./action-icon";
 import { ActionMenuItem } from "./action-menu-item";
-import { instancePods, liveCluster, loadPods, podsKnown } from "./cluster-live";
+import { clusterReader, instancePods, liveCluster, loadPods, podsKnown } from "./cluster-live";
 
 import type { AccessQuestion } from "../components/access-review";
 import type { ActionDialogModel } from "../components/action-dialog";
@@ -236,21 +236,22 @@ export async function openSwitchover(
       .catch(() => undefined);
   }, CANDIDATES_INTERVAL_MS);
 
-  const current = () => {
-    const cluster = switchoverClusterFacts(liveCluster(object));
+  const current = (from: Cluster = liveCluster(object)) => {
+    const cluster = switchoverClusterFacts(from);
     return { cluster, candidates: candidatesOf(cluster, state.replication) };
   };
 
   const run = async () => {
     const target = state.target;
     if (!target) return;
-    const atConfirm = current();
+    const reader = clusterReader(object);
+    const atConfirm = current(reader.current());
     const confirmed = switchoverDialogFacts(atConfirm.cluster, atConfirm.candidates, target).writes;
 
     const outcome = await writeWithConflictRetry({
       confirmed,
       send: () => {
-        const { cluster } = current();
+        const { cluster } = current(reader.current());
         return requestSwitchover(
           { namespace: cluster.namespace, name: cluster.name, resourceVersion: cluster.resourceVersion ?? "" },
           target,
@@ -258,8 +259,7 @@ export async function openSwitchover(
         );
       },
       refresh: async () => {
-        await maybe(() => Cluster.getStore<Cluster>())?.load({ name: opened.name, namespace: opened.namespace });
-        const { cluster, candidates } = current();
+        const { cluster, candidates } = current(await reader.reread());
         const blocked = switchoverBlockReason(candidates, target);
         return {
           guard: firstRefusal(
@@ -285,7 +285,7 @@ export async function openSwitchover(
         return;
       case "changed":
         // The user never confirms one write and sends another: the dialog comes back with the new facts.
-        void openSwitchover(liveCluster(object), extension, {
+        void openSwitchover(reader.current(), extension, {
           model: state,
           dialog,
           changedNotice: "The cluster changed while the write was sent: nothing was written. Read the write again.",

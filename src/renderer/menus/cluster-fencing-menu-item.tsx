@@ -34,7 +34,7 @@ import { failureSentence, firstRefusal, writeWithConflictRetry } from "../compon
 import { timelineUrl } from "../navigation";
 import { ActionIcon } from "./action-icon";
 import { ActionMenuItem } from "./action-menu-item";
-import { liveCluster } from "./cluster-live";
+import { clusterReader, liveCluster } from "./cluster-live";
 
 import type { AccessQuestion } from "../components/access-review";
 import type { FencingAction, FencingBackupFacts, FencingClusterFacts } from "../components/fencing";
@@ -128,13 +128,14 @@ export function openFencing(
       Notifications.error(`${whatWords(action)} not requested: the clusters are not available.`);
       return;
     }
-    const confirmed = fencingDialogFacts(fencingFacts(liveCluster(object)), action).writes;
+    const reader = clusterReader(object);
+    const confirmed = fencingDialogFacts(fencingFacts(reader.current()), action).writes;
     if (confirmed.length === 0) return;
 
     const outcome = await writeWithConflictRetry({
       confirmed,
       send: async () => {
-        const live = liveCluster(object);
+        const live = reader.current();
         const cluster = fencingFacts(live);
         const transition = fencingTransition(cluster, action);
         // A set is never written from a stale read: the value comes from the object the patch names by its version.
@@ -143,8 +144,7 @@ export function openFencing(
         await store.patch(live, fencingPatch(cluster, transition.set) as never, "merge");
       },
       refresh: async () => {
-        await store.load({ name: opened.name, namespace: opened.namespace });
-        const live = liveCluster(object);
+        const live = await reader.reread();
         return { guard: fencingGuard(live, action), writes: fencingDialogFacts(fencingFacts(live), action).writes };
       },
     });
@@ -161,7 +161,7 @@ export function openFencing(
         return;
       case "changed":
         openFencing(
-          liveCluster(object),
+          reader.current(),
           action,
           extension,
           "The fenced instances changed while the write was sent: nothing was written. Read the write again.",

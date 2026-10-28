@@ -215,3 +215,16 @@ Two annotations, written with values the extension builds itself: `on`,
   sleep and the wake), the cluster came back healthy with both instances on
   the volumes they had, and every acknowledged insert was in the table
   afterwards.
+- 2026-10-28, with the port to Freelens v2 (SPEC-0030, feature C): the lift of
+  a fence failed at random in the E2E runs of 1.0.0 with "The object kept
+  changing while the write was sent", in 2 runs of 3. Right after a fence the
+  operator keeps updating the status of the cluster, so the patch with the
+  resource version the dialog read meets a `409`. The retry of W6 did not
+  help: it re-read the object with the store's `load`, which returns the
+  object the store already holds without asking the API server, so the three
+  attempts sent the same refused version. The re-read now asks the API server
+  (`clusterReader` in `cluster-live.ts`) and the next attempt is computed from
+  that read; the rule of W6 is unchanged (the same lines, at most three
+  attempts, otherwise the dialog reopens). The switchover (SPEC-0022) and the
+  restart of the primary (SPEC-0023) shared the same re-read and share the
+  fix. Unit: `cluster-live.test.ts`.
