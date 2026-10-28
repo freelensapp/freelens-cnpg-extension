@@ -69,7 +69,7 @@ function ResolvingProbe({ resolveStore }: { resolveStore: () => FakeStore | null
   return null;
 }
 
-const logged = () => infoSpy.mock.calls.map(([line]) => String(line));
+const logged = () => infoSpy.mock.calls.map(([line]: unknown[]) => String(line));
 
 let infoSpy: ReturnType<typeof vi.spyOn>;
 

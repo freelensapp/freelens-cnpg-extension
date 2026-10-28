@@ -20,6 +20,12 @@ without its non-regression tests is not done (see
 - Fixtures are hand-written from the CRD schemas and from objects observed
   on the test cluster, never copied from other projects' code or docs
   verbatim.
+- Vitest 5, Node environment by default; a test that renders React opts
+  into jsdom with `// @vitest-environment jsdom`. Tests import `describe`,
+  `it`, `expect` and `vi` from `vitest`. `@freelensapp/extensions` is
+  aliased to `test/freelens-extensions.ts`, a runtime stub of the surface
+  the tests use; the tests are type-checked against the real declaration
+  (`pnpm type:check:tests`).
 
 ### 2. Integration tests (existing harness, `integration/`)
 
