@@ -1,6 +1,6 @@
 # SPEC-0032: Creation forms: server validation, parameter presets, recovery from an object store, image catalogs
 
-- **Status:** Draft
+- **Status:** Approved
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1` (Barman Cloud plugin `v0.15.1`)
 - **Author / date:** freelensapp core team, 2026-10-28

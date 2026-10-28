@@ -1,6 +1,6 @@
 # SPEC-0038: Diagnostic report of a cluster
 
-- **Status:** Draft
+- **Status:** Approved
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28

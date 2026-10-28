@@ -109,7 +109,7 @@ real Freelens and reads it back from the cluster.
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Port to the Freelens v2 extension API: stack, build, source, tests on the template's harness, workflows | [SPEC-0030](../specs/SPEC-0030-m8-port-to-freelens-v2.md) | Draft |
+| Port to the Freelens v2 extension API: stack, build, source, tests on the template's harness, workflows | [SPEC-0030](../specs/SPEC-0030-m8-port-to-freelens-v2.md) | Approved |
 
 ### M9 - Beyond the other user interfaces
 
@@ -118,15 +118,15 @@ kind cluster, the `kubectl cnpg` plugin and the k9s plugin (CloudNativePG v1.30.
 
 | Feature | Spec | Status |
 | --- | --- | --- |
-| Connect section from the application Secret, and a local port forwarded to a service | [SPEC-0031](../specs/SPEC-0031-m9-connect-and-port-forward.md) | Draft |
-| Creation forms: server-side validation, parameter presets, recovery from an object store's recovery window, image catalogs | [SPEC-0032](../specs/SPEC-0032-m9-creation-forms-validation-presets-recovery-catalogs.md) | Draft |
-| Live view: multixact age, extension updates, checkpoints per instance, write, flush and replay lag per standby | [SPEC-0033](../specs/SPEC-0033-m9-live-view-wraparound-checkpoints-lags.md) | Draft |
-| Storage table, bootstrap and join jobs, replica clusters, role client certificates, counts of the cluster list | [SPEC-0034](../specs/SPEC-0034-m9-storage-jobs-replica-clusters-role-certificates-counts.md) | Draft |
-| PostgreSQL configuration and HBA rules of the primary | [SPEC-0035](../specs/SPEC-0035-m9-postgresql-configuration-and-hba.md) | Draft |
-| Operator page: install guide, plugin capabilities, Klio | [SPEC-0036](../specs/SPEC-0036-m9-operator-install-guide-plugins-klio.md) | Draft |
-| Pooler pause and resume, maintenance window, destroy an instance | [SPEC-0037](../specs/SPEC-0037-m9-pooler-pause-maintenance-window-destroy-instance.md) | Draft |
-| Diagnostic report of a cluster | [SPEC-0038](../specs/SPEC-0038-m9-diagnostic-report.md) | Draft |
-| Links to Grafana dashboards | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md) | Draft |
+| Connect section from the application Secret, and a local port forwarded to a service | [SPEC-0031](../specs/SPEC-0031-m9-connect-and-port-forward.md) | Approved |
+| Creation forms: server-side validation, parameter presets, recovery from an object store's recovery window, image catalogs | [SPEC-0032](../specs/SPEC-0032-m9-creation-forms-validation-presets-recovery-catalogs.md) | Approved |
+| Live view: multixact age, extension updates, checkpoints per instance, write, flush and replay lag per standby | [SPEC-0033](../specs/SPEC-0033-m9-live-view-wraparound-checkpoints-lags.md) | Approved |
+| Storage table, bootstrap and join jobs, replica clusters, role client certificates, counts of the cluster list | [SPEC-0034](../specs/SPEC-0034-m9-storage-jobs-replica-clusters-role-certificates-counts.md) | Approved |
+| PostgreSQL configuration and HBA rules of the primary | [SPEC-0035](../specs/SPEC-0035-m9-postgresql-configuration-and-hba.md) | Approved |
+| Operator page: install guide, plugin capabilities, Klio | [SPEC-0036](../specs/SPEC-0036-m9-operator-install-guide-plugins-klio.md) | Approved |
+| Pooler pause and resume, maintenance window, destroy an instance | [SPEC-0037](../specs/SPEC-0037-m9-pooler-pause-maintenance-window-destroy-instance.md) | Approved |
+| Diagnostic report of a cluster | [SPEC-0038](../specs/SPEC-0038-m9-diagnostic-report.md) | Approved |
+| Links to Grafana dashboards | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md) | Approved |
 
 ### Cross-cutting
 

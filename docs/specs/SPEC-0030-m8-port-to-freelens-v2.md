@@ -1,6 +1,6 @@
 # SPEC-0030: Port to the Freelens v2 extension API
 
-- **Status:** Draft
+- **Status:** Approved
 - **Milestone:** `M8` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1` (Barman Cloud plugin `v0.15.1`)
 - **Author / date:** freelensapp core team, 2026-10-28
