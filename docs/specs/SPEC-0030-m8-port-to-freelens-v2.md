@@ -121,5 +121,12 @@ each is read back on the kind cluster before and after the port.
 - **The E2E suite on v2 (feature C, then E).** The scenarios run on the template's harness: Vitest
   attaches over CDP to Freelens dev (`integration/`, `vitest.integration.config.ts`,
   `pnpm test:integration`), with the lab's kubeconfig only, refused when it names a server that is not
-  local. The write cases of M6 and M7 moved first (`cnpg-writes.tests.ts`); a `409` on a cluster, the
-  conflict of W6 that the action retries, is not counted as an error of the run.
+  local. The write cases of M6 and M7 moved first (`cnpg-writes.tests.ts`), then the terminal and the
+  logs (`cnpg-terminal-logs.tests.ts`); a `409` on a cluster, the conflict of W6 that the action
+  retries, is not counted as an error of the run.
+- **psql and the logs (feature D).** Unchanged on v2. On a fresh profile the host downloads its kubectl
+  for the cluster's version before the terminal starts, and the command the extension sends waits for
+  the shell (freelensapp/freelens#2817): psql reaches its prompt on the primary and on a standby. The
+  Logs page follows, pauses and filters, and its door opens the host's log viewer (`logTabStore`) on
+  the primary. The tab of psql is titled `psql: <pod> (2)` because the host numbers the terminal
+  tabs after its own, as in 1.10.3.

@@ -13,8 +13,9 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import * as cluster from "./cnpg-cluster";
 import { appReady, connectApp, dismissNotifications, installExtension, openLabCluster } from "./cnpg-session";
+import { scrollIntoView, tableRowName, waitUntil } from "./cnpg-steps";
 
-import type { Frame, Locator } from "playwright";
+import type { Frame } from "playwright";
 
 import type { AppSession } from "./cnpg-session";
 
@@ -50,41 +51,6 @@ async function pickInSelect(frame: Frame, id: string, value: string): Promise<vo
   await picker.waitFor({ state: "visible", timeout: 60_000 });
   await picker.fill(value);
   await picker.press("Enter");
-}
-
-/** The name cell of a list row: clicking it opens the drawer without hitting a link in another cell. */
-function tableRowName(frame: Frame, name: string) {
-  return frame.locator(".TableRow", { hasText: name }).first().locator(".TableCell", { hasText: name }).first();
-}
-
-/** Reads a value until it satisfies the predicate: the live view fills in as the instances answer. */
-async function waitUntil<T>(read: () => Promise<T>, accept: (value: T) => boolean, timeout = 60_000): Promise<T> {
-  const deadline = Date.now() + timeout;
-  let value = await read();
-
-  while (!accept(value) && Date.now() < deadline) {
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    value = await read();
-  }
-
-  return value;
-}
-
-/**
- * Scrolls to an element that a re-render may replace under the call: the drawers redraw their lists when a
- * watch event lands, and `scrollIntoViewIfNeeded` gives up on a node that detached instead of resolving the
- * locator again. Each attempt resolves it afresh.
- */
-async function scrollIntoView(locator: Locator, attempts = 5): Promise<void> {
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      await locator.scrollIntoViewIfNeeded();
-      return;
-    } catch (error) {
-      if (attempt >= attempts || !/not attached|detached|not stable/i.test(String(error))) throw error;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-  }
 }
 
 describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: the writes on the lab cluster", () => {
