@@ -10,9 +10,10 @@
 // `*.tests.ts`, so Vitest does not collect it as a test file.
 
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import * as path from "node:path";
-import { EXTENSION_NAME, labContext, labKubeconfig, labKubeconfigProblem } from "./cnpg-session";
+import { EXTENSION_NAME, labContext, labKubeconfig, labKubeconfigProblem, repoRoot } from "./cnpg-session";
 
 import type { Frame, Locator } from "playwright";
 
@@ -20,6 +21,26 @@ import type { Frame, Locator } from "playwright";
 export const E2E_CLUSTER_NAME = process.env.E2E_CLUSTER_NAME || "cnpg-e2e";
 export const E2E_KUBE_CONTEXT = labContext;
 export const E2E_NAMESPACE = process.env.E2E_NAMESPACE || "cnpg-e2e";
+
+/**
+ * A version the lab was created with: the environment variable of the same
+ * name, or its default in `e2e/scripts/lib.sh`, so that a bump of the lab is a
+ * bump of the cases.
+ */
+function labVersion(name: string): string {
+  const pattern = new RegExp(`^${name}="\\$\\{${name}:-([^}"]+)\\}"`, "m");
+  const value =
+    process.env[name] || readFileSync(path.join(repoRoot, "e2e", "scripts", "lib.sh"), "utf8").match(pattern)?.[1];
+
+  if (!value) throw new Error(`No ${name} in e2e/scripts/lib.sh`);
+
+  return value;
+}
+
+/** The CloudNativePG operator of the lab, as its instances report it (`1.30.1`). */
+export const CNPG_VERSION = labVersion("CNPG_VERSION");
+/** The Barman Cloud plugin of the lab, without the `v` of its tag, as the operator reports it (`0.15.1`). */
+export const BARMAN_PLUGIN_VERSION = labVersion("BARMAN_PLUGIN_VERSION").replace(/^v/, "");
 
 const ELEMENT_TIMEOUT = 60 * 1000;
 /** What Escape gets before `closeDetails` reaches for the drawer's close icon. */

@@ -87,9 +87,9 @@ each is read back on the kind cluster before and after the port.
 - Built output: no `require(` or `global.` host reference, no bare host module import, no Node
   builtin in the renderer, no unlowered decorator, one CSS file next to the renderer entry,
   `dist/main.js` loads in Node with a stand-in host.
-- E2E: the scenarios of `cnpg-e2e.tests.ts` (65 cases) and the pre-review pass green against Freelens
-  dev of freelensapp/freelens `main` (then `v2.0.0`), on the kind cluster of `pnpm e2e:cluster:up`,
-  locally and in CI.
+- E2E: the 52 scenarios of `cnpg-e2e.tests.ts` of 1.0.0 (now `integration/__tests__/cnpg-*.tests.ts`)
+  and the pre-review pass green against Freelens dev of freelensapp/freelens `main` (then `v2.0.0`), on
+  the kind cluster of `pnpm e2e:cluster:up`, locally and in CI.
 - Baseline: every page, drawer, dialog and form in both themes against the screenshots of 1.0.0 on
   Freelens 1.10.3 on the same cluster; differences listed in "Notes and deviations".
 - Manual verification: the development loop (directory install, a rebuild reloads once), a cluster
@@ -122,8 +122,18 @@ each is read back on the kind cluster before and after the port.
   attaches over CDP to Freelens dev (`integration/`, `vitest.integration.config.ts`,
   `pnpm test:integration`), with the lab's kubeconfig only, refused when it names a server that is not
   local. The write cases of M6 and M7 moved first (`cnpg-writes.tests.ts`), then the terminal and the
-  logs (`cnpg-terminal-logs.tests.ts`); a `409` on a cluster, the conflict of W6 that the action
-  retries, is not counted as an error of the run.
+  logs (`cnpg-terminal-logs.tests.ts`), then the views (`cnpg-views.tests.ts`) and the pre-review pass
+  (`pre-review.tests.ts`, out of the default run): the 52 scenarios of 1.0.0, unchanged but for the
+  bootstrap, the theme switch and the versions. A `409` on a cluster, the conflict of W6 that the
+  action retries, is not counted as an error of the run. The versions the cases expect (operator,
+  Barman Cloud plugin) come from `e2e/scripts/lib.sh`, now at CloudNativePG 1.30.1 and the plugin
+  v0.15.1. `pnpm e2e:freelens` (`e2e/scripts/freelens-dev.sh`) starts Freelens dev on a fresh profile
+  that syncs the lab's kubeconfig alone; `pnpm e2e` and `run-suite.sh`, which ran the suite inside a
+  Freelens 1.x checkout, are gone. The integration workflow is proposed in `github-workflow-fix/`
+  and replaces `e2e-tests.yaml` and `integration-tests.yaml`.
+- **The themes of the pre-review (feature E).** The theme switch is checked on the cluster frame
+  (`theme-light` on its body). In 1.0.0 the dark walk ran on the default theme of the profile, the
+  light one, so its "dark" screenshots were light and the dark theme was never reviewed by the pass.
 - **psql and the logs (feature D).** Unchanged on v2. On a fresh profile the host downloads its kubectl
   for the cluster's version before the terminal starts, and the command the extension sends waits for
   the shell (freelensapp/freelens#2817): psql reaches its prompt on the primary and on a standby. The

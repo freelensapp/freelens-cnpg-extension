@@ -8,6 +8,8 @@ export default defineConfig({
     name: "integration",
     environment: "node",
     include: ["integration/__tests__/**/*.tests.ts"],
+    // The pre-review pass (SPEC-0008) runs on its own, through `pnpm pre-review`.
+    exclude: process.env.CNPG_PRE_REVIEW === "1" ? [] : ["integration/__tests__/pre-review.tests.ts"],
     // One app, one session at a time: the sessions install the extension and
     // write to one cluster.
     fileParallelism: false,

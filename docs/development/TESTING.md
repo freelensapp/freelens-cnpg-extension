@@ -27,20 +27,19 @@ without its non-regression tests is not done (see
   the tests use; the tests are type-checked against the real declaration
   (`pnpm type:check:tests`).
 
-### 2. Integration tests (existing harness, `integration/`)
+### 2. Integration tests (Vitest over CDP, `integration/`, `pnpm test:integration`)
 
-The harness downloads a real Freelens, installs the built extension, and
-drives it (`integration/__tests__/extensions.tests.ts`: the extension
-installs, is listed as enabled, and activates without errors). Keep it green
-on every PR.
-
-Both this suite and the E2E one run **inside a checkout of
-`freelensapp/freelens`**: their files are copied next to the Freelens ones,
-under `integration/__tests__` and `integration/helpers`, and are run by the
-Freelens `test:integration` script, which owns the Playwright/Electron launch
-helpers (`../helpers/utils`). That is why relative imports of `../helpers/*`
-resolve when the tests run but not inside this repository, and why
-`integration/` is outside the `tsconfig.json` include list.
+The harness of the extension template: Vitest attaches over the Chrome
+DevTools Protocol (port 9223) to Freelens dev, `pnpm dev` of a checkout of
+`freelensapp/freelens` started by `pnpm e2e:freelens`, installs this checkout
+in place from the Extensions page and drives the renderer with Playwright.
+`integration/__tests__/extensions.tests.ts` reinstalls the extension and
+checks that it activates without errors; the scenarios of layer 3 run in the
+same sessions. The files live in this repository and are type-checked with
+it (`pnpm type:check:integration`); `vitest.integration.config.ts` runs them
+one file at a time. A session collects the errors of the renderer console
+and of the main log (`FREELENS_MAIN_LOG`, the output of `pnpm dev`) and
+fails on any of them, except the `409` of a cluster that rule W6 retries.
 
 ### 3. E2E tests (Playwright, against a kind cluster with the real operator)
 
@@ -57,10 +56,9 @@ certificate), and every such fixture says so in a comment.
 #### Prerequisites
 
 - A running Docker daemon, plus `kind` and `kubectl` on `PATH`.
-- A checkout of `freelensapp/freelens` in `./freelens` (gitignored), with the
-  app already built (`pnpm build` and the electron-builder step, as in
-  `.github/workflows/e2e-tests.yaml`). Point `FREELENS_DIR` elsewhere to use
-  another checkout.
+- A checkout of `freelensapp/freelens` next to this one (`../freelens`), with
+  its dependencies installed and `pnpm build:resources` run once. Point
+  `FREELENS_DIR` elsewhere to use another checkout.
 
 #### Commands
 
@@ -68,9 +66,9 @@ certificate), and every such fixture says so in a comment.
 | ----------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `pnpm e2e:cluster:up`   | Creates the cluster, installs the CSI hostpath driver with the snapshot controller, cert-manager, the operator, the Barman Cloud plugin and the object store, applies the fixture clusters (one of them on the CSI storage class, with a cold volume snapshot backup) and waits for them to be ready |
 | `pnpm e2e:cluster:down` | Deletes the cluster and its kubeconfig                                                                                                                                                                                                                                                               |
-| `pnpm e2e`              | Cluster up, run the suite, cluster down                                                                                                                                                                                                                                                              |
+| `pnpm e2e:freelens`     | Writes a fresh profile under `/tmp` that syncs the cluster's kubeconfig alone and starts Freelens dev on it (`--profile-only` writes the profile only, for CI)                                                                                                                                       |
+| `pnpm test:integration` | Runs the scenarios against the running Freelens dev and the cluster; a session skips with a warning when either is missing, and fails in CI                                                                                                                                                          |
 
-`E2E_KEEP_CLUSTER=1 pnpm e2e` leaves the cluster running for inspection.
 `pnpm e2e:cluster:up` is idempotent, so it doubles as "re-apply the fixtures".
 
 #### Layout
@@ -92,31 +90,33 @@ certificate), and every such fixture says so in a comment.
   `35-actions.yaml` is apart from all of that: a namespace of its own with a
   two-instance cluster, its object store and a weekly schedule, which
   receives every write of the suite (SPEC-0020), so no write case can change
-  what a read-only case asserts. The write cases run last, read every result
-  back with `kubectl`, and the pre-review pass opens every dialog and closes
-  it without confirming.
+  what a read-only case asserts, whatever order the files run in. The write
+  cases read every result back with `kubectl`, and the pre-review pass opens
+  every dialog and closes it without confirming.
   `fixtures/status/` holds the few status patches for states the operator
   cannot produce on demand. Each fixture is chosen to cover a state its
   views distinguish, so the suite can assert both branches.
-- `e2e/__tests__/cnpg-e2e.tests.ts` - the suite: it installs the packed
-  extension, connects the cluster, points the namespace filter at the
-  fixture namespace, then opens every page and asserts the fixture rows,
-  one detail panel per kind, the overview tiles and the live view panels.
+- `integration/__tests__/` - the scenarios: `cnpg-views.tests.ts` (the
+  cluster connects, the pod proxy answers, then every page, drawer and
+  chart against the fixtures and what the instances say),
+  `cnpg-terminal-logs.tests.ts` (psql, the Logs page), `cnpg-writes.tests.ts`
+  (every write and form, read back), and `pre-review.tests.ts` (layer 4).
+  `cnpg-session.ts` attaches, installs and opens the cluster;
+  `cnpg-cluster.ts`, `cnpg-steps.ts` and `cnpg-design-checks.ts` hold the
+  shared steps. The versions the cases expect come from `lib.sh`.
 
 The details of this layer are specified in SPEC-0002 and evolve with it.
 
 #### What the suite never touches
 
 - The developer's `~/.kube/config`: `kind` writes to a dedicated kubeconfig
-  under `.e2e/`, and the suite copies it into the sandboxed Freelens user
-  data directory (`<FREELENS_INTEGRATION_TESTING_DIR>/Freelens/kubeconfigs`),
-  which Freelens always watches.
-- The Freelens checkout's own tests: our files are copied in under their own
-  names and selected by name when the runner starts.
-- Any cluster other than the disposable one it created.
+  under `.e2e/`, the profile of `pnpm e2e:freelens` syncs that file alone,
+  and the cases read the cluster back with `kubectl --kubeconfig` on it.
+- Any cluster other than the disposable one it created: a kubeconfig that
+  names a server other than a local one is refused, by the script and by
+  the sessions.
 
-Runs in CI on every PR through `.github/workflows/e2e-tests.yaml` once
-SPEC-0002 lands.
+Runs in CI on every PR through `.github/workflows/integration-tests.yaml`.
 
 ### 4. Agent-driven testing during development, and the pre-review pass
 
@@ -131,7 +131,9 @@ Before every human milestone review session, the same machinery runs as the
 every drawer, both themes, screenshots plus DOM asserts of the statically
 checkable [DESIGN.md](DESIGN.md) rules, with a report handed to the
 reviewer. The human session covers only judgment calls and what cannot be
-automated.
+automated. It runs on the demo cluster of `pnpm demo:up`, with Freelens dev on
+its kubeconfig (`E2E_CLUSTER_NAME=cnpg-demo E2E_STATE_DIR=.demo pnpm
+e2e:freelens`), and is left out of `pnpm test:integration`.
 
 Nothing is verified only once: every check of the pass that can be
 codified graduates into the E2E suite (layer 3) as a permanent

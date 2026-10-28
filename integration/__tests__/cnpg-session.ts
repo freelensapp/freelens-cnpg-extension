@@ -311,3 +311,50 @@ export async function openLabCluster(session: AppSession): Promise<Frame> {
   await frame.waitForSelector(`[data-testid="link-for-sidebar-item-${sanitizedExtensionId}-cnpg"]`, clusterTimeout);
   return frame;
 }
+
+export type ColorTheme = "Dark" | "Light";
+
+/**
+ * Switches the app-wide color theme on the Application tab of the preferences,
+ * goes back to `returnTo`, and waits until `frame` paints with the theme: the
+ * pre-review of 1.0.0 took its "dark" screenshots on the light theme because
+ * nothing checked that the switch had happened.
+ */
+export async function setColorTheme(
+  { window }: AppSession,
+  theme: ColorTheme,
+  { frame, returnTo }: { frame?: Frame; returnTo?: string } = {},
+) {
+  const back = returnTo ?? new URL(window.url()).pathname;
+
+  await navigate(window, "/preferences/app");
+  // The options menu of the host select re-renders while the page settles: the pick is retried, reopening it.
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      await window.locator("#theme-input").click(viewTimeout);
+      await window.locator(".Select__option", { hasText: new RegExp(`^${theme}$`) }).click({ timeout: 10_000 });
+      lastError = undefined;
+      break;
+    } catch (error) {
+      lastError = error;
+      await window
+        .locator("[data-preference-tab-link-test=app]")
+        .click()
+        .catch(() => {});
+      await window.waitForTimeout(1000);
+    }
+  }
+  await navigate(window, back);
+  if (lastError) throw lastError;
+
+  const light = theme === "Light";
+  for (const target of [window, ...(frame ? [frame] : [])]) {
+    await target.waitForFunction(
+      (expected) => globalThis.document.body.classList.contains("theme-light") === expected,
+      light,
+      viewTimeout,
+    );
+  }
+}

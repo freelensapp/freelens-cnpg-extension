@@ -8,17 +8,20 @@
 // extension on both themes, checks the rules of DESIGN.md a machine can check,
 // compares what the views say with what the instances say, and writes
 // REPORT.md next to the screenshots: what passed, what failed, and what is
-// left to human judgment. It is not part of the CI: what it proves for good
-// graduates into `cnpg-e2e.tests.ts`.
+// left to human judgment. It is not part of `pnpm test:integration` nor of the
+// CI (vitest.integration.config.ts leaves it out unless CNPG_PRE_REVIEW=1):
+// what it proves for good graduates into the scenarios.
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import * as cluster from "../helpers/cnpg-cluster";
-import * as checks from "../helpers/cnpg-design-checks";
-import * as cnpg from "../helpers/cnpg-extension";
-import * as utils from "../helpers/utils";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import * as cluster from "./cnpg-cluster";
+import * as checks from "./cnpg-design-checks";
+import { appReady, connectApp, installExtension, openLabCluster, setColorTheme } from "./cnpg-session";
 
-import type { ElectronApplication, Frame, Page } from "playwright";
+import type { Frame } from "playwright";
+
+import type { AppSession } from "./cnpg-session";
 
 const TIMEOUT = 15 * 60 * 1000;
 const ARTIFACTS_DIR = process.env.E2E_ARTIFACTS_DIR || path.join(process.cwd(), "e2e-artifacts", "pre-review");
@@ -60,13 +63,10 @@ async function fetchJson<T>(frame: Frame, target: string): Promise<T> {
   return JSON.parse(body) as T;
 }
 
-describe("pre-review pass of the CloudNativePG extension", () => {
-  let app: ElectronApplication;
-  let window: Page;
+describe.skipIf(!(await appReady({ cluster: true })))("pre-review pass of the CloudNativePG extension", () => {
+  let session: AppSession;
   let frame: Frame;
-  let cleanup: undefined | (() => Promise<void>);
 
-  const errorCollector = cnpg.createErrorCollector();
   const outcomes: Outcome[] = [];
   const screenshots: string[] = [];
 
@@ -711,17 +711,9 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     }
 
     fs.mkdirSync(ARTIFACTS_DIR, { recursive: true });
-    errorCollector.start();
-    ({ app, window, cleanup } = await utils.start());
-    errorCollector.watch(window);
-
-    const kubeconfig = await cluster.publishKubeconfig();
-
-    await utils.clickWelcomeButton(window);
-    await cnpg.installExtension(app, window);
-    await cnpg.dismissNotifications(window);
-    await cnpg.navigateToCatalog(app);
-    frame = await cluster.openClusterFromCatalog(window, kubeconfig);
+    session = await connectApp();
+    await installExtension(session);
+    frame = await openLabCluster(session);
 
     // The namespace filter lives in the header of the list pages and every view
     // follows it: the fixtures' namespace is selected once, before the walk.
@@ -766,13 +758,15 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     ].join("\n");
 
     fs.writeFileSync(path.join(ARTIFACTS_DIR, "REPORT.md"), report);
-    await cleanup?.();
-    errorCollector.stop(window);
+    await session?.close();
   }, TIMEOUT);
 
   it(
     "walks every view on the dark theme and checks the rules of DESIGN.md",
     async () => {
+      // The theme is set, and checked on the cluster frame: in 1.0.0 the dark walk ran on the default theme of the
+      // profile, which was the light one.
+      await setColorTheme(session, "Dark", { frame });
       await record("Every page and drawer renders on the dark theme", () => walk("dark"));
 
       for (const [menuId, title] of [
@@ -1626,11 +1620,11 @@ describe("pre-review pass of the CloudNativePG extension", () => {
   it(
     "walks every view on the light theme",
     async () => {
-      await cnpg.setColorTheme(app, window, "Light");
+      await setColorTheme(session, "Light", { frame });
       try {
         await record("Every page and drawer renders on the light theme", () => walk("light"));
       } finally {
-        await cnpg.setColorTheme(app, window, "Dark");
+        await setColorTheme(session, "Dark", { frame });
       }
     },
     TIMEOUT,
@@ -1640,7 +1634,7 @@ describe("pre-review pass of the CloudNativePG extension", () => {
     "saw no console error and no failed request during the walk",
     async () => {
       await record("No console error and no failed request", () => {
-        expect(errorCollector.errors()).toEqual([]);
+        expect(session.errors()).toEqual([]);
       });
     },
     TIMEOUT,

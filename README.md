@@ -364,18 +364,21 @@ publications and subscriptions, some of them failing on purpose. The
 
 ### E2E suite and pre-review pass
 
-The E2E suite drives the packaged extension in a Freelens build against the
-same kind cluster; the pre-review pass walks every view on both themes,
-checks the rules of DESIGN.md a machine can check, and leaves the screenshots
-and a report under `e2e-artifacts/`. Both need a Freelens checkout, see
-[TESTING.md](docs/development/TESTING.md).
+The E2E scenarios drive this checkout, installed in place in Freelens dev,
+against a kind cluster of the same kind; the pre-review pass walks every view
+on both themes, checks the rules of DESIGN.md a machine can check, and leaves
+the screenshots and a report under `e2e-artifacts/`. Both need a Freelens
+checkout next to this one, see [TESTING.md](docs/development/TESTING.md).
 
 ```sh
 pnpm e2e:cluster:up
-pnpm e2e
-pnpm pre-review
+pnpm e2e:freelens        # in another terminal: Freelens dev on the cluster
+pnpm test:integration
 pnpm e2e:cluster:down
 ```
+
+The pre-review pass (`pnpm pre-review`) runs on the demo cluster, with Freelens
+dev started on it as TESTING.md describes.
 
 ## Build from the source
 

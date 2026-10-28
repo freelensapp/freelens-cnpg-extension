@@ -2,7 +2,8 @@
 #
 # Shared settings and helpers for the CloudNativePG E2E scripts.
 #
-# Sourced by cluster-up.sh, cluster-down.sh, run-suite.sh and e2e.sh. This file
+# Sourced by the scripts of e2e/scripts, and read by the integration helpers
+# for the versions of the lab (integration/__tests__/cnpg-cluster.ts). This file
 # is not executable on its own.
 #
 # SC2034 is disabled for the whole file: everything defined here is read by the
@@ -13,8 +14,8 @@
 # The operator, cert-manager and the Barman Cloud plugin are applied from their
 # release manifests at these versions; nothing is vendored into this repository
 # (see docs/development/ARCHITECTURE.md and SPEC-0002).
-CNPG_VERSION="${CNPG_VERSION:-1.30.0}"                    # datasource=github-releases depName=cloudnative-pg/cloudnative-pg
-BARMAN_PLUGIN_VERSION="${BARMAN_PLUGIN_VERSION:-v0.15.0}" # datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
+CNPG_VERSION="${CNPG_VERSION:-1.30.1}"                    # datasource=github-releases depName=cloudnative-pg/cloudnative-pg
+BARMAN_PLUGIN_VERSION="${BARMAN_PLUGIN_VERSION:-v0.15.1}" # datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.2}"   # datasource=github-releases depName=cert-manager/cert-manager
 # The in-cluster S3 object store of the fixtures: SeaweedFS, one process with
 # its S3 gateway, published for amd64 and arm64 (the E2E runners are arm64).
