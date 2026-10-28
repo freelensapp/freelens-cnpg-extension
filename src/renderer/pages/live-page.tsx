@@ -129,12 +129,15 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
           // A hibernated cluster has no instances to read: not a single request leaves.
           if (Cluster.getHibernation(current)) return [];
           const ns = current.getNs() ?? "";
-          return instanceFacts(current).map((instance) => ({
-            namespace: ns,
-            pod: instance.name,
-            statusScheme: statusScheme(podsStore.getByName(instance.name, ns)),
-            metricsScheme: metricsScheme(current),
-          }));
+          return instanceFacts(current).map((instance) => {
+            const pod = podsStore.getByName(instance.name, ns);
+            return {
+              namespace: ns,
+              pod: instance.name,
+              statusScheme: pod ? statusScheme(pod) : undefined,
+              metricsScheme: metricsScheme(current),
+            };
+          });
         },
         sample: (readings) => {
           const view = buildLiveView(liveInput(latest.current, readings));

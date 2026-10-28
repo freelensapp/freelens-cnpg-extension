@@ -202,6 +202,36 @@ describe("LivePoller", () => {
     poller.stop();
   });
 
+  it("does not read the status of a pod it does not know yet, and reads it once the pod is known", async () => {
+    // The scheme of the status port comes from the pod (`--status-port-tls`): before the pods are loaded a read
+    // would guess, and a plain request on the TLS port comes back as a 400 in the console of the renderer.
+    let known = false;
+    const targets = (): PollTarget[] =>
+      TARGETS.map((target) => ({ ...target, statusScheme: known ? target.statusScheme : undefined }));
+    const { client, calls } = fakeClient();
+    const { visibility } = fakeVisibility();
+    const poller = new LivePoller({ client, targets, visibility });
+
+    poller.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(calls.sort()).toEqual(["metrics:pg-1", "metrics:pg-2"]);
+    expect(poller.readings.get("pg-1")?.status).toBeUndefined();
+
+    calls.length = 0;
+    known = true;
+    await vi.advanceTimersByTimeAsync(STATUS_INTERVAL_MS);
+    expect(calls.sort()).toEqual(["status:pg-1", "status:pg-2"]);
+    expect(poller.readings.get("pg-1")?.status).toMatchObject({ ok: true, value: { isPrimary: true } });
+
+    // Skipping is not failing: no backoff was armed while the pod was unknown.
+    for (let round = 0; round < FAILURES_BEFORE_BACKOFF; round++) {
+      calls.length = 0;
+      await vi.advanceTimersByTimeAsync(STATUS_INTERVAL_MS);
+      expect(calls.filter((call) => call.startsWith("status:"))).toHaveLength(2);
+    }
+    poller.stop();
+  });
+
   it("drops the answers that arrive after the page went away, and unsubscribes", async () => {
     let release: (() => void) | undefined;
     const { client } = fakeClient({

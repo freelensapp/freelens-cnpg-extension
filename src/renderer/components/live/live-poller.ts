@@ -27,7 +27,12 @@ export const BACKOFF_INTERVAL_MS = 30_000;
 export interface PollTarget {
   namespace: string;
   pod: string;
-  statusScheme: ProxyScheme;
+  /**
+   * The scheme of the status port, which only the pod tells (`--status-port-tls`). Undefined while the pod is not
+   * known yet: the status is not read in that round rather than read with a guess, which the API server answers
+   * with a 400 in the console of the renderer.
+   */
+  statusScheme?: ProxyScheme;
   metricsScheme: ProxyScheme;
 }
 
@@ -175,15 +180,20 @@ export class LivePoller {
 
   private async read(endpoint: Endpoint, target: PollTarget): Promise<void> {
     const key = `${target.namespace}/${target.pod}:${endpoint}`;
+    const { namespace, pod, statusScheme, metricsScheme } = target;
+    const request =
+      endpoint === "metrics"
+        ? () => this.client.getMetrics(namespace, pod, metricsScheme)
+        : statusScheme
+          ? () => this.client.getStatus(namespace, pod, statusScheme)
+          : undefined;
+    if (!request) return;
     if (this.inFlight.has(key)) return;
     if ((this.nextAllowed.get(key) ?? 0) > this.now()) return;
 
     this.inFlight.add(key);
     try {
-      const result =
-        endpoint === "status"
-          ? await this.client.getStatus(target.namespace, target.pod, target.statusScheme)
-          : await this.client.getMetrics(target.namespace, target.pod, target.metricsScheme);
+      const result = await request();
       // The page went away while the request was out: nobody wants the answer.
       if (!this.unsubscribe) return;
 

@@ -313,3 +313,12 @@ module cannot even express them). Polling stops when nobody is looking.
   report lists: the psql terminal on Windows and Linux desktops, the live view
   with a kubeconfig without `pods/proxy`, the live view against a busy
   database for ten minutes.
+- 2026-10-28, with the port to Freelens v2 (SPEC-0030, feature E): the first
+  read of `/pg/status` of each instance went out over `http` before the pods
+  were loaded, since only the pod tells the scheme (`--status-port-tls`); the
+  API server answered `400` and the console of the renderer logged three
+  errors per opening of the Live View before the client switched to `https`.
+  The poller now leaves out the status of a pod it does not know yet and reads
+  it at the next round (5 s at most), without counting a failure; the metrics,
+  whose scheme comes from the cluster, are read at once. Unit:
+  `live-poller.test.ts`; the E2E runs of the views end with no console error.
