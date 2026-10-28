@@ -1,4 +1,4 @@
-# Roadmap to v1.0.0
+# Roadmap
 
 Goal for v1.0.0: the most complete and usable graphical interface for
 CloudNativePG, reimplemented from scratch as a Freelens extension that reads
@@ -15,7 +15,10 @@ every PR that starts, completes, or re-scopes a feature.
 - **0.1**: M1 and M2, read-only, plus the test infrastructure. A few things
   done properly: cluster health at a glance, cluster detail, backups, the live
   database view and the psql terminal.
-- **1.0.0**: M1 to M7.
+- **1.0.0**: M1 to M7, for Freelens 1.x.
+- **2.0.0**: M8 and M9, for Freelens 2: the port to the Freelens v2 extension API, and every feature
+  of the other CloudNativePG user interfaces this extension did not have yet, plus the operations of
+  `kubectl cnpg` none of them has.
 
 ## Feature inventory and milestones
 
@@ -101,6 +104,29 @@ of the operator's admission the form can express is enforced inline before
 the submit; the recommended shape is the default and no deprecated field is
 ever generated; nothing ships without a test that creates the object in the
 real Freelens and reads it back from the cluster.
+
+### M8 - Freelens v2
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Port to the Freelens v2 extension API: stack, build, source, tests on the template's harness, workflows | [SPEC-0030](../specs/SPEC-0030-m8-port-to-freelens-v2.md) | Draft |
+
+### M9 - Beyond the other user interfaces
+
+Scope from a feature comparison with the CloudNativePG plugin for Headlamp (v0.1.6) on the same
+kind cluster, the `kubectl cnpg` plugin and the k9s plugin (CloudNativePG v1.30.1).
+
+| Feature | Spec | Status |
+| --- | --- | --- |
+| Connect section from the application Secret, and a local port forwarded to a service | [SPEC-0031](../specs/SPEC-0031-m9-connect-and-port-forward.md) | Draft |
+| Creation forms: server-side validation, parameter presets, recovery from an object store's recovery window, image catalogs | [SPEC-0032](../specs/SPEC-0032-m9-creation-forms-validation-presets-recovery-catalogs.md) | Draft |
+| Live view: multixact age, extension updates, checkpoints per instance, write, flush and replay lag per standby | [SPEC-0033](../specs/SPEC-0033-m9-live-view-wraparound-checkpoints-lags.md) | Draft |
+| Storage table, bootstrap and join jobs, replica clusters, role client certificates, counts of the cluster list | [SPEC-0034](../specs/SPEC-0034-m9-storage-jobs-replica-clusters-role-certificates-counts.md) | Draft |
+| PostgreSQL configuration and HBA rules of the primary | [SPEC-0035](../specs/SPEC-0035-m9-postgresql-configuration-and-hba.md) | Draft |
+| Operator page: install guide, plugin capabilities, Klio | [SPEC-0036](../specs/SPEC-0036-m9-operator-install-guide-plugins-klio.md) | Draft |
+| Pooler pause and resume, maintenance window, destroy an instance | [SPEC-0037](../specs/SPEC-0037-m9-pooler-pause-maintenance-window-destroy-instance.md) | Draft |
+| Diagnostic report of a cluster | [SPEC-0038](../specs/SPEC-0038-m9-diagnostic-report.md) | Draft |
+| Links to Grafana dashboards | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md) | Draft |
 
 ### Cross-cutting
 
