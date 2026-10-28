@@ -78,32 +78,34 @@ This repository is developed spec-first. Before implementing anything, read:
 
 ## Common Commands
 
+Node 24.22.0 (`.nvmrc`, `mise.toml`) and pnpm 12 through Corepack (`packageManager`).
+
 ```bash
-# Type checking
+# Type checking (one program per environment)
 pnpm type:check
 
 # Linting & formatting
-pnpm biome:check          # TypeScript/TSX, JS, JSON, CSS/SCSS, HTML (biome)
+pnpm biome:check          # TypeScript/TSX, JS, JSON, CSS/SCSS, Markdown, YAML (biome)
 pnpm biome:fix            # Auto-fix the formats above
-pnpm trunk:check          # Markdown, YAML, TOML, and other formats not covered by biome
-pnpm trunk:fix            # Auto-fix Markdown, YAML, etc.
+pnpm trunk:check          # The linters Trunk runs on the changed files
 pnpm lint:check           # Alias for biome:check
 pnpm lint:fix             # Alias for biome:fix
+pnpm knip:check           # Unused files and dependencies
 
 # Tests
 pnpm test:unit            # vitest
 
 # Build
-pnpm build                # Full build (type-check + electron-vite)
-pnpm build:production     # Production build (no preserveModules)
+pnpm build                # Vite: dist/renderer.js, dist/renderer.css, dist/main.js
+pnpm dev                  # Rebuild on change; Freelens reloads the extension
 
 # Pack for testing
 pnpm pack:dev             # Bump prerelease version, build, and create .tgz for install in Freelens app
 
 # Clean
-pnpm clean                # Clean out/
+pnpm clean                # Clean dist/
 pnpm clean:dts            # Remove generated *.d.scss.ts files
-pnpm clean:all            # Clean everything (dts, node_modules, out, tgz)
+pnpm clean:all            # Clean everything (dist, dts, node_modules, tgz)
 ```
 
 ## Architecture
