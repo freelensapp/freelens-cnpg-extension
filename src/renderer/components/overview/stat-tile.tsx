@@ -77,7 +77,11 @@ export function HealthPie({ byState }: HealthPieProps) {
             ],
           } as never
         }
-        options={{ maintainAspectRatio: false, tooltips: { enabled: false }, animation: { duration: 0 } } as never}
+        // Chart.js v4 (Freelens 2): the tooltip is a plugin; the host merges `options` shallowly, so this replaces its
+        // tooltip, which would label a slice "undefined: 50%" (the dataset has no label: the tile says it all).
+        options={
+          { maintainAspectRatio: false, plugins: { tooltip: { enabled: false } }, animation: { duration: 0 } } as never
+        }
         showLegend={false}
         width={44}
         height={44}
