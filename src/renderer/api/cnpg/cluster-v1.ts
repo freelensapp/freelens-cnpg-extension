@@ -200,6 +200,8 @@ export interface PluginStatus {
   walCapabilities?: string[];
   backupCapabilities?: string[];
   restoreJobHookCapabilities?: string[];
+  /** New in 1.30.1: what the plugin adds to the configuration of PostgreSQL. */
+  postgresCapabilities?: string[];
 }
 
 export interface TablespaceStatus {

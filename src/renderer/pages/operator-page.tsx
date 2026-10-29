@@ -13,12 +13,15 @@ import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import React from "react";
 import { maybe } from "../../common/utils";
+import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { getLeaseStore } from "../api/core/lease";
 import { createPodProxyClient, failureSentence, OPERATOR_METRICS_PORT } from "../api/instance/pod-proxy";
 import { discoverOperatorNamespaces } from "../api/operator/discover";
 import { humanizeRelative } from "../components/backup-health";
 import { withErrorPage } from "../components/error-page";
+import { capabilityWords, KNOWN_PLUGINS, pluginTitle, pluginUse } from "../components/install-guide";
+import { InstallGuide, useClusterComponents } from "../components/install-guide-view";
 import { formatCount } from "../components/live/format";
 import liveStyles from "../components/live/live.module.scss";
 import { METRICS_INTERVAL_MS } from "../components/live/live-poller";
@@ -184,6 +187,8 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
     const namespaces = discovery?.namespaces ?? [];
     const leaseStore = getLeaseStore();
     const clusterStore = maybe(() => Cluster.getStore<Cluster>());
+    const backupStore = maybe(() => Backup.getStore<Backup>());
+    const components = useClusterComponents();
 
     // The operator's namespace is rarely in the namespace filter: its objects are asked for by name of namespace.
     useReferenceStores(
@@ -197,6 +202,7 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
             { label: "secrets", store: secretsStore, namespaces },
             { label: "leases", store: leaseStore as never, namespaces },
             { label: Cluster.crd.plural, store: clusterStore },
+            { label: Backup.crd.plural, store: backupStore },
             { label: "customresourcedefinitions", store: crdStore },
           ],
     );
@@ -208,6 +214,8 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
     const selected =
       operators.find((item) => `${item.metadata?.namespace}/${item.metadata?.name}` === picked) ?? operators[0];
     const kinds = kindFacts(crdStore.items as unknown as CrdLike[]);
+    const clusters = (clusterStore?.items ?? []) as Cluster[];
+    const backups = (backupStore?.items ?? []) as Backup[];
 
     const facts = selected
       ? operatorFacts({
@@ -223,7 +231,7 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
             (service) => service.metadata?.namespace === facts.namespace,
           ),
           deployments,
-          (clusterStore?.items ?? []) as Cluster[],
+          clusters,
         )
       : [];
     const searching = discovery === undefined || (namespaces.length > 0 && !deploymentStore.isLoaded);
@@ -264,9 +272,14 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
                   The kinds below may still be served by an operator you cannot see.
                 </>
               )}
+              {searching ? null : <InstallGuide components={components} full />}
             </div>
           ) : (
             <div className={styles.cards}>
+              <section className={[styles.card, styles.wide].join(" ")} data-testid="cnpg-operator-installation">
+                <h6 className={styles.cardTitle}>Installation</h6>
+                <InstallGuide components={components} />
+              </section>
               <section className={styles.card} data-testid="cnpg-operator-card">
                 <h6 className={styles.cardTitle}>Operator</h6>
                 <dl className={styles.facts}>
@@ -385,43 +398,97 @@ export const OperatorPage = observer((props: OperatorPageProps) =>
                     No service with the plugin label in {facts.namespace}: the operator found no plugin.
                   </p>
                 ) : (
-                  <Table scrollable={false} sortSyncWithUrl={false} className={styles.table}>
-                    <TableHead flat sticky={false}>
-                      <TableCell className={styles.wide}>Plugin</TableCell>
-                      <TableCell className={styles.name}>Service</TableCell>
-                      <TableCell className={styles.number}>Ready</TableCell>
-                      <TableCell className={styles.wide}>Clusters that loaded it</TableCell>
-                    </TableHead>
-                    {plugins.map((plugin) => (
-                      <TableRow key={plugin.name} nowrap>
-                        <TableCell className={styles.wide}>
-                          <WithTooltip tooltip={plugin.capabilities.join(", ") || undefined}>{plugin.name}</WithTooltip>
-                        </TableCell>
-                        <TableCell className={styles.name}>
-                          <StoreLink store={serviceStore} name={plugin.service} namespace={plugin.namespace} />
-                        </TableCell>
-                        <TableCell className={styles.number}>
+                  plugins.map((plugin) => {
+                    const use = pluginUse(plugin.name, clusters, backups);
+                    const docs = KNOWN_PLUGINS[plugin.name]?.docs;
+                    return (
+                      <div
+                        key={plugin.name}
+                        className={styles.plugin}
+                        data-testid={`cnpg-operator-plugin-${plugin.name}`}
+                      >
+                        <div className={styles.pluginHead}>
+                          <strong>{pluginTitle(plugin.name)}</strong>
+                          <span className={styles.muted}>{plugin.name}</span>
+                          {plugin.version ? <span>{plugin.version}</span> : null}
                           {plugin.ready === undefined ? (
                             <WithTooltip tooltip="No deployment matches the selector of the service">N/A</WithTooltip>
                           ) : (
-                            <Badge small className={plugin.className} label={`${plugin.ready}/${plugin.declared}`} />
+                            <Badge
+                              small
+                              className={plugin.className}
+                              label={`${plugin.ready}/${plugin.declared} ready`}
+                            />
                           )}
-                        </TableCell>
-                        <TableCell className={styles.wide}>
-                          <WithTooltip>
-                            {plugin.clusters.length === 0
-                              ? "None in the selected namespaces"
-                              : plugin.clusters
-                                  .map(
-                                    (user) =>
-                                      `${user.namespace}/${user.name}${user.version ? ` (${user.version})` : ""}`,
-                                  )
-                                  .join(", ")}
-                          </WithTooltip>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </Table>
+                          <StoreLink store={serviceStore} name={plugin.service} namespace={plugin.namespace} />
+                          {docs ? (
+                            <a
+                              href={docs}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                window.open(docs, "_blank", "noopener");
+                              }}
+                            >
+                              Documentation
+                            </a>
+                          ) : null}
+                        </div>
+                        <dl className={styles.facts}>
+                          <dt>Provides</dt>
+                          <dd data-testid={`cnpg-operator-plugin-capabilities-${plugin.name}`}>
+                            {plugin.capabilities.length === 0 ? (
+                              "Not reported by any cluster in the selected namespaces"
+                            ) : (
+                              <ul className={styles.plainList}>
+                                {plugin.capabilities.map((capability) => (
+                                  <li key={capability} title={capability}>
+                                    {capabilityWords(capability)}
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </dd>
+                          {plugin.capabilityGroups.map((group) => (
+                            <React.Fragment key={group.group}>
+                              <dt>{group.group}</dt>
+                              <dd>
+                                <WithTooltip>{group.items.map((item) => capabilityWords(item)).join(", ")}</WithTooltip>
+                              </dd>
+                            </React.Fragment>
+                          ))}
+                          <dt>Used for</dt>
+                          <dd data-testid={`cnpg-operator-plugin-use-${plugin.name}`}>
+                            {use.walArchiving.length + use.backups.length + use.recovery.length === 0 ? (
+                              "Nothing in the selected namespaces"
+                            ) : (
+                              <ul className={styles.plainList}>
+                                {use.walArchiving.length > 0 ? (
+                                  <li>WAL archiving of {use.walArchiving.join(", ")}</li>
+                                ) : null}
+                                {use.backups.length > 0 ? <li>Backups of {use.backups.join(", ")}</li> : null}
+                                {use.recovery.length > 0 ? (
+                                  <li>The source of {use.recovery.join(", ")} (recovery or replica)</li>
+                                ) : null}
+                              </ul>
+                            )}
+                          </dd>
+                          <dt>Clusters that loaded it</dt>
+                          <dd>
+                            <WithTooltip>
+                              {plugin.clusters.length === 0
+                                ? "None in the selected namespaces"
+                                : plugin.clusters
+                                    .map(
+                                      (user) =>
+                                        `${user.namespace}/${user.name}${user.version ? ` (${user.version})` : ""}`,
+                                    )
+                                    .join(", ")}
+                            </WithTooltip>
+                          </dd>
+                        </dl>
+                      </div>
+                    );
+                  })
                 )}
               </section>
             </div>

@@ -96,3 +96,29 @@
 .error {
   color: var(--colorError);
 }
+
+// One block per CNPG-I plugin (SPEC-0036): what it provides and what the clusters use it for.
+.plugin {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+
+  & + & {
+    padding-top: $unit;
+    border-top: 1px solid var(--borderFaintColor);
+  }
+}
+
+.pluginHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: $unit;
+  color: var(--textColorAccent);
+}
+
+.plainList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}

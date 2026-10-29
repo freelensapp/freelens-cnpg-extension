@@ -68,6 +68,7 @@ certificate), and every such fixture says so in a comment.
 | `pnpm e2e:cluster:down` | Deletes the cluster and its kubeconfig                                                                                                                                                                                                                                                               |
 | `pnpm e2e:freelens`     | Writes a fresh profile under `/tmp` that syncs the cluster's kubeconfig alone and starts Freelens dev on it (`--profile-only` writes the profile only, for CI)                                                                                                                                       |
 | `pnpm test:integration` | Runs the scenarios against the running Freelens dev and the cluster; a session skips with a warning when either is missing, and fails in CI                                                                                                                                                          |
+| `pnpm e2e:bare:up`      | Creates `cnpg-bare`, a one-node kind cluster without CloudNativePG, for `cnpg-bare.tests.ts` (the installation guide, SPEC-0036); `pnpm e2e:bare:down` deletes it                                                                                                                                    |
 
 `pnpm e2e:cluster:up` is idempotent, so it doubles as "re-apply the fixtures".
 

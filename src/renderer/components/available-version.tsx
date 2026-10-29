@@ -1,5 +1,6 @@
 import { Common, Renderer } from "@freelensapp/extensions";
 import styles from "./available-version.module.scss";
+import { InstallGuide, useClusterComponents } from "./install-guide-view";
 
 export interface AvailableVersionPageProps {
   extension: Renderer.LensExtension;
@@ -76,9 +77,20 @@ export function createAvailableVersionPage<T extends AvailableVersionPageProps>(
             <p className={styles.unavailableDetails}>
               Tried API versions: <code>{triedVersions}</code>
             </p>
+            <UnavailableGuide />
           </div>
         </div>
       </>
     );
   };
+}
+
+/** The installation guide of SPEC-0036 under the message: a component of its own, so its hook always runs. */
+function UnavailableGuide() {
+  const components = useClusterComponents();
+  return (
+    <div className={styles.unavailableGuide}>
+      <InstallGuide components={components} full />
+    </div>
+  );
 }

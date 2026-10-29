@@ -13,7 +13,7 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  max-width: 500px;
+  max-width: 760px;
   padding: vars.$padding * 3;
 }
 
@@ -41,4 +41,10 @@
     border-radius: 3px;
     font-family: monospace;
   }
+}
+
+// The guide of SPEC-0036 is read top to bottom: left aligned, as wide as the message allows.
+.unavailableGuide {
+  width: 100%;
+  margin-top: calc(vars.$unit * 2);
 }

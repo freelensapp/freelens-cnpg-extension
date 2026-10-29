@@ -11,5 +11,8 @@ declare const classNames: {
   readonly name: "name";
   readonly number: "number";
   readonly error: "error";
+  readonly plugin: "plugin";
+  readonly pluginHead: "pluginHead";
+  readonly plainList: "plainList";
 };
 export = classNames;

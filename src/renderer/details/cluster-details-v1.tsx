@@ -17,6 +17,7 @@ import { FailoverQuorum } from "../api/cnpg/failover-quorum-v1";
 import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
 import { Pooler } from "../api/cnpg/pooler-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
+import { PluginConfiguration as KlioConfiguration } from "../api/klio/plugin-configuration-v1alpha1";
 import { buildHistory, schedulesOfCluster } from "../components/backup-history";
 import { BackupHistoryStrip } from "../components/backup-history-strip";
 import {
@@ -31,6 +32,7 @@ import { withErrorPage } from "../components/error-page";
 import { quorumFacts } from "../components/failover-quorum";
 import { FENCED_INSTANCES_ANNOTATION, parseFenced, UNPARSEABLE_FENCING } from "../components/fencing";
 import { hibernationState, hibernationWords } from "../components/hibernation";
+import { backupPluginWords } from "../components/install-guide";
 import { InstanceBricks } from "../components/instance-bricks";
 import { objectExists } from "../components/object-existence";
 import { openCreatePoolerDialog } from "../components/pooler-create-dialog";
@@ -640,7 +642,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
           <WithTooltip>{archiving.message}</WithTooltip>
         </DrawerItem>
         <DrawerItem name="Backup plugin" hidden={!walArchiver && plugins.length === 0}>
-          <WithTooltip>{(walArchiver ?? plugins[0])?.name}</WithTooltip>
+          <WithTooltip>{backupPluginWords((walArchiver ?? plugins[0])?.name)}</WithTooltip>
+        </DrawerItem>
+        <DrawerItem name="Klio configuration" hidden={!(walArchiver ?? plugins[0])?.parameters?.pluginConfigurationRef}>
+          <StoreLink
+            store={maybe(() => KlioConfiguration.getStore<KlioConfiguration>())}
+            name={(walArchiver ?? plugins[0])?.parameters?.pluginConfigurationRef}
+            namespace={namespace}
+            missing="The PluginConfiguration is not there (or Klio is not installed)"
+          />
         </DrawerItem>
         <DrawerItem name="Object store" hidden={!(walArchiver ?? plugins[0])?.parameters?.barmanObjectName}>
           <StoreLink

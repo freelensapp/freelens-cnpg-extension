@@ -238,6 +238,40 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
     TIMEOUT,
   );
 
+  it(
+    "says on the Operator page that everything is installed, and what each plugin does and is used for (SPEC-0036)",
+    async () => {
+      // The Operator page has no namespace filter: the plugin's use is read in the namespaces the other pages select.
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame);
+      await cluster.openCnpgPage(frame, "cnpg-operator", "Operator");
+
+      const summary = frame.locator('[data-testid="cnpg-operator-installation"] [data-testid="cnpg-install-summary"]');
+
+      await summary.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await textOf(summary)).toBe(
+        "CloudNativePG operator: installed · cert-manager: installed · Barman Cloud plugin: installed",
+      );
+
+      const plugin = frame.locator('[data-testid="cnpg-operator-plugin-barman-cloud.cloudnative-pg.io"]');
+
+      await plugin.waitFor({ state: "visible", timeout: 60_000 });
+      expect(await textOf(plugin)).toContain(
+        `Barman Cloud barman-cloud.cloudnative-pg.io ${cluster.BARMAN_PLUGIN_VERSION}`,
+      );
+      expect(
+        await textOf(frame.locator('[data-testid="cnpg-operator-plugin-capabilities-barman-cloud.cloudnative-pg.io"]')),
+      ).toContain("sidecar: runs a container next to PostgreSQL in every instance");
+      // e2e-main archives to the plugin; e2e-backup-ok was taken with it.
+      expect(
+        await textOf(frame.locator('[data-testid="cnpg-operator-plugin-use-barman-cloud.cloudnative-pg.io"]')),
+      ).toMatch(/WAL archiving of .*cnpg-e2e\/e2e-main.* Backups of .*cnpg-e2e\/e2e-main/);
+      await plugin.scrollIntoViewIfNeeded();
+      await cluster.captureScreenshot(frame, "m9-operator-plugins-dark");
+    },
+    TIMEOUT,
+  );
+
   it("logs no error", () => {
     expect(session.errors()).toEqual([]);
   });

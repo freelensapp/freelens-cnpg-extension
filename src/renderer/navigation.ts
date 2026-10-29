@@ -20,6 +20,8 @@ export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
 export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
 export const OBJECT_STORES_PAGE_ID = "cnpg-backups-objectstores";
+/** The Klio PluginConfiguration objects (SPEC-0036): Klio is an optional backup plugin. */
+export const KLIO_CONFIGURATIONS_PAGE_ID = "cnpg-backups-klioconfigurations";
 export const POOLING_GROUP_ID = "cnpg-pooling";
 export const POOLERS_PAGE_ID = "cnpg-pooling-poolers";
 export const DATABASES_GROUP_ID = "cnpg-databases";

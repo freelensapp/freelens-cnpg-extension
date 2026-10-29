@@ -18,6 +18,7 @@ import { Pooler as PoolerV1 } from "./api/cnpg/pooler-v1";
 import { Publication as PublicationV1 } from "./api/cnpg/publication-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { Subscription as SubscriptionV1 } from "./api/cnpg/subscription-v1";
+import { PluginConfiguration as KlioConfiguration } from "./api/klio/plugin-configuration-v1alpha1";
 import { createAvailableVersionPage } from "./components/available-version";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
@@ -25,6 +26,7 @@ import { DatabaseDetails as DatabaseDetailsV1 } from "./details/database-details
 import { DatabaseRoleDetails as DatabaseRoleDetailsV1 } from "./details/database-role-details-v1";
 import { FailoverQuorumDetails as FailoverQuorumDetailsV1 } from "./details/failover-quorum-details-v1";
 import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
+import { KlioConfigurationDetails } from "./details/klio-configuration-details";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
 import { PoolerDetails as PoolerDetailsV1 } from "./details/pooler-details-v1";
 import { PublicationDetails as PublicationDetailsV1 } from "./details/publication-details-v1";
@@ -54,6 +56,7 @@ import {
   FAILOVER_QUORUMS_PAGE_ID,
   IMAGE_CATALOGS_PAGE_ID,
   IMAGES_GROUP_ID,
+  KLIO_CONFIGURATIONS_PAGE_ID,
   LIVE_PAGE_ID,
   LOGS_PAGE_ID,
   OBJECT_STORES_PAGE_ID,
@@ -77,6 +80,7 @@ import {
   ClusterImageCatalogsPage as ClusterImageCatalogsPageV1,
   ImageCatalogsPage as ImageCatalogsPageV1,
 } from "./pages/image-catalogs-page-v1";
+import { KlioConfigurationsPage } from "./pages/klio-configurations-page";
 import { LivePage } from "./pages/live-page";
 import { LogsPage } from "./pages/logs-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
@@ -153,6 +157,12 @@ const AvailableObjectStoresPage = createAvailableVersionPage(
   "Object stores belong to the Barman Cloud plugin of CloudNativePG, which is optional: it is the supported way to back up and archive WAL to object storage.",
 );
 
+const AvailableKlioConfigurationsPage = createAvailableVersionPage(
+  KlioConfiguration.crd.title,
+  [{ kubeObjectClass: KlioConfiguration, PageComponent: KlioConfigurationsPage, version: "v1alpha1" }],
+  "Klio configurations belong to Klio, an optional CNPG-I backup plugin of CloudNativePG (cloudnative-pg.io/klio): a cluster that backs up with the Barman Cloud plugin does not need it.",
+);
+
 export default class CnpgRenderer extends Renderer.LensExtension {
   kubeObjectDetailItems = [
     {
@@ -182,6 +192,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <ScheduledBackupDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: KlioConfiguration.kind,
+      apiVersions: KlioConfiguration.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <KlioConfigurationDetails {...props} extension={this} />
         ),
       },
     },
@@ -465,6 +485,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       },
     },
     {
+      id: KLIO_CONFIGURATIONS_PAGE_ID,
+      components: {
+        Page: () => <AvailableKlioConfigurationsPage extension={this} />,
+      },
+    },
+    {
       id: CLUSTER_IMAGE_CATALOGS_PAGE_ID,
       components: {
         Page: () => <AvailableClusterImageCatalogsPage extension={this} />,
@@ -591,6 +617,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: BACKUPS_GROUP_ID,
       title: ObjectStoreV1.crd.title,
       target: { pageId: OBJECT_STORES_PAGE_ID },
+      components: {},
+    },
+    {
+      id: KLIO_CONFIGURATIONS_PAGE_ID,
+      parentId: BACKUPS_GROUP_ID,
+      title: KlioConfiguration.crd.title,
+      target: { pageId: KLIO_CONFIGURATIONS_PAGE_ID },
       components: {},
     },
     {

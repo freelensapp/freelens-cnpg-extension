@@ -50,6 +50,8 @@
     "e2e:cluster:up": "e2e/scripts/cluster-up.sh",
     "e2e:cluster:down": "e2e/scripts/cluster-down.sh",
     "e2e:freelens": "e2e/scripts/freelens-dev.sh",
+    "e2e:bare:up": "e2e/scripts/bare-up.sh",
+    "e2e:bare:down": "e2e/scripts/bare-down.sh",
     "demo:up": "e2e/scripts/demo-up.sh",
     "demo:down": "e2e/scripts/demo-down.sh",
     "pre-review": "e2e/scripts/pre-review.sh",

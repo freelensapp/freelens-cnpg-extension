@@ -1,0 +1,96 @@
+@use "../vars" as *;
+
+// The installation guide (SPEC-0036): on the Operator page and on the page of a
+// kind whose CRD is not installed, so it takes the theme's tokens.
+.guide {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+  color: var(--textColorPrimary);
+  text-align: left;
+}
+
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit * 1.5);
+  margin: 0;
+  padding-left: calc($unit * 2.5);
+  list-style: decimal outside;
+}
+
+.step {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.stepHead {
+  display: flex;
+  align-items: center;
+  gap: $unit;
+  color: var(--textColorAccent);
+}
+
+.words {
+  margin: 0;
+  color: var(--textColorSecondary);
+}
+
+.warning {
+  margin: 0;
+  color: var(--colorWarning);
+}
+
+.command {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: calc($unit / 2) $unit;
+  align-items: start;
+}
+
+.commandLabel {
+  grid-column: 1 / -1;
+  color: var(--textColorSecondary);
+  font-size: 0.85em;
+}
+
+.code {
+  margin: 0;
+  padding: $unit;
+  border-radius: calc($unit / 2);
+  background: color-mix(in srgb, var(--textColorAccent) 4%, transparent);
+  color: var(--textColorAccent);
+  font-family: var(--font-monospace, monospace);
+  font-size: 0.9em;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.button {
+  padding: calc($unit / 2) $unit;
+  border: 1px solid var(--borderFaintColor);
+  border-radius: calc($unit / 2);
+  background: color-mix(in srgb, var(--textColorAccent) 4%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9em;
+  cursor: pointer;
+
+  &:hover {
+    background: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
+  }
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc($unit * 2);
+  align-items: center;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: calc($unit / 2);
+  }
+}

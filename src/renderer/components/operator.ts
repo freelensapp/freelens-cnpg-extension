@@ -12,7 +12,7 @@
 import { selectSamples, singleValue } from "../api/instance/prometheus-text";
 import { holderPod, leaseFacts } from "./leases";
 
-import type { Cluster } from "../api/cnpg/cluster-v1";
+import type { Cluster, PluginStatus } from "../api/cnpg/cluster-v1";
 import type { LeaseLike } from "../api/core/lease";
 import type { MetricSample } from "../api/instance/prometheus-text";
 import type { HostStatusClass } from "./cluster-health";
@@ -256,8 +256,21 @@ export interface PluginFacts {
   className: HostStatusClass;
   /** The clusters that report the plugin as loaded, with the version they see. */
   clusters: { name: string; namespace: string; version?: string }[];
+  /** The identity capabilities (CNPG-I `identity.proto`): the services the plugin provides. */
   capabilities: string[];
+  /** The version the clusters report, the newest first when they disagree. */
+  version?: string;
+  /** What each service of the plugin can do, as the clusters report it (empty groups left out). */
+  capabilityGroups: { group: string; items: string[] }[];
 }
+
+const CAPABILITY_GROUPS: ReadonlyArray<[group: string, key: keyof PluginStatus]> = [
+  ["operator", "operatorCapabilities"],
+  ["WAL", "walCapabilities"],
+  ["backup", "backupCapabilities"],
+  ["restore job", "restoreJobHookCapabilities"],
+  ["PostgreSQL", "postgresCapabilities"],
+];
 
 export function pluginFacts(
   services: readonly ServiceLike[],
@@ -276,6 +289,7 @@ export function pluginFacts(
     );
     const users: PluginFacts["clusters"] = [];
     const capabilities = new Set<string>();
+    const groups = new Map<string, Set<string>>();
     for (const cluster of clusters) {
       const status = cluster.status?.pluginStatus?.find((plugin) => plugin.name === name);
       if (!status) continue;
@@ -285,7 +299,15 @@ export function pluginFacts(
         version: status.version,
       });
       for (const capability of status.capabilities ?? []) capabilities.add(capability);
+      for (const [group, key] of CAPABILITY_GROUPS) {
+        for (const item of (status[key] as string[] | undefined) ?? []) {
+          groups.set(group, (groups.get(group) ?? new Set()).add(item));
+        }
+      }
     }
+    const versions = [
+      ...new Set(users.map((user) => user.version).filter((version): version is string => Boolean(version))),
+    ];
     const ready = deployment?.status?.readyReplicas ?? (deployment ? 0 : undefined);
     const declared = deployment?.spec?.replicas ?? (deployment ? 1 : undefined);
     plugins.push({
@@ -304,6 +326,11 @@ export function pluginFacts(
             : "error",
       clusters: users.sort((a, b) => a.namespace.localeCompare(b.namespace) || a.name.localeCompare(b.name)),
       capabilities: [...capabilities].sort(),
+      version: versions.sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))[0],
+      capabilityGroups: CAPABILITY_GROUPS.filter(([group]) => groups.has(group)).map(([group]) => ({
+        group,
+        items: [...(groups.get(group) ?? [])].sort(),
+      })),
     });
   }
   return plugins.sort((a, b) => a.name.localeCompare(b.name));
