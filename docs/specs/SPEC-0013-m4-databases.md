@@ -178,3 +178,9 @@ runs.
   after the review). Verdict: approved, no blocking finding. Status moved to
   Verified. Still open for a later look: the states that only unit tests
   cover, listed above.
+- 2026-10-29, with the port to Freelens v2 (SPEC-0030): CloudNativePG 1.30.1 answers a declarative object
+  whose cluster is gone, once it reconciles it again (after a restart of the operator), with
+  `applied: false` and "cluster resource has been deleted, skipping reconciliation". The fixture
+  `e2e-db-orphan` read "Failed" from then on. An object without its cluster whose failure is exactly that
+  answer is the Orphan of the table above, with the operator's words after the reason; any other failure
+  stays Failed, cluster or not. Unit: `declarative.test.ts`.
