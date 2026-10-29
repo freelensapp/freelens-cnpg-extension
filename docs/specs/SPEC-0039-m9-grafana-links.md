@@ -1,6 +1,6 @@
 # SPEC-0039: Links to Grafana dashboards
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -42,4 +42,23 @@ No request to Grafana from the extension; only a link.
 
 ## Notes and deviations
 
-Filled during implementation.
+- Implemented on 2026-10-29 with the port to Freelens v2 (SPEC-0030): `common/preferences-store.ts`,
+  `grafana.ts` (pure), `grafana-link.tsx`, `preferences/grafana-preferences.tsx`.
+- **The preferences** are the extension's tab of the host's preferences (`appPreferences`), one row per
+  Kubernetes cluster of the catalog, keyed by its catalog id. The store is a `Common.Store.ExtensionStore`
+  loaded in both processes, as the template does: main keeps the file in the profile
+  (`extension-store/@freelensapp/cnpg-extension/cnpg-preferences-store.json`), and this is the first thing
+  main does for the extension. Its model is a plain reference replaced on every change: the host clones
+  it to send it to main, and a deep observable failed to clone ("An object could not be cloned", found
+  by the E2E case).
+- **The dashboard** is the CloudNativePG dashboard of `cloudnative-pg/grafana-dashboards`
+  (`charts/cluster`, UID `cloudnative-pg`, variables `namespace` and `cluster`); a team's own UID can be
+  set per cluster.
+- **The URL** is checked: http or https, no credentials, no query or fragment; a wrong one says why and
+  gives no link. The range follows the Trends of the Live View (5 min, 15 min, 1 h, or since the view
+  opened as a fixed start); the drawer uses the last hour.
+- **Placement.** The drawer shows "Monitoring: Open in Grafana" only when a URL is set. The Live View puts
+  the link next to the range of its Trends, and without a URL says where to set it; that link opens the
+  extension's preferences (`navigateToPreferences`, from the cluster frame).
+- The E2E case reads the link and never follows it: it would open the browser of the machine. Its URL is
+  under `.invalid`, and the case clears the preference afterwards.

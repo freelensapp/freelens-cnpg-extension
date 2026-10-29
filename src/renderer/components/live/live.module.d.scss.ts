@@ -77,6 +77,7 @@ declare const classNames: {
   readonly sizeBarFill: "sizeBarFill";
   readonly trends: "trends";
   readonly trendsHeader: "trendsHeader";
+  readonly trendsGrafana: "trendsGrafana";
   readonly trendsRange: "trendsRange";
   readonly trendCards: "trendCards";
   readonly trendCard: "trendCard";

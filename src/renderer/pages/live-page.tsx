@@ -265,6 +265,7 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
             <ManagerTile {...tileProps} />
           </div>
           <TrendsSection
+            grafana={{ extension, namespace, cluster: cluster.getName() }}
             memory={trends}
             now={now.getTime()}
             statusIntervalMs={poller.statusIntervalMs}

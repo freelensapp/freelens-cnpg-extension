@@ -4,8 +4,13 @@
  */
 
 import { Main } from "@freelensapp/extensions";
+import { CnpgPreferencesStore } from "../common/preferences-store";
 
-// Everything of M1 lives in the renderer (ARCHITECTURE.md "Process model");
-// the main process entry point stays for the lifecycle hooks later
-// milestones need (the psql terminal of SPEC-0007).
-export default class CnpgMain extends Main.LensExtension {}
+// Everything of M1 to M8 lives in the renderer (ARCHITECTURE.md "Process
+// model"); main loads the preferences store of SPEC-0039, whose file it keeps.
+export default class CnpgMain extends Main.LensExtension {
+  async onActivate() {
+    // The preferences of SPEC-0039: main keeps the file the renderer edits.
+    await CnpgPreferencesStore.getInstanceOrCreate().loadExtension(this);
+  }
+}

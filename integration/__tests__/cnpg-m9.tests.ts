@@ -9,7 +9,7 @@
 
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import * as cluster from "./cnpg-cluster";
-import { appReady, connectApp, dismissNotifications, installExtension, openLabCluster } from "./cnpg-session";
+import { appReady, connectApp, dismissNotifications, installExtension, navigate, openLabCluster } from "./cnpg-session";
 import { tableRowName, waitUntil } from "./cnpg-steps";
 
 import type { Frame } from "playwright";
@@ -268,6 +268,74 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       ).toMatch(/WAL archiving of .*cnpg-e2e\/e2e-main.* Backups of .*cnpg-e2e\/e2e-main/);
       await plugin.scrollIntoViewIfNeeded();
       await cluster.captureScreenshot(frame, "m9-operator-plugins-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "opens the CloudNativePG dashboard of a cluster in the Grafana set in the preferences (SPEC-0039)",
+    async () => {
+      const window = session.window;
+      const extensionId = "freelensapp--cnpg-extension";
+      // The host's Input gives its own id to the field: the test id reaches the <input>.
+      const urlInput = window.locator(`input[data-testid="cnpg-grafana-url-${cluster.E2E_KUBE_CONTEXT}"]`);
+      // Never opened: it would launch the browser of the machine. The link is read, not followed.
+      const grafana = "https://grafana.cnpg-e2e.invalid";
+
+      try {
+        // Without a URL the Live View says where to set it, and that door opens the preferences of the extension.
+        await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+        await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]').click();
+        const missing = frame.locator('[data-testid="cnpg-grafana-missing"]');
+
+        await missing.waitFor({ state: "visible", timeout: 90_000 });
+        await missing.click();
+        await window
+          .locator(`[data-preference-page-test="preference-item-for-extension-${extensionId}-page"]`)
+          .getByText("Grafana", { exact: true })
+          .waitFor({ timeout: 60_000 });
+
+        // A wrong URL is said so, and gives no link.
+        await urlInput.fill("grafana.example.com");
+        await window.getByText("Not a URL: write it as https://grafana.example.com").waitFor({ timeout: 10_000 });
+        await urlInput.fill(grafana);
+        await cluster.captureScreenshot(frame, "m9-grafana-preferences-dark");
+
+        frame = await openLabCluster(session);
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await cluster.selectNamespace(frame);
+        await tableRowName(frame, "e2e-main").click();
+        const drawerLink = frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-grafana-link"]');
+
+        await drawerLink.waitFor({ state: "visible", timeout: 60_000 });
+        expect(await drawerLink.getAttribute("href")).toBe(
+          `${grafana}/d/cloudnative-pg?var-namespace=cnpg-e2e&var-cluster=e2e-main&from=now-1h&to=now`,
+        );
+        await cluster.closeDetails(frame);
+
+        // The Live View passes the range of its trends.
+        await cluster.openCnpgPage(frame, "cnpg-clusters-live", "Live View");
+        await frame.locator('[data-testid="cnpg-live-door-cnpg-e2e-e2e-main"]').click();
+        const liveLink = frame.locator('[data-testid="cnpg-trends"] [data-testid="cnpg-grafana-link"]');
+
+        await liveLink.waitFor({ state: "visible", timeout: 90_000 });
+        expect(await liveLink.getAttribute("href")).toBe(
+          `${grafana}/d/cloudnative-pg?var-namespace=cnpg-e2e&var-cluster=e2e-main&from=now-15m&to=now`,
+        );
+        await frame.locator('[data-testid="cnpg-trends-range"]').getByText("1 h", { exact: true }).click();
+        expect(
+          await waitUntil(
+            () => liveLink.getAttribute("href"),
+            (href) => Boolean(href?.includes("from=now-1h")),
+          ),
+        ).toContain("from=now-1h");
+        await cluster.captureScreenshot(frame, "m9-grafana-live-dark");
+      } finally {
+        // Leave no preference behind for the cases and the runs that follow.
+        await navigate(window, `/preferences/extension/${extensionId}`);
+        await urlInput.fill("").catch(() => {});
+        frame = await openLabCluster(session);
+      }
     },
     TIMEOUT,
   );

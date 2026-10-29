@@ -11,10 +11,12 @@
 import { Renderer } from "@freelensapp/extensions";
 import * as MobxReact from "mobx-react";
 import React from "react";
+import { GrafanaLink } from "../grafana-link";
 import styles from "./live.module.scss";
 import { TrendChart } from "./trend-chart";
 import { TREND_RANGES, trendCards } from "./trends";
 
+import type { GrafanaLinkProps } from "../grafana-link";
 import type { TrendCard, TrendKey, TrendMemory, TrendRange } from "./trends";
 
 const { observer } = MobxReact;
@@ -33,6 +35,8 @@ export interface TrendsSectionProps {
   metricsFailure?: string;
   /** Where the title of a card leads, when it does. */
   doors?: Partial<Record<TrendKey, string>>;
+  /** The cluster of the Grafana link (SPEC-0039), which takes the range of the section. */
+  grafana?: Omit<GrafanaLinkProps, "range" | "openedAt" | "explainWhenMissing">;
 }
 
 function pointsOf(card: TrendCard): number {
@@ -97,7 +101,7 @@ function TrendCardView({ card, range, now, startedAt, metricsFailure, door }: Ca
 }
 
 export const TrendsSection = observer(
-  ({ memory, now, statusIntervalMs, metricsIntervalMs, metricsFailure, doors }: TrendsSectionProps) => {
+  ({ memory, now, statusIntervalMs, metricsIntervalMs, metricsFailure, doors, grafana }: TrendsSectionProps) => {
     const [range, setRange] = React.useState<TrendRange>("15m");
     const cards = trendCards(memory);
     const spanSeconds = TREND_RANGES.find((candidate) => candidate.value === range)?.seconds ?? 0;
@@ -111,6 +115,11 @@ export const TrendsSection = observer(
             {metricsIntervalMs / 1000} s
             {Number.isFinite(spanSeconds) && sampledSeconds < spanSeconds ? ", showing what was sampled so far" : ""}
           </span>
+          {grafana ? (
+            <span className={styles.trendsGrafana}>
+              <GrafanaLink {...grafana} range={range} openedAt={memory.startedAt} explainWhenMissing />
+            </span>
+          ) : null}
           <span className={styles.trendsRange} data-testid="cnpg-trends-range">
             <RadioGroup asButtons value={range} onChange={(value: TrendRange) => setRange(value)}>
               {TREND_RANGES.map((candidate) => (

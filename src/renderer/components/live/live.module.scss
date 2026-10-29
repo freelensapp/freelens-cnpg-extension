@@ -556,6 +556,21 @@
   }
 }
 
+.trendsGrafana {
+  margin-left: auto;
+  font-size: 0.9em;
+
+  a {
+    display: inline-flex;
+    align-items: center;
+    gap: calc($unit / 2);
+  }
+}
+
+.trendsGrafana + .trendsRange {
+  margin-left: $unit;
+}
+
 .trendsRange {
   margin-left: auto;
 

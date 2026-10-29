@@ -4,6 +4,7 @@
  */
 
 import { Renderer } from "@freelensapp/extensions";
+import { CnpgPreferencesStore } from "../common/preferences-store";
 import { ObjectStore as ObjectStoreV1 } from "./api/barmancloud/object-store-v1";
 import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
@@ -91,6 +92,7 @@ import { PublicationsPage as PublicationsPageV1 } from "./pages/publications-pag
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 import { SubscriptionsPage as SubscriptionsPageV1 } from "./pages/subscriptions-page-v1";
 import { TimelinePage } from "./pages/timeline-page";
+import { GrafanaPreferencesHint, GrafanaPreferencesInput } from "./preferences/grafana-preferences";
 
 // Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
 // target on their first leaf (DESIGN.md section 4). The Overview group comes
@@ -164,6 +166,21 @@ const AvailableKlioConfigurationsPage = createAvailableVersionPage(
 );
 
 export default class CnpgRenderer extends Renderer.LensExtension {
+  async onActivate() {
+    // The preferences of SPEC-0039; main keeps the file.
+    CnpgPreferencesStore.getInstanceOrCreate().loadExtension(this);
+  }
+
+  appPreferences = [
+    {
+      title: "Grafana",
+      components: {
+        Input: () => <GrafanaPreferencesInput />,
+        Hint: () => <GrafanaPreferencesHint />,
+      },
+    },
+  ];
+
   kubeObjectDetailItems = [
     {
       kind: ClusterV1.kind,

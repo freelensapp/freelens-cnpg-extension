@@ -31,6 +31,7 @@ import {
 import { withErrorPage } from "../components/error-page";
 import { quorumFacts } from "../components/failover-quorum";
 import { FENCED_INSTANCES_ANNOTATION, parseFenced, UNPARSEABLE_FENCING } from "../components/fencing";
+import { GrafanaLink, grafanaUrlFor } from "../components/grafana-link";
 import { hibernationState, hibernationWords } from "../components/hibernation";
 import { backupPluginWords } from "../components/install-guide";
 import { InstanceBricks } from "../components/instance-bricks";
@@ -629,6 +630,10 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         </DrawerItem>
         <StorageTable cluster={object} />
         <JobsSection cluster={object} />
+
+        <DrawerItem name="Monitoring" hidden={!grafanaUrlFor(namespace, name)}>
+          <GrafanaLink extension={props.extension} namespace={namespace} cluster={name} />
+        </DrawerItem>
 
         <DrawerTitle>Backups and archiving</DrawerTitle>
         <DrawerItem name="WAL archiving" labelsOnly>

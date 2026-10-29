@@ -126,7 +126,7 @@ kind cluster, the `kubectl cnpg` plugin and the k9s plugin (CloudNativePG v1.30.
 | Operator page: install guide, plugin capabilities, Klio                                                                    | [SPEC-0036](../specs/SPEC-0036-m9-operator-install-guide-plugins-klio.md)                    | Done     |
 | Pooler pause and resume, maintenance window, destroy an instance                                                           | [SPEC-0037](../specs/SPEC-0037-m9-pooler-pause-maintenance-window-destroy-instance.md)       | Approved |
 | Diagnostic report of a cluster                                                                                             | [SPEC-0038](../specs/SPEC-0038-m9-diagnostic-report.md)                                      | Approved |
-| Links to Grafana dashboards                                                                                                | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md)                                          | Approved |
+| Links to Grafana dashboards                                                                                                | [SPEC-0039](../specs/SPEC-0039-m9-grafana-links.md)                                          | Done     |
 
 ### Cross-cutting
 
