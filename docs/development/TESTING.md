@@ -93,6 +93,10 @@ certificate), and every such fixture says so in a comment.
   what a read-only case asserts, whatever order the files run in. The write
   cases read every result back with `kubectl`, and the pre-review pass opens
   every dialog and closes it without confirming.
+  `80-replica-cluster.yaml` is a replica cluster in a namespace of its own
+  (`cnpg-e2e-replica`), which restores the completed backup of the
+  three-instance cluster and follows its WAL through the object store
+  (SPEC-0034).
   `fixtures/status/` holds the few status patches for states the operator
   cannot produce on demand. Each fixture is chosen to cover a state its
   views distinguish, so the suite can assert both branches.

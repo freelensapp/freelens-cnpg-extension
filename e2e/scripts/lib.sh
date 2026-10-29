@@ -83,6 +83,9 @@ E2E_CLUSTERS=(e2e-main e2e-single e2e-hibernated e2e-fenced)
 # The namespace and the cluster the write cases run against (SPEC-0020): apart
 # from the read-only fixtures, so a write never changes what those cases assert.
 E2E_ACTIONS_NAMESPACE="cnpg-e2e-actions"
+# The replica cluster (SPEC-0034), in a namespace of its own: it follows e2e-main through its object store.
+E2E_REPLICA_NAMESPACE="cnpg-e2e-replica"
+E2E_REPLICA_CLUSTER="e2e-replica"
 E2E_ACTIONS_CLUSTER="e2e-actions"
 # The cluster of the volume snapshot cases (SPEC-0029): one instance on the CSI
 # hostpath storage class, a tablespace, cold snapshot backups; its fixture backup

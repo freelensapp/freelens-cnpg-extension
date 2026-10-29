@@ -47,6 +47,7 @@ import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } 
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
 import { ClusterLeaseRows } from "./cluster-lease-rows";
+import { JobsSection, ReplicaClusterSection, StorageTable } from "./cluster-resource-sections";
 
 import type { CertificateFact, InstanceFact } from "../components/cluster-health";
 
@@ -70,7 +71,7 @@ const {
     TableRow,
     WithTooltip,
   },
-  K8sApi: { nodesStore, podsStore, pvcStore, secretsStore, serviceStore },
+  K8sApi: { jobStore, nodesStore, podsStore, pvcStore, secretsStore, serviceStore },
   Navigation: { getDetailsUrl },
 } = Renderer;
 
@@ -134,31 +135,6 @@ function ServiceRef({ name, namespace }: { name: string | undefined; namespace: 
   );
 }
 
-/** A PVC name rendered as a link when the claim is in the store, else as text. */
-function PvcRef({ name, namespace }: { name: string; namespace: string }) {
-  const claim = pvcStore.getByName(name, namespace);
-  return claim ? (
-    <MaybeLink to={getDetailsUrl(claim.selfLink)} onClick={(event) => event.stopPropagation()}>
-      {name}
-    </MaybeLink>
-  ) : (
-    <WithTooltip>{name}</WithTooltip>
-  );
-}
-
-function PvcList({ title, names, namespace }: { title: string; names: string[] | undefined; namespace: string }) {
-  if (!names || names.length === 0) return null;
-  return (
-    <DrawerItem name={title}>
-      <div className={styles.list}>
-        {names.map((name) => (
-          <PvcRef key={name} name={name} namespace={namespace} />
-        ))}
-      </div>
-    </DrawerItem>
-  );
-}
-
 export const ClusterDetails = observer((props: ClusterDetailsProps) =>
   withErrorPage(props, () => {
     const { object } = props;
@@ -210,6 +186,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       },
       { label: "nodes", store: nodesStore },
       { label: "persistentvolumeclaims", store: pvcStore, namespaces: [namespace] },
+      { label: "jobs", store: jobStore, namespaces: [namespace] },
       { label: "services", store: serviceStore, namespaces: [namespace] },
       { label: "secrets", store: secretsStore, namespaces: [namespace] },
       { label: Backup.crd.plural, store: backupStore, namespaces: [namespace] },
@@ -539,9 +516,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             ))}
           </div>
         </DrawerItem>
-        <DrawerItem name="Replica cluster" hidden={!spec?.replica?.enabled}>
-          <WithTooltip>{spec?.replica?.source ?? "enabled"}</WithTooltip>
-        </DrawerItem>
+        <ReplicaClusterSection cluster={object} />
 
         <DrawerTitle>PostgreSQL</DrawerTitle>
         <DrawerItem name="Image" hidden={!image}>
@@ -650,11 +625,8 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerItem name="Volumes" hidden={status?.pvcCount === undefined}>
           {status?.pvcCount}
         </DrawerItem>
-        <PvcList title="Healthy volumes" names={status?.healthyPVC} namespace={namespace} />
-        <PvcList title="Resizing volumes" names={status?.resizingPVC} namespace={namespace} />
-        <PvcList title="Initializing volumes" names={status?.initializingPVC} namespace={namespace} />
-        <PvcList title="Dangling volumes" names={status?.danglingPVC} namespace={namespace} />
-        <PvcList title="Unusable volumes" names={status?.unusablePVC} namespace={namespace} />
+        <StorageTable cluster={object} />
+        <JobsSection cluster={object} />
 
         <DrawerTitle>Backups and archiving</DrawerTitle>
         <DrawerItem name="WAL archiving" labelsOnly>

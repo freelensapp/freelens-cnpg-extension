@@ -110,7 +110,7 @@ export function kubeconfigPath(): string {
  * full of missing rows.
  */
 export function fixturesReady(): boolean {
-  const probes: [resource: string, name: string][] = [
+  const probes: [resource: string, name: string, namespace?: string][] = [
     ["clusters.postgresql.cnpg.io", "e2e-main"],
     ["clusters.postgresql.cnpg.io", "e2e-single"],
     ["clusters.postgresql.cnpg.io", "e2e-hibernated"],
@@ -124,9 +124,10 @@ export function fixturesReady(): boolean {
     ["databaseroles.postgresql.cnpg.io", "e2e-role-reporting"],
     ["publications.postgresql.cnpg.io", "e2e-pub-numbers"],
     ["subscriptions.postgresql.cnpg.io", "e2e-sub-numbers"],
+    ["clusters.postgresql.cnpg.io", E2E_REPLICA_CLUSTER, E2E_REPLICA_NAMESPACE],
   ];
 
-  return probes.every(([resource, name]) => {
+  return probes.every(([resource, name, namespace = E2E_NAMESPACE]) => {
     const { status } = spawnSync(
       "kubectl",
       [
@@ -135,7 +136,7 @@ export function fixturesReady(): boolean {
         "--context",
         E2E_KUBE_CONTEXT,
         "--namespace",
-        E2E_NAMESPACE,
+        namespace,
         "get",
         resource,
         name,
@@ -175,6 +176,9 @@ export const E2E_SNAPSHOT_CLUSTER = "e2e-snapshots";
 export const E2E_SNAPSHOT_BACKUP = "e2e-snapshot-ok";
 export const E2E_SNAPSHOT_TABLESPACE = "analytics";
 export const E2E_SNAPSHOT_MARKER_TABLE = "snapshot_marker";
+/** The replica cluster (SPEC-0034), in a namespace of its own: it follows e2e-main through its object store. */
+export const E2E_REPLICA_NAMESPACE = process.env.E2E_REPLICA_NAMESPACE || "cnpg-e2e-replica";
+export const E2E_REPLICA_CLUSTER = "e2e-replica";
 /** What the CSI hostpath driver of the E2E cluster is called (SPEC-0002). */
 export const E2E_STORAGE_CLASS = "csi-hostpath-sc";
 export const E2E_SNAPSHOT_CLASS = "csi-hostpath-snapclass";

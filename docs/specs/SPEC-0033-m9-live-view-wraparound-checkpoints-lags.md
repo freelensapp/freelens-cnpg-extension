@@ -1,6 +1,6 @@
 # SPEC-0033: Live view: wraparound, extension updates, checkpoints and the lag of every standby
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -55,4 +55,22 @@ Reads only, as SPEC-0006.
 
 ## Notes and deviations
 
-Filled during implementation.
+- Implemented on 2026-10-29 with the port to Freelens v2 (SPEC-0030), in `live-model.ts` and `tiles.tsx`.
+- **Multixact age levels.** Autovacuum forces a freeze at `autovacuum_multixact_freeze_max_age`
+  (400 million by default, read from the primary's exporter). The warning is at twice that, capped at the
+  warning of the XID age (1 billion), since by then autovacuum is not keeping up. The error is at
+  1.5 billion, as for transaction IDs, since both wrap around at 2^31. The thresholds are worded in the
+  tooltip of each figure.
+- **Checkpoints.** The share of requested checkpoints warns at 50 % once an instance counts at least 10,
+  on the primary only. An instance in recovery (a standby, or the designated primary of a replica
+  cluster, SPEC-0034) shows its restartpoints. PostgreSQL 16 and older report checkpoints in
+  `pg_stat_bgwriter`, which is read when `pg_stat_checkpointer` is absent. "A trend of requested
+  checkpoints per minute" was already in the trends of SPEC-0028 (timed and requested per interval),
+  so no second chart was added.
+- **Lag in bytes.** The write, flush and replay distances come from the LSNs the primary reports in
+  `/pg/status` (`writeLsn`, `flushLsn`, `replayLsn` against `currentLsn`), as the replay distance of
+  SPEC-0006 already did, rather than from the `_diff_bytes` metrics. They refresh every 5 s instead of
+  every 30 s, and need no metrics. `pg_stat_replication` also lists the logical subscriptions (the
+  fixtures have `e2e_numbers_sub`); only the instances of the cluster are standbys.
+- **Not collected.** A family the exporter does not read says "not collected" with the reason. Its
+  absence is judged on the primary's metrics as a whole, so one missing database never reads as zero.

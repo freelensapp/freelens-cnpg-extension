@@ -1,6 +1,6 @@
 # SPEC-0034: Storage, jobs, replica clusters, role certificates and the counts of the cluster list
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -64,5 +64,29 @@ Reads only; no Secret is read (the certificate's expiry comes from the role's st
 
 ## Notes and deviations
 
-Filled during implementation. The replica cluster needs a new fixture: a second cluster replicating
-`e2e-main` from its object store.
+- Implemented on 2026-10-29 with the port to Freelens v2 (SPEC-0030): `cluster-resources.ts` (pure),
+  `cluster-resource-sections.tsx` (the drawer), the counts on `clusters-page-v1.tsx`.
+- **The client certificate of a role was already there.** SPEC-0014 shipped it in 1.0.0: the badge,
+  the Secret, the expiry and the operator's note, with an E2E case on `e2e-role-reporting`. The
+  Headlamp comparison of phase 1 listed it as missing by mistake. Its expiry keeps the window of
+  SPEC-0014 (the operator renews a client certificate in its last 7 days) rather than the 30 days of
+  the cluster certificates: that is when the operator acts. No new fixture: the existing role has a
+  real certificate.
+- **Replica cluster fixture.** `e2e/fixtures/80-replica-cluster.yaml`: `e2e-replica` in a namespace of
+  its own (`cnpg-e2e-replica`), so the clusters the read-only cases count stay four. It restores
+  `e2e-backup-ok` and follows the WAL of `e2e-main` through an object store on the same bucket.
+  `cluster-up.sh` applies it once that backup has completed.
+- **The designated primary in the Live View.** It is in recovery, so its instance manager answers
+  `isPrimary: false`, and it restores from the object store with no WAL receiver. The Live View drew it
+  as a standby with "WAL receiver down" and no primary. For a replica cluster the instance the status
+  names as the primary is now drawn as the "designated primary", without that flag, with its
+  restartpoints (SPEC-0033).
+- **Promotion** is worded, not offered: the drawer says which field promotes the cluster (a write left
+  out by the scope).
+- **Counts.** "Need attention" is every state of the health model but healthy and hibernated, since
+  hibernation is on purpose and has its own count. The counts are over the clusters of the selected
+  namespaces. Each count but the instances filters the list through the query parameter `health`,
+  and a second click, or the total, clears it.
+- **Jobs.** Their logs open in the host's log viewer, on the pod of the job (`job-name` label): a job
+  is not an instance, so not the Logs page.
+- The host's `Table` does not pass a test id on, so the tables carry theirs on a wrapper.

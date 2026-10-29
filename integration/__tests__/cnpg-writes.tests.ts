@@ -2109,6 +2109,75 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
     TIMEOUT,
   );
 
+  it(
+    "lists the join job while e2e-actions grows from 2 to 3 instances, and the section goes once the operator removes it (SPEC-0034)",
+    async () => {
+      const clusters = "clusters.postgresql.cnpg.io";
+      const name = cluster.E2E_ACTIONS_CLUSTER;
+      const scale = (instances: number) =>
+        cluster.kubectlActions(
+          "patch",
+          clusters,
+          name,
+          "--type",
+          "merge",
+          "--patch",
+          JSON.stringify({ spec: { instances } }),
+        );
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+      await tableRowName(frame, name).click();
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+
+      await drawer.waitFor({ state: "visible", timeout: 60_000 });
+      // No job while nothing is being bootstrapped or joined.
+      expect(await drawer.locator('[data-testid="cnpg-cluster-jobs"]').count()).toBe(0);
+
+      try {
+        expect(scale(3).status).toBe(0);
+        // The operator names the new instance after the next serial, and its join job after it.
+        const job = drawer.locator('[data-testid="cnpg-cluster-jobs"] [data-role="join"]');
+
+        await job.waitFor({ state: "visible", timeout: 180_000 });
+        const text = (await job.innerText()).replace(/\s+/g, " ");
+
+        expect(text).toMatch(
+          new RegExp(`^${name}-\\d+-join join: clones the primary into a new instance ${name}-\\d+ `),
+        );
+        await scrollIntoView(job);
+        await cluster.captureScreenshot(frame, "m9-join-job-dark");
+
+        // Once the new instance is up the operator removes its finished job, and the section goes with it.
+        await drawer.locator('[data-testid="cnpg-cluster-jobs"]').waitFor({ state: "detached", timeout: 300_000 });
+        expect(
+          await waitUntil(
+            async () => cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}"),
+            (ready) => ready === "3",
+            300_000,
+          ),
+        ).toBe("3");
+      } finally {
+        // Back to the two instances every other write case starts from.
+        await cluster.closeDetails(frame).catch(() => {});
+        scale(2);
+        await waitUntil(
+          async () =>
+            cluster.kubectlActions("get", "pods", "--selector", `cnpg.io/cluster=${name}`, "--no-headers").stdout,
+          (pods) => pods.split("\n").filter(Boolean).length === 2,
+          300_000,
+        );
+        await waitUntil(
+          async () => cluster.kubectlActionsField(clusters, name, "{.status.readyInstances}/{.status.instances}"),
+          (state) => state === "2/2",
+          300_000,
+        );
+        await cluster.selectNamespace(frame);
+      }
+    },
+    TIMEOUT,
+  );
+
   it("logs no error while the writes run", () => {
     expect(session.errors()).toEqual([]);
   });

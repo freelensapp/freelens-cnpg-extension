@@ -460,6 +460,36 @@
   color: var(--textColorPrimary);
 }
 
+.lagStages {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc($unit / 2) $unit;
+  color: var(--textColorSecondary);
+  font-size: 0.85em;
+}
+
+.checkpointBlock {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+  min-width: 0;
+
+  & + & {
+    padding-top: $unit;
+    border-top: 1px solid var(--borderFaintColor);
+  }
+}
+
+.checkpointHead {
+  display: flex;
+  justify-content: space-between;
+  gap: $unit;
+  min-width: 0;
+  color: var(--textColorPrimary);
+  font-weight: 500;
+}
+
 .nested {
   :global(.TableCell) {
     &.colName {

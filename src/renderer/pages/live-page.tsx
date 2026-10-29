@@ -24,6 +24,7 @@ import {
 } from "../api/instance/pod-proxy";
 import { humanizeRelative } from "../components/backup-health";
 import { classifyCluster, instanceFacts } from "../components/cluster-health";
+import { replicaClusterFacts } from "../components/cluster-resources";
 import { parseGoDuration } from "../components/cron-text";
 import { withErrorPage } from "../components/error-page";
 import styles from "../components/live/live.module.scss";
@@ -31,6 +32,7 @@ import { buildLiveView } from "../components/live/live-model";
 import { LivePoller, METRICS_INTERVAL_MS, STATUS_INTERVAL_MS } from "../components/live/live-poller";
 import {
   BasebackupsTile,
+  CheckpointsTile,
   DatabasesTile,
   LagTile,
   ManagerTile,
@@ -91,6 +93,7 @@ function liveInput(cluster: Cluster, readings: ReadonlyMap<string, InstanceReadi
   const namespace = cluster.getNs() ?? "";
   return {
     declaredPrimary: Cluster.getPrimary(cluster),
+    replicaCluster: replicaClusterFacts(cluster) !== undefined,
     readings,
     instances: instanceFacts(cluster).map((instance) => ({
       name: instance.name,
@@ -256,6 +259,7 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
             <LagTile {...tileProps} />
             <WalTile {...tileProps} />
             <DatabasesTile {...tileProps} />
+            <CheckpointsTile {...tileProps} />
             <SlotsTile {...tileProps} />
             <BasebackupsTile {...tileProps} />
             <ManagerTile {...tileProps} />

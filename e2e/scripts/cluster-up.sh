@@ -401,6 +401,14 @@ verify_fixtures() {
   log "fixture states verified"
 }
 
+apply_replica_cluster() {
+  # The replica cluster restores the base backup e2e-backup-ok, then follows the WAL e2e-main archives.
+  log "applying the replica cluster ${E2E_REPLICA_CLUSTER} (up to ${WAIT_CLUSTER})"
+  kubectl_e2e apply -f "${E2E_FIXTURES_DIR}"/80-replica-cluster.yaml >/dev/null
+  wait_for_jsonpath "${E2E_REPLICA_NAMESPACE}" clusters.postgresql.cnpg.io "${E2E_REPLICA_CLUSTER}" '{.status.phase}' \
+    "${E2E_HEALTHY_PHASE}" "${WAIT_CLUSTER%s}"
+}
+
 main() {
   require_docker
   require_command kind kubectl curl
@@ -414,6 +422,7 @@ main() {
   wait_clusters
   wait_failover_quorum
   apply_second_phase
+  apply_replica_cluster
   apply_snapshot_backup
   hibernate_and_fence
   apply_declarative

@@ -8,6 +8,8 @@ declare const classNames: {
   readonly certificates: "certificates";
   readonly plugins: "plugins";
   readonly tablespaces: "tablespaces";
+  readonly volumes: "volumes";
+  readonly jobs: "jobs";
   readonly type: "type";
   readonly role: "role";
   readonly name: "name";
@@ -18,6 +20,9 @@ declare const classNames: {
   readonly health: "health";
   readonly timeline: "timeline";
   readonly version: "version";
+  readonly instance: "instance";
+  readonly storageClass: "storageClass";
+  readonly logs: "logs";
   readonly reason: "reason";
   readonly secret: "secret";
   readonly node: "node";

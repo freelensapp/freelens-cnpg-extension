@@ -63,6 +63,9 @@ declare const classNames: {
   readonly topList: "topList";
   readonly topEntry: "topEntry";
   readonly lagRow: "lagRow";
+  readonly lagStages: "lagStages";
+  readonly checkpointBlock: "checkpointBlock";
+  readonly checkpointHead: "checkpointHead";
   readonly nested: "nested";
   readonly colName: "colName";
   readonly colWide: "colWide";

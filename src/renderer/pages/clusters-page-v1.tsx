@@ -15,10 +15,14 @@ import { Backup } from "../api/cnpg/backup-v1";
 import { Cluster, type ClusterApi } from "../api/cnpg/cluster-v1";
 import { openCreateClusterDialog } from "../components/cluster-create-dialog";
 import { archivingState, backupFacts, classifyCluster, instanceFacts } from "../components/cluster-health";
+import { pageParam } from "../components/cluster-picker-page";
+import { clusterCounts, countFilterMatches } from "../components/cluster-resources";
 import { withErrorPage } from "../components/error-page";
 import { InstanceBricks } from "../components/instance-bricks";
 import { useReferenceStores } from "../components/reference-loader";
 import styles from "./clusters-page.module.scss";
+
+import type { ClusterCountFilter } from "../components/cluster-resources";
 
 const { observer } = MobxReact;
 
@@ -79,6 +83,64 @@ function storesOf(object: KubeObject): ObjectStore[] {
   return items.filter((item) => item.getNs() === object.getNs());
 }
 
+/** The query parameter of the counts' filter (SPEC-0034): `healthy`, `hibernated` or `attention`. */
+export const HEALTH_FILTER_PARAM = "health";
+
+const COUNT_FILTERS: ReadonlyArray<{ filter: ClusterCountFilter; label: string; tooltip: string }> = [
+  { filter: "healthy", label: "healthy", tooltip: "Healthy in the health model: show only these" },
+  { filter: "hibernated", label: "hibernated", tooltip: "Hibernated on purpose: show only these" },
+  {
+    filter: "attention",
+    label: "need attention",
+    tooltip: "Progressing, degraded, failed or unknown in the health model: show only these",
+  },
+];
+
+function activeFilter(): ClusterCountFilter | undefined {
+  const value = pageParam(HEALTH_FILTER_PARAM).get();
+  return COUNT_FILTERS.some((entry) => entry.filter === value) ? (value as ClusterCountFilter) : undefined;
+}
+
+/** The counts above the list (SPEC-0034), over the clusters of the selected namespaces; each one filters the list. */
+const ClusterCountsBar = observer(({ clusters }: { clusters: KubeObject[] }) => {
+  const counts = clusterCounts(clusters);
+  const active = activeFilter();
+  const param = pageParam(HEALTH_FILTER_PARAM);
+  return (
+    <span className={styles.counts} data-testid="cnpg-clusters-counts">
+      <button
+        type="button"
+        className={[styles.chip, active ? "" : styles.chipOn].join(" ").trim()}
+        data-testid="cnpg-clusters-count-all"
+        title="Show every cluster"
+        onClick={() => param.clear()}
+      >
+        {counts.clusters} clusters
+      </button>
+      {COUNT_FILTERS.map(({ filter, label, tooltip }) => (
+        <button
+          key={filter}
+          type="button"
+          className={[styles.chip, active === filter ? styles.chipOn : ""].join(" ").trim()}
+          data-testid={`cnpg-clusters-count-${filter}`}
+          data-count={counts[filter]}
+          title={tooltip}
+          onClick={() => (active === filter ? param.clear() : param.set(filter))}
+        >
+          {counts[filter]} {label}
+        </button>
+      ))}
+      <span
+        className={styles.instancesCount}
+        data-testid="cnpg-clusters-count-instances"
+        title="Instances ready of the instances the clusters declare"
+      >
+        {counts.instancesReady}/{counts.instances} instances ready
+      </span>
+    </span>
+  );
+});
+
 export interface ClustersPageProps {
   extension: Renderer.LensExtension;
 }
@@ -105,6 +167,21 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
           store={store}
           sortingCallbacks={sortingCallbacks}
           searchFilters={[(object: KubeObject) => object.getSearchFields(), healthSearchFields]}
+          filterItems={[
+            (items: KubeObject[]) => {
+              const filter = activeFilter();
+              return filter ? items.filter((item) => countFilterMatches(item, filter)) : items;
+            },
+          ]}
+          customizeHeader={({ info, ...rest }) => ({
+            ...rest,
+            info: (
+              <>
+                {info}
+                <ClusterCountsBar clusters={store.contextItems as KubeObject[]} />
+              </>
+            ),
+          })}
           renderHeaderTitle={KubeObject.crd.title}
           addRemoveButtons={{ onAdd: () => openCreateClusterDialog(), addTooltip: "Create PostgreSQL cluster" }}
           renderTableHeader={renderTableHeader}

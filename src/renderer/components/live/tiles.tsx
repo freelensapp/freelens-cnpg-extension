@@ -12,12 +12,20 @@ import { humanizeDuration, humanizeRelative } from "../backup-health";
 import { exactBytes, formatBytes } from "../bytes";
 import { formatCount, formatLag } from "./format";
 import styles from "./live.module.scss";
-import { LONG_TRANSACTION_SECONDS, READY_WAL_WARNING, XID_AGE_ERROR, XID_AGE_WARNING } from "./live-model";
+import {
+  CHECKPOINTS_REQUESTED_WARNING,
+  CHECKPOINTS_TO_JUDGE,
+  LONG_TRANSACTION_SECONDS,
+  READY_WAL_WARNING,
+  WRAPAROUND_LIMIT,
+  XID_AGE_ERROR,
+  XID_AGE_WARNING,
+} from "./live-model";
 import { Sparkline } from "./sparkline";
 
 import type { ReactNode } from "react";
 
-import type { Level, LiveView } from "./live-model";
+import type { CheckpointView, ExtensionUpdate, Level, LiveEdge, LiveView } from "./live-model";
 import type { SeriesPoint } from "./series";
 
 const {
@@ -200,13 +208,47 @@ export function LagTile({ view, series }: LiveTileProps) {
             {edge.streaming ? formatLag(edge.replayLagMs) : edge.state}
           </span>
           <Sparkline points={series.get(`lag:${edge.standby}`)} label={`Replay lag of ${edge.standby}, ms`} />
+          {edge.streaming ? <LagStages edge={edge} /> : null}
         </div>
       ))}
       {streaming.length > 0 ? (
-        <div className={styles.muted}>Replay lag, the worst first; warning above 10 s or 64 MiB</div>
+        <div className={styles.muted}>
+          Replay lag, the worst first; warning above 10 s or 64 MiB. Below: written to the standby's disk, flushed,
+          replayed.
+        </div>
       ) : null}
     </Tile>
   );
+}
+
+/** Where a standby falls behind (SPEC-0033): written, flushed and replayed, in time and in bytes of WAL. */
+function LagStages({ edge }: { edge: LiveEdge }) {
+  const stages = [
+    { label: "write", ms: edge.writeLagMs, bytes: edge.writeBytes },
+    { label: "flush", ms: edge.flushLagMs, bytes: edge.flushBytes },
+    { label: "replay", ms: edge.replayLagMs, bytes: edge.replayBytes },
+  ];
+  return (
+    <div className={styles.lagStages} data-testid={`cnpg-live-lag-stages-${edge.standby}`}>
+      {stages.map((stage) => (
+        <span
+          key={stage.label}
+          data-stage={stage.label}
+          title={stage.bytes !== undefined ? `${exactBytes(stage.bytes)} behind the primary` : undefined}
+        >
+          {stage.label} {formatLag(stage.ms)}
+          {stage.bytes !== undefined ? ` · ${formatBytes(stage.bytes)}` : ""}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+const NOT_COLLECTED =
+  "not collected: the metrics exporter of this cluster has no query for it (a custom monitoring configuration)";
+
+function updatesTitle(updates: readonly ExtensionUpdate[]): string {
+  return updates.map((update) => `${update.name} ${update.installed ?? "?"} -> ${update.available ?? "?"}`).join("\n");
 }
 
 export function DatabasesTile({ view, metricsPending, metricsFailure }: LiveTileProps) {
@@ -229,11 +271,20 @@ export function DatabasesTile({ view, metricsPending, metricsFailure }: LiveTile
           <TableCell className={styles.colName}>Database</TableCell>
           <TableCell className={styles.colBar}>Size</TableCell>
           <TableCell className={styles.colNumber}>XID age</TableCell>
+          <TableCell className={styles.colNumber}>MXID age</TableCell>
         </TableHead>
         {view.databases.map((database) => (
           <TableRow key={database.name} nowrap>
             <TableCell className={styles.colName}>
               <WithTooltip>{database.name}</WithTooltip>
+              {database.extensionUpdates && database.extensionUpdates.length > 0 ? (
+                <span
+                  data-testid={`cnpg-live-extension-updates-${database.name}`}
+                  title={updatesTitle(database.extensionUpdates)}
+                >
+                  <Badge className="warning" label={`${database.extensionUpdates.length} updates`} />
+                </span>
+              ) : null}
             </TableCell>
             <TableCell className={styles.colBar}>
               <span
@@ -254,9 +305,114 @@ export function DatabasesTile({ view, metricsPending, metricsFailure }: LiveTile
                 {formatCount(database.xidAge)}
               </span>
             </TableCell>
+            <TableCell className={styles.colNumber}>
+              <span
+                className={LEVEL_CLASS[database.mxidLevel]}
+                data-testid={`cnpg-live-mxid-${database.name}`}
+                title={view.mxidCollected ? mxidTitle(view) : NOT_COLLECTED}
+              >
+                {view.mxidCollected ? formatCount(database.mxidAge) : "not collected"}
+              </span>
+            </TableCell>
           </TableRow>
         ))}
       </Table>
+      <div className={styles.muted} data-testid="cnpg-live-extension-updates">
+        {view.extensionsCollected ? extensionsLine(view) : `Extension updates ${NOT_COLLECTED}`}
+      </div>
+    </Tile>
+  );
+}
+
+function mxidTitle(view: LiveView): string {
+  const { freezeMaxAge, warning, error } = view.mxidThresholds;
+  return [
+    "Multixact ID age.",
+    freezeMaxAge !== undefined
+      ? `Autovacuum forces a freeze at ${formatCount(freezeMaxAge)} (autovacuum_multixact_freeze_max_age);`
+      : "",
+    `warning above ${formatCount(warning)}, error above ${formatCount(error)}; wraparound at ${formatCount(WRAPAROUND_LIMIT)}`,
+  ]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function extensionsLine(view: LiveView): string {
+  const behind = view.databases.filter((database) => (database.extensionUpdates?.length ?? 0) > 0);
+  if (behind.length === 0) return "Extension updates available: none";
+  const count = behind.reduce((total, database) => total + (database.extensionUpdates?.length ?? 0), 0);
+  return `Extension updates available: ${count}, in ${behind.map((database) => database.name).join(", ")} (ALTER EXTENSION ... UPDATE)`;
+}
+
+function checkpointsLine(view: CheckpointView): string {
+  if (view.timed === undefined && view.requested === undefined) return "N/A";
+  const share = view.requestedShare !== undefined ? ` (${Math.round(view.requestedShare * 100)} % requested)` : "";
+  return `${formatCount(view.timed)} timed, ${formatCount(view.requested)} requested${share}`;
+}
+
+function checkpointsTitle(view: CheckpointView): string {
+  const since = view.since ? ` since ${view.since.toISOString()}` : "";
+  const setting = view.maxWalSizeMb !== undefined ? ` (max_wal_size is ${formatCount(view.maxWalSizeMb)} MB)` : "";
+  return `Checkpoints${since}. A requested checkpoint comes from WAL filling max_wal_size${setting}: when ${Math.round(CHECKPOINTS_REQUESTED_WARNING * 100)} % or more of at least ${CHECKPOINTS_TO_JUDGE} are requested, the setting is small for the load`;
+}
+
+function msLine(ms: number | undefined): string {
+  if (ms === undefined) return "N/A";
+  return ms < 1000 ? `${Math.round(ms)} ms` : humanizeDuration(ms);
+}
+
+/** The checkpoints of every instance (SPEC-0033); restartpoints on a standby, which replays the primary's. */
+export function CheckpointsTile({ view, metricsPending, metricsFailure }: LiveTileProps) {
+  return (
+    <Tile
+      title="Checkpoints"
+      testId="cnpg-live-checkpoints"
+      loading={metricsPending}
+      placeholder={
+        view.checkpoints.length > 0 ? undefined : (metricsFailure ?? "Waiting for the metrics of the instances")
+      }
+    >
+      {view.checkpoints.map((checkpoints) => (
+        <div
+          key={checkpoints.instance}
+          className={styles.checkpointBlock}
+          data-testid={`cnpg-live-checkpoints-${checkpoints.instance}`}
+        >
+          <div className={styles.checkpointHead}>
+            <WithTooltip>{checkpoints.instance}</WithTooltip>
+            <span className={styles.muted}>
+              {checkpoints.role === "primary" && checkpoints.inRecovery
+                ? "designated primary"
+                : checkpoints.role === "unknown"
+                  ? ""
+                  : checkpoints.role}
+            </span>
+          </div>
+          {checkpoints.collected ? (
+            <div className={styles.figures}>
+              <Figure wide label="Checkpoints" level={checkpoints.level} title={checkpointsTitle(checkpoints)}>
+                {checkpointsLine(checkpoints)}
+              </Figure>
+              {checkpoints.inRecovery ? (
+                <Figure
+                  wide
+                  label="Restartpoints"
+                  title="An instance in recovery writes restartpoints as it replays the checkpoints of its source"
+                >
+                  {formatCount(checkpoints.restartpointsTimed)} timed, {formatCount(checkpoints.restartpointsRequested)}{" "}
+                  requested, {formatCount(checkpoints.restartpointsDone)} done
+                </Figure>
+              ) : null}
+              <Figure label="Buffers written">{formatCount(checkpoints.buffersWritten)}</Figure>
+              <Figure label="Write / sync" title="Time spent writing and syncing the files of checkpoints">
+                {msLine(checkpoints.writeTimeMs)} / {msLine(checkpoints.syncTimeMs)}
+              </Figure>
+            </div>
+          ) : (
+            <div className={styles.muted}>Checkpoints {NOT_COLLECTED}</div>
+          )}
+        </div>
+      ))}
     </Tile>
   );
 }

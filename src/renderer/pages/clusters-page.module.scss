@@ -59,3 +59,42 @@
 .switching {
   color: var(--colorWarning);
 }
+
+// The counts above the list (SPEC-0034): chips that filter it, the way the
+// Timeline filters its rows.
+.counts {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc($unit / 2);
+  margin-left: $unit;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  padding: calc($unit / 4) $unit;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit * 2);
+  background: var(--contentColor);
+  color: var(--textColorSecondary);
+  font: inherit;
+  font-size: var(--font-size-small, 12px);
+  cursor: pointer;
+
+  &:hover,
+  &:focus-visible {
+    border-color: var(--textColorAccent);
+    outline: none;
+  }
+
+  &.chipOn {
+    border-color: var(--textColorAccent);
+    color: var(--textColorPrimary);
+  }
+}
+
+.instancesCount {
+  color: var(--textColorSecondary);
+  font-size: var(--font-size-small, 12px);
+}

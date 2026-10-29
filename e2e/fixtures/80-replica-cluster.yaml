@@ -1,0 +1,66 @@
+# A replica cluster (SPEC-0034): it follows e2e-main through the object store
+# e2e-main archives to, from the base backup e2e-backup-ok onwards, so it is
+# applied once that backup has completed. It lives in a namespace of its own,
+# so the clusters the read-only cases count stay the four of 30-clusters.yaml.
+# Its object store reads the same bucket as e2e-store, under the server name
+# e2e-main.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: cnpg-e2e-replica
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: replica-store-creds
+  namespace: cnpg-e2e-replica
+type: Opaque
+stringData:
+  ACCESS_KEY_ID: e2e-s3
+  ACCESS_SECRET_KEY: e2e-s3-secret-1
+---
+apiVersion: barmancloud.cnpg.io/v1
+kind: ObjectStore
+metadata:
+  name: replica-store
+  namespace: cnpg-e2e-replica
+spec:
+  configuration:
+    destinationPath: s3://backups/
+    endpointURL: http://s3.cnpg-e2e.svc:9000
+    s3Credentials:
+      accessKeyId:
+        name: replica-store-creds
+        key: ACCESS_KEY_ID
+      secretAccessKey:
+        name: replica-store-creds
+        key: ACCESS_SECRET_KEY
+    wal:
+      compression: gzip
+---
+apiVersion: postgresql.cnpg.io/v1
+kind: Cluster
+metadata:
+  name: e2e-replica
+  namespace: cnpg-e2e-replica
+spec:
+  instances: 1
+  storage:
+    size: 1Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  bootstrap:
+    recovery:
+      source: e2e-main-origin
+  replica:
+    enabled: true
+    source: e2e-main-origin
+  externalClusters:
+    - name: e2e-main-origin
+      plugin:
+        name: barman-cloud.cloudnative-pg.io
+        parameters:
+          barmanObjectName: replica-store
+          serverName: e2e-main
