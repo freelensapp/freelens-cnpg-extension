@@ -294,6 +294,30 @@ of that server. The scheduled backup form has a cron
 editor with the next three runs; the declarative forms say the SQL the
 primary will run.
 
+### Connect and forward a local port
+
+The drawer of a cluster (and of a pooler) has a **Connect** section: each
+service with its in-cluster host and port and what it is for (rw, ro, r and
+those of `spec.managed.services`), the application database and user, and
+buttons that copy the password, the URI or the JDBC URI of its Secret. The
+Secret is read when the button is pressed and its value goes to the
+clipboard only. **Forward a local port** runs `kubectl port-forward --address
+127.0.0.1 service/<name> :5432` in the Freelens main process with the
+kubectl and the connection of the cluster; the drawer lists the forwards
+with their local address, "Copy psql command" (no password in it) and
+"Stop". A forward ends when it is stopped, when the cluster disconnects, when
+the extension is disabled and when Freelens quits. It needs `create` on
+`pods/portforward`.
+
+### PostgreSQL configuration
+
+**Configuration**, from the sidebar, the menu or the drawer of a cluster,
+shows the parameters and the HBA rules the primary runs with, as `kubectl
+cnpg status -v -v` prints them (`custom.conf` and `pg_hba.conf`, read with
+two fixed `cat` commands through `kubectl exec`, which needs `pods/exec`),
+where each parameter comes from, a value of the spec not applied yet, and
+for each instance whether a restart is pending.
+
 ### Open psql
 
 "Open psql" writes one command into a terminal tab of Freelens, the same one

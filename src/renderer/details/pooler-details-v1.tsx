@@ -22,6 +22,8 @@ import {
   poolerMetricsScheme,
 } from "../api/instance/pod-proxy";
 import { humanizeRelative } from "../components/backup-health";
+import { poolerServiceRow } from "../components/connect";
+import { ConnectSection } from "../components/connect-section";
 import { withErrorPage } from "../components/error-page";
 import { formatCount, formatLag } from "../components/live/format";
 import { buildPoolerView } from "../components/live/pooler-model";
@@ -251,6 +253,13 @@ export const PoolerDetails = observer((props: PoolerDetailsProps) =>
         <DrawerItem name="Accepting clients" labelsOnly>
           <BadgeBoolean value={!(pgbouncer?.paused ?? false)} />
         </DrawerItem>
+
+        {/* SPEC-0031: the service of the pooler, and a local port forwarded to it. */}
+        <ConnectSection
+          namespace={namespace}
+          cluster={Pooler.getClusterName(object) ?? ""}
+          rows={[poolerServiceRow(object.getName(), namespace, object.spec?.type ?? "rw")]}
+        />
 
         <DrawerTitle>Right now</DrawerTitle>
         <RightNow pooler={object} />

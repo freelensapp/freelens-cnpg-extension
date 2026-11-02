@@ -34,7 +34,9 @@ import { PublicationDetails as PublicationDetailsV1 } from "./details/publicatio
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscription-details-v1";
 import { CnpgIcon } from "./icons";
+import { CnpgIpcRenderer } from "./ipc";
 import { ClusterBackupNowMenuItem } from "./menus/cluster-backup-now-menu-item";
+import { ClusterConfigMenuItem } from "./menus/cluster-config-menu-item";
 import { ClusterFencingMenuItem } from "./menus/cluster-fencing-menu-item";
 import { ClusterHibernationMenuItem } from "./menus/cluster-hibernation-menu-item";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
@@ -53,6 +55,7 @@ import {
   CLUSTER_IMAGE_CATALOGS_PAGE_ID,
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
+  CONFIG_PAGE_ID,
   DATABASE_ROLES_PAGE_ID,
   DATABASES_GROUP_ID,
   DATABASES_PAGE_ID,
@@ -76,6 +79,7 @@ import {
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import { ConfigPage } from "./pages/config-page";
 import { DatabaseRolesPage as DatabaseRolesPageV1 } from "./pages/database-roles-page-v1";
 import { DatabasesPage as DatabasesPageV1 } from "./pages/databases-page-v1";
 import { FailoverQuorumsPage as FailoverQuorumsPageV1 } from "./pages/failover-quorums-page-v1";
@@ -121,6 +125,9 @@ const AvailableLivePage = createAvailableVersionPage("PostgreSQL Clusters", [
 ]);
 const AvailableLogsPage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: LogsPage, version: "v1" },
+]);
+const AvailableConfigPage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: ConfigPage, version: "v1" },
 ]);
 const AvailableTimelinePage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: TimelinePage, version: "v1" },
@@ -171,6 +178,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
   async onActivate() {
     // The preferences of SPEC-0039; main keeps the file.
     CnpgPreferencesStore.getInstanceOrCreate().loadExtension(this);
+    // The channels to main of SPEC-0031 and SPEC-0035.
+    CnpgIpcRenderer.resetInstance();
+    CnpgIpcRenderer.createInstance(this);
+  }
+
+  async onDeactivate() {
+    CnpgIpcRenderer.resetInstance();
   }
 
   appPreferences = [
@@ -336,6 +350,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterConfigMenuItem {...props} extension={this} />,
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterPsqlMenuItem {...props} />,
       },
     },
@@ -456,6 +477,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: TIMELINE_PAGE_ID,
       components: {
         Page: () => <AvailableTimelinePage extension={this} />,
+      },
+    },
+    {
+      id: CONFIG_PAGE_ID,
+      components: {
+        Page: () => <AvailableConfigPage extension={this} />,
       },
     },
     {
@@ -581,6 +608,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: "Timeline",
       target: { pageId: TIMELINE_PAGE_ID },
+      components: {},
+    },
+    {
+      id: CONFIG_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: "Configuration",
+      target: { pageId: CONFIG_PAGE_ID },
       components: {},
     },
     {

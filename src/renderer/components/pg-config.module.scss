@@ -1,0 +1,99 @@
+@use "../vars" as *;
+
+$ink-secondary: var(--textColorSecondary);
+$line: var(--borderFaintColor);
+$tint: color-mix(in srgb, var(--textColorAccent) 4%, transparent);
+$tint-strong: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
+
+// The PostgreSQL configuration page (SPEC-0035).
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc($unit / 2) $unit;
+}
+
+.tab {
+  padding: calc($unit / 4) $unit;
+  border: 1px solid var(--borderColor);
+  border-radius: calc($unit * 2);
+  background: var(--contentColor);
+  color: var(--textColorSecondary);
+  font: inherit;
+  cursor: pointer;
+
+  &.on {
+    border-color: var(--textColorAccent);
+    color: var(--textColorPrimary);
+  }
+}
+
+.button {
+  padding: calc($unit / 4) $unit;
+  border: 1px solid $line;
+  border-radius: calc($unit / 2);
+  background: $tint;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+
+  &:hover {
+    background: $tint-strong;
+  }
+}
+
+.search {
+  min-width: calc($unit * 30);
+}
+
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc($unit / 2) calc($unit * 2);
+}
+
+.instance {
+  display: inline-flex;
+  align-items: center;
+  gap: calc($unit / 2);
+}
+
+.note {
+  color: var(--textColorSecondary);
+}
+
+.error {
+  color: var(--colorError);
+}
+
+.table {
+  :global(.TableCell) {
+    &.name {
+      flex-grow: 1.4;
+    }
+
+    &.value {
+      flex-grow: 2.4;
+      overflow-wrap: anywhere;
+      white-space: normal;
+    }
+
+    &.origin {
+      flex-grow: 1.6;
+    }
+
+    &.narrow {
+      flex-grow: 0.8;
+    }
+  }
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+}

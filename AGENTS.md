@@ -48,7 +48,10 @@ complete and every spec under `docs/specs/` is verified.
   executed by the extension are fixed strings.
 - Do not store or forward database credentials. Prefer the metrics endpoint
   through the API server pod proxy, then `exec` with peer authentication on
-  the instance socket.
+  the instance socket. The one exception is the Connect section (SPEC-0031):
+  the application user Secret is read when a copy button is pressed, its
+  value is shown masked and goes to the clipboard only, never into state,
+  logs, IPC or storage.
 - The psql terminal connects as the `postgres` superuser: say so in the UI
   (tooltip) and in the README.
 - Deprecated CloudNativePG forms (for example the in-tree `barmanObjectStore`)

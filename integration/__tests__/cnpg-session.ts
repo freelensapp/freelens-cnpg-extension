@@ -46,6 +46,11 @@ export interface AppSession {
   window: Page;
   /** The errors logged so far. */
   errors(): string[];
+  /**
+   * Drops the errors logged so far that match `pattern`, and says how many: for the errors a case causes on
+   * purpose (an instance it restarts answers 503 meanwhile). The pattern is the case's to keep narrow.
+   */
+  forgetErrors(pattern: RegExp): number;
   /** Stops collecting errors and closes the connection; returns every error logged. */
   close(): Promise<string[]>;
 }
@@ -170,6 +175,13 @@ function collectErrors(window: Page) {
       readMainLog();
       return [...errorLogs];
     },
+    forget: (pattern: RegExp) => {
+      readMainLog();
+      const kept = errorLogs.filter((line) => !pattern.test(line));
+      const dropped = errorLogs.length - kept.length;
+      errorLogs.splice(0, errorLogs.length, ...kept);
+      return dropped;
+    },
     stop: () => {
       window.off("console", onConsole);
       window.off("pageerror", onPageError);
@@ -209,6 +221,7 @@ export async function connectApp(): Promise<AppSession> {
       browser,
       window,
       errors: collector.errors,
+      forgetErrors: collector.forget,
       close: async () => {
         const errors = collector.errors();
 
@@ -280,6 +293,24 @@ export async function installExtension({ window }: AppSession, { reinstall = fal
   await window.getByTestId("confirmation-dialog").getByTestId("confirm").click(viewTimeout);
   await enabled.waitFor(viewTimeout);
   await dismissNotifications(window);
+}
+
+/** Disables or enables the extension from the Extensions page, and waits for its status (SPEC-0031). */
+export async function setExtensionEnabled({ window }: AppSession, enabled: boolean) {
+  await navigate(window, "/extensions");
+  const table = window.getByTestId("extensions-table");
+  const row = table.locator("tbody tr", { hasText: EXTENSION_NAME });
+  const status = enabled ? "Enabled" : "Disabled";
+
+  await row.waitFor(viewTimeout);
+  await dismissNotifications(window);
+  await row.locator('[id^="menu-actions-for-installed-extensions-for-"]').click();
+  // Freelens 2 labels the item of a disabled extension "Enabled" (installed-extensions.tsx): both are taken.
+  await window
+    .locator(".MenuActions .MenuItem")
+    .getByText(enabled ? /^Enabled?$/ : "Disable", { exact: true })
+    .click();
+  await row.locator("td").nth(2).getByText(status, { exact: true }).waitFor(viewTimeout);
 }
 
 /** The catalog id of the lab cluster, looked up by its context name. */

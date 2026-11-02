@@ -653,6 +653,77 @@ describe.skipIf(!(await appReady({ cluster: true })))(
       TIMEOUT,
     );
 
+    it(
+      "shows the restart a parameter change waits for on the primary, and the value of the spec (SPEC-0035)",
+      async () => {
+        const name = cluster.E2E_ACTIONS_CLUSTER;
+        const patch = (body: unknown) =>
+          cluster.kubectlActions("patch", CLUSTERS, name, "--type=merge", "-p", JSON.stringify(body));
+
+        // Supervised: the replicas restart on their own, the primary waits for a switchover, so its restart stays pending.
+        expect(
+          patch({
+            spec: { primaryUpdateStrategy: "supervised", postgresql: { parameters: { max_connections: "110" } } },
+          }).status,
+        ).toBe(0);
+        try {
+          const { primary } = actionsInstances();
+
+          await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+          await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+          await frame
+            .locator(".TableRow", { hasText: name })
+            .first()
+            .locator(".TableCell", { hasText: name })
+            .first()
+            .click();
+          await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-config-link"]').click();
+
+          const panel = frame.locator('[data-testid="cnpg-config-panel"]');
+          const value = panel.locator('[data-testid="cnpg-config-param-max_connections"]');
+
+          // The file follows the spec once the instance manager wrote it: read again until it is there.
+          expect(
+            await waitUntil(
+              async () => {
+                if ((await value.count()) === 0) await panel.locator('[data-testid="cnpg-config-read"]').click();
+                return value.count();
+              },
+              (count) => count === 1,
+              3 * 60_000,
+            ),
+          ).toBe(1);
+          expect(await value.getAttribute("data-origin")).toBe("spec");
+          await panel
+            .locator(`[data-testid="cnpg-config-instance-${primary}"][data-pending="true"]`)
+            .waitFor({ state: "visible", timeout: 3 * 60_000 });
+          expect((await panel.innerText()).replace(/\s+/g, " ")).toContain(
+            "restart pending: a changed parameter needs a restart",
+          );
+          await cluster.captureScreenshot(frame, "m9-config-pending-dark");
+        } finally {
+          // Away from the page first: the revert restarts the primary, whose status port answers 503 meanwhile.
+          await cluster.openCnpgPage(frame, "cnpg-overview", "Overview").catch(() => {});
+          // The replicas this case restarts answer 503 (or 400, without an address yet) on their status port while the strip asks them: on purpose.
+          session.forgetErrors(
+            /^\[renderer\] Failed to load resource: the server responded with a status of (400|503) \(\) @ \S+\/namespaces\/cnpg-e2e-actions\/pods\/https?:e2e-actions-\d+:8000\/proxy\/pg\/status$/,
+          );
+          patch({
+            spec: { primaryUpdateStrategy: "unsupervised", postgresql: { parameters: { max_connections: null } } },
+          });
+          await waitUntil(
+            async () =>
+              cluster.kubectlActionsField(CLUSTERS, name, "{.status.phase}") === "Cluster in healthy state" &&
+              cluster.kubectlActionsField(CLUSTERS, name, "{.status.readyInstances}") === "2",
+            (healthy) => healthy,
+            5 * 60_000,
+          );
+          await cluster.selectNamespace(frame).catch(() => {});
+        }
+      },
+      TIMEOUT,
+    );
+
     it("logs no error while the M9 writes run", () => {
       expect(session.errors()).toEqual([]);
     });

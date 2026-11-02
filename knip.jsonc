@@ -47,9 +47,11 @@
   // Binaries that no dependency provides: yq, which the workflows call, comes
   // from mise (see mise.toml), and kubectl, which the integration tests call,
   // from the system, or from helm/kind-action in CI.
+  // psql and pg_isready, which the SPEC-0031 case runs against a forwarded port,
+  // from the PostgreSQL client of the system.
   // electron-rebuild: the E2E and integration workflows of the v1 harness, until
   // the proposed integration-tests.yaml of github-workflow-fix/ replaces them.
-  "ignoreBinaries": ["electron-rebuild", "kubectl", "yq"],
+  "ignoreBinaries": ["electron-rebuild", "kubectl", "pg_isready", "psql", "yq"],
 
   "ignoreDependencies": [
     // host-provided modules. The bundle maps them onto

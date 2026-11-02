@@ -7,9 +7,18 @@
 // against the kind cluster of `pnpm e2e:cluster:up` (SPEC-0002). Read-only:
 // the write of a feature, when it has one, goes to `cnpg-writes.tests.ts`.
 
+import { spawnSync } from "node:child_process";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import * as cluster from "./cnpg-cluster";
-import { appReady, connectApp, dismissNotifications, installExtension, navigate, openLabCluster } from "./cnpg-session";
+import {
+  appReady,
+  connectApp,
+  dismissNotifications,
+  installExtension,
+  navigate,
+  openLabCluster,
+  setExtensionEnabled,
+} from "./cnpg-session";
 import { tableRowName, waitUntil } from "./cnpg-steps";
 
 import type { Frame } from "playwright";
@@ -21,6 +30,17 @@ const TIMEOUT = 10 * 60 * 1000;
 /** The text of a locator as one line. */
 async function textOf(locator: ReturnType<Frame["locator"]>): Promise<string> {
   return (await locator.innerText()).replace(/\s+/g, " ").trim();
+}
+
+/** A key of the application Secret of e2e-main, decoded: compared in the test, never printed. */
+function appSecret(key: string): string {
+  const { stdout } = cluster.kubectlE2E("get", "secret", "e2e-main-app", "-o", `jsonpath={.data.${key}}`);
+  return Buffer.from(stdout.trim(), "base64").toString("utf8");
+}
+
+/** Whether a PostgreSQL server answers on 127.0.0.1:<port> (pg_isready: 0 accepting, 2 no answer). */
+function answersOn(port: number): boolean {
+  return spawnSync("pg_isready", ["-h", "127.0.0.1", "-p", String(port), "-t", "3"]).status === 0;
 }
 
 describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: the features of M9", () => {
@@ -336,6 +356,139 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
         await urlInput.fill("").catch(() => {});
         frame = await openLabCluster(session);
       }
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "shows how to connect to e2e-main, copies its URI, and forwards a local port psql reaches (SPEC-0031)",
+    async () => {
+      const name = "e2e-main";
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_NAMESPACE);
+      await frame
+        .locator(".TableRow", { hasText: name })
+        .first()
+        .locator(".TableCell", { hasText: name })
+        .first()
+        .click();
+
+      const drawer = frame.locator(".Drawer.KubeObjectDetails");
+      const section = drawer.locator('[data-testid="cnpg-connect-section"]');
+
+      await section.waitFor({ state: "visible", timeout: 60_000 });
+      for (const service of ["e2e-main-rw", "e2e-main-ro", "e2e-main-r"]) {
+        expect(await section.locator(`[data-testid="cnpg-connect-row-${service}"]`).count()).toBe(1);
+      }
+      expect(await textOf(section)).toContain("e2e-main-rw.cnpg-e2e:5432");
+
+      // The URI goes to the clipboard and nowhere else; the notification never says it.
+      await drawer.locator('[data-testid="cnpg-connect-copy-uri"]').click();
+      const copied = await cluster.expectNotification(frame, "ok", "Copied the URI of the user app to the clipboard");
+      const uri = appSecret("uri");
+
+      expect(copied.includes(appSecret("password"))).toBe(false);
+      expect((await frame.evaluate(() => navigator.clipboard.readText())) === uri).toBe(true);
+      await cluster.clearNotifications(frame);
+
+      // A local port to the primary, through kubectl run by main.
+      await drawer.locator('[data-testid="cnpg-connect-forward-e2e-main-rw"]').click();
+      const row = drawer.locator('[data-testid="cnpg-forward-e2e-main-rw"][data-state="running"]');
+
+      await row.waitFor({ state: "visible", timeout: 60_000 });
+      const port = Number(await row.getAttribute("data-port"));
+
+      expect(port).toBeGreaterThan(0);
+      const select = spawnSync(
+        "psql",
+        [`host=127.0.0.1 port=${port} dbname=app user=app sslmode=require`, "-tAc", "SELECT 1"],
+        { encoding: "utf8", env: { ...process.env, PGPASSWORD: appSecret("password") }, timeout: 20_000 },
+      );
+
+      expect(select.stdout.trim()).toBe("1");
+      await drawer.locator('[data-testid="cnpg-forward-psql-e2e-main-rw"]').click();
+      expect(await frame.evaluate(() => navigator.clipboard.readText())).toBe(
+        `psql "host=127.0.0.1 port=${port} dbname=app user=app"`,
+      );
+      await cluster.captureScreenshot(frame, "m9-connect-dark");
+
+      // Stop closes the port.
+      await drawer.locator('[data-testid="cnpg-forward-stop-e2e-main-rw"]').click();
+      await row.waitFor({ state: "detached", timeout: 30_000 });
+      expect(
+        await waitUntil(
+          async () => answersOn(port),
+          (answers) => !answers,
+          15_000,
+        ),
+      ).toBe(false);
+
+      // Disabling the extension closes a forward too.
+      await drawer.locator('[data-testid="cnpg-connect-forward-e2e-main-rw"]').click();
+      await row.waitFor({ state: "visible", timeout: 60_000 });
+      const second = Number(await row.getAttribute("data-port"));
+
+      expect(answersOn(second)).toBe(true);
+      await cluster.closeDetails(frame);
+      await setExtensionEnabled(session, false);
+      expect(
+        await waitUntil(
+          async () => answersOn(second),
+          (answers) => !answers,
+          20_000,
+        ),
+      ).toBe(false);
+      await setExtensionEnabled(session, true);
+      frame = await openLabCluster(session);
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "shows the parameters and the HBA rules of the primary of e2e-main, with where each comes from (SPEC-0035)",
+    async () => {
+      const name = "e2e-main";
+      const primary = cluster.kubectlField("clusters.postgresql.cnpg.io", name, "{.status.currentPrimary}");
+
+      await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+      await cluster.selectNamespace(frame, cluster.E2E_NAMESPACE);
+      await frame
+        .locator(".TableRow", { hasText: name })
+        .first()
+        .locator(".TableCell", { hasText: name })
+        .first()
+        .click();
+      await frame.locator('.Drawer.KubeObjectDetails [data-testid="cnpg-cluster-config-link"]').click();
+
+      const panel = frame.locator('[data-testid="cnpg-config-panel"]');
+      const param = (key: string) => panel.locator(`[data-testid="cnpg-config-param-${key}"]`);
+
+      // cluster_name is in the file only: once it is there, the rows are the file's.
+      await param("cluster_name").waitFor({ state: "visible", timeout: 60_000 });
+      expect(await param("wal_level").getAttribute("data-origin")).toBe("default");
+      expect(await param("port").getAttribute("data-origin")).toBe("fixed");
+      expect(await param("cluster_name").getAttribute("data-origin")).toBe("fixed");
+      expect(await textOf(panel)).toContain(`As the operator wrote them on the primary ${primary}`);
+      await panel
+        .locator(`[data-testid="cnpg-config-instance-${primary}"][data-pending="false"]`)
+        .waitFor({ state: "visible", timeout: 60_000 });
+      await cluster.captureScreenshot(frame, "m9-config-dark");
+
+      // The search narrows the rows; the HBA tab marks the operator's own rules.
+      const search = panel
+        .locator('input[data-testid="cnpg-config-search"], [data-testid="cnpg-config-search"] input')
+        .first();
+
+      await search.fill("ssl_");
+      expect(await param("wal_level").count()).toBe(0);
+      expect(await param("ssl_min_protocol_version").count()).toBe(1);
+      await search.fill("");
+      await panel.locator('[data-testid="cnpg-config-tab-hba"]').click();
+      await panel.locator('[data-testid="cnpg-config-hba"]').waitFor({ state: "visible", timeout: 30_000 });
+      expect(await panel.locator('[data-testid^="cnpg-config-hba-"][data-section="fixed"]').count()).toBe(5);
+      expect(await panel.locator('[data-testid^="cnpg-config-hba-"][data-section="default"]').count()).toBe(1);
+      await cluster.captureScreenshot(frame, "m9-config-hba-dark");
     },
     TIMEOUT,
   );

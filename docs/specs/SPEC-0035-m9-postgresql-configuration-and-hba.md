@@ -1,6 +1,6 @@
 # SPEC-0035: PostgreSQL configuration and HBA rules of a cluster
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -62,4 +62,23 @@ no password (`pg_hba.conf` names methods, not secrets).
 
 ## Notes and deviations
 
-Filled during implementation.
+- **Main** runs three fixed commands with the host's kubectl and environment: a `get` of the cluster's
+  `status.currentPrimary` (the pod asked must still be the primary), then `cat` of `custom.conf` and
+  `pg_hba.conf` in `/var/lib/postgresql/data/pgdata` in the `postgres` container (bounded: 20 s, 1 MiB).
+- **Origins.** Four, not three: fixed by the operator (its fixed list, `ssl*`, `allow_alter_system`); the
+  operator's default written into the spec (the mutating webhook copies its defaults into
+  `spec.postgresql.parameters`, so they cannot be told apart from a user's equal value); set in the spec;
+  written by the operator from other settings (`max_worker_processes`, `cnpg.*`). A value of the spec that
+  differs from the file is shown next to it, and spec parameters the file has not yet are listed.
+- **HBA** rows carry the section the operator wrote them in (fixed, user-defined, default).
+- **Strip** from `/pg/status` of every instance every 10 s, with the scheme of its status port read from
+  the pod (`--status-port-tls`, after a fresh pod list); an instance that does not answer shows "no
+  answer" (it may be restarting). The restart action is one click away through the drawer link.
+- **Fallback**: without `pods/exec`, or when the read fails, the page shows the spec's parameters and
+  rules, and says why; never while the files are being read.
+- **E2E**: `e2e-main` has no `shared_buffers` in `custom.conf` (the operator does not write it), so the
+  case checks the origins of `wal_level`, `port` and `cluster_name`, the search and the 5 fixed and 1
+  default HBA rules. The pending restart is checked on `e2e-actions`, switched to `supervised` with
+  `max_connections` changed for the length of the case (the replicas restart on their own, the primary
+  waits), then restored; the 400 and 503 of the status ports of the replicas it restarts are dropped from
+  the session's errors by a narrow pattern (`forgetErrors`).

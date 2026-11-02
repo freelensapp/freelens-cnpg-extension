@@ -28,6 +28,8 @@ import {
   classifyCluster,
   instanceFacts,
 } from "../components/cluster-health";
+import { applicationUser, clusterServiceRows } from "../components/connect";
+import { ConnectSection } from "../components/connect-section";
 import { withErrorPage } from "../components/error-page";
 import { quorumFacts } from "../components/failover-quorum";
 import { FENCED_INSTANCES_ANNOTATION, parseFenced, UNPARSEABLE_FENCING } from "../components/fencing";
@@ -49,7 +51,7 @@ import { RestartInstanceButton } from "../menus/cluster-restart-menu-item";
 import { PromoteButton } from "../menus/cluster-switchover-menu-item";
 import { DestroyInstanceButton } from "../menus/destroy-instance-button";
 import { PsqlButton } from "../menus/open-psql";
-import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
+import { BACKUPS_PAGE_ID, configUrl, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
 import { ClusterLeaseRows } from "./cluster-lease-rows";
@@ -307,6 +309,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             Events, backups, changes of primary and what is scheduled, in order
           </MaybeLink>
         </DrawerItem>
+        <DrawerItem name="Configuration" hidden={hibernated}>
+          <MaybeLink
+            to={configUrl(props.extension.name, namespace, name)}
+            data-testid="cnpg-cluster-config-link"
+            onClick={(event) => event.stopPropagation()}
+          >
+            The parameters and the HBA rules the primary runs with, and the restarts they wait for
+          </MaybeLink>
+        </DrawerItem>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />
         </DrawerItem>
@@ -378,6 +389,14 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             ))}
           </Table>
         ) : null}
+
+        {/* SPEC-0031: how an application reaches the database, and a local port forwarded to a service. */}
+        <ConnectSection
+          namespace={namespace}
+          cluster={name}
+          rows={clusterServiceRows({ name, namespace, managed: object.spec?.managed })}
+          user={applicationUser({ name, namespace, bootstrap: object.spec?.bootstrap })}
+        />
 
         <DrawerTitle>Instances</DrawerTitle>
         <DrawerItem name="Ready">

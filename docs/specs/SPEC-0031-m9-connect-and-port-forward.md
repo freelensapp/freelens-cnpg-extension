@@ -1,6 +1,6 @@
 # SPEC-0031: Connect to a cluster, and forward a local port
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -86,4 +86,24 @@ its drawer already is.
 
 ## Notes and deviations
 
-Filled during implementation.
+- **Main process.** `src/main/port-forwards.ts`, adapted from the kubectl tunnels of
+  freelens-kafka-extension: the host's kubectl and environment (`Main.Shell`), the local port read from
+  kubectl's line of readiness, refusals said in words (pods/portforward, credential, service missing, no
+  pod), kubectl killed on Stop, on cluster disconnection (`Main.Catalog` status), on deactivation and on
+  process exit; a kubectl that exits on its own stays on its row as ended ("Dismiss"), never restarted.
+  Only Kubernetes names cross the IPC, checked by main. The list is asked by the drawer every 3 s
+  (`invoke`, never a broadcast).
+- **One button per service** instead of an action that asks which service: the rows are the choice, one
+  click less. Port-forward writes nothing, so it has no confirmation dialog; it is disabled with the reason
+  when the access review denies `create pods/portforward`.
+- **Database and user** come from the bootstrap of the cluster (`initdb`, `recovery` or `pg_basebackup`,
+  app and app by default), so they show without reading the Secret; the Secret is the one the bootstrap
+  names, else `<cluster>-app`. Copy buttons: password, URI, JDBC URI and their FQDN variants. A notification
+  says what was copied, never the value. Without `get secrets` the section says so and keeps the hosts.
+- **E2E**: the URI read back from the clipboard equals the Secret's (compared, never printed); `psql`
+  answers `SELECT 1` through the forward with `sslmode=require`; Stop and disabling the extension close the
+  port (checked with `pg_isready`). Freelens 2 labels the menu item that enables a disabled extension
+  "Enabled" instead of "Enable" (`installed-extensions.tsx`): the test helper takes both. Worth a fix in
+  Freelens.
+- **Manual verification still to do**: a desktop client (pgAdmin, DBeaver) through a forward on Windows
+  and macOS.

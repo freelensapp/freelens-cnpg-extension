@@ -24,7 +24,7 @@ export const ACCESS_REVIEW_TTL_MS = 60_000;
 
 /** What the user must be allowed to do for an action to make sense. */
 export interface AccessQuestion {
-  verb: "create" | "patch" | "delete";
+  verb: "get" | "create" | "patch" | "delete";
   /** API group, empty for the core group. */
   group: string;
   resource: string;

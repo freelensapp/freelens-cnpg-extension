@@ -69,12 +69,20 @@ everything it can in the renderer.
   pod proxy path
   `/api/v1/namespaces/<ns>/pods/<scheme>:<pod>:<port>/proxy/<path>`.
   No extra dependency, no kubeconfig handling, no CORS.
-- **Main** (`src/main/`): nothing beyond the scaffold's preferences store
-  until a feature needs it. The one candidate is programmatic `exec` into
-  an instance (fixed diagnostic queries), which would use
-  `@kubernetes/client-node` from the main process with the cluster's own
-  kubeconfig path and context, following the pattern proven in
-  freelens-kafka-extension. It is a spike in M2, not a dependency of 0.1.
+- **Main** (`src/main/`): the preferences store (SPEC-0039), and what a
+  renderer cannot do: the local port forwards of SPEC-0031
+  (`kubectl port-forward --address 127.0.0.1 service/<name> :5432`) and the
+  two fixed `cat` commands of SPEC-0035 on the primary (`kubectl exec`).
+  Both run the kubectl the host runs for the cluster
+  (`Main.Shell.getKubectlPath(clusterId)`) with the environment the host
+  gives for it (`Main.Shell.getEnvironment(clusterId)`), so they go through
+  the Freelens proxy with the identity of the host's connection, as
+  freelens-kafka-extension does; no `@kubernetes/client-node`, no kubeconfig
+  handling. The renderer reaches main over `Main.Ipc`/`Renderer.Ipc`
+  `invoke` channels (`src/common/ipc.ts`), answered to the frame that asked,
+  never broadcast; only Kubernetes names cross them, checked by main before
+  they reach a command line. Main kills every kubectl it started when the
+  cluster disconnects, the extension is deactivated or Freelens quits.
 - **Common** (`src/common/`): code shared by both processes.
 
 The renderer-first decision rests on one fact to be proven by a spike
