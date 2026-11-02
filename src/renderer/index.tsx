@@ -203,6 +203,24 @@ export default class CnpgRenderer extends Renderer.LensExtension {
     },
   ];
 
+  // Every kind below has a page and a sidebar entry of its own under "CloudNativePG", so the Custom Resources tree
+  // of the cluster sidebar would list it a second time. Their definitions stay in the Definitions list.
+  customResources = [
+    ClusterV1,
+    BackupV1,
+    ScheduledBackupV1,
+    PoolerV1,
+    DatabaseV1,
+    DatabaseRoleV1,
+    PublicationV1,
+    SubscriptionV1,
+    FailoverQuorumV1,
+    ImageCatalogV1,
+    ClusterImageCatalogV1,
+    ObjectStoreV1,
+    KlioConfiguration,
+  ];
+
   kubeObjectDetailItems: Renderer.LensExtension["kubeObjectDetailItems"] = [
     {
       kind: ClusterV1.kind,
