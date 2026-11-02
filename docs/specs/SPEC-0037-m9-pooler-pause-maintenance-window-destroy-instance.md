@@ -69,12 +69,13 @@ follows) stated. AGENTS.md "Safety rules" lists the maintenance window already; 
 - **No "keep the volumes" on destroy.** On CloudNativePG 1.30 the operator gives a new instance the first
   free serial (`generateNodeSerial`), so the destroyed instance comes back under the same name, and needs
   a volume of the same name. A kept volume (detached as `kubectl cnpg destroy --keep-pvc` does: owner
-  reference dropped, `cnpg.io/pvcStatus: detached`) is that volume: the operator binds the new instance to
-  it, runs its join job and never marks it ready, and the cluster stays in "Creating a new replica" until
-  the kept volume is deleted (and the completed join pod that holds it). Reproduced on the lab with the
-  extension and with the official plugin `kubectl-cnpg` 1.30.1 itself. Destroy therefore always deletes
-  the volumes of the instance (and one detached from it earlier, as the plugin does). Worth an upstream
-  issue; not opened.
+  reference dropped, `cnpg.io/pvcStatus: detached`) is that volume: the join job of the new instance
+  mounts it, runs `pg_basebackup` and completes, the instance pod is never created, the operator adopts
+  the completed job again several times a second, and the cluster stays in "Creating a new replica" until
+  the kept volume is deleted (then the completed join job, whose pod holds it). Reproduced on the lab with
+  the extension and with the official plugin `kubectl-cnpg` 1.30.1 itself. Destroy therefore always
+  deletes the volumes of the instance (and one detached from it earlier, as the plugin does). Upstream:
+  cloudnative-pg/cloudnative-pg#11632, with the reproduction of this lab in a comment.
 - **Destroy, as the plugin does.** Volumes found by `cnpg.io/instanceName` with a role `PG_DATA`,
   `PG_WAL` or `PG_TABLESPACE`, owned by the cluster; then the pod, refused when the cluster does not own
   it; then the jobs of the instance (background propagation). Everything is read again right before the
