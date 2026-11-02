@@ -446,10 +446,42 @@ async function rowText(row: Locator): Promise<string> {
  * of the given values. Cells are joined by single spaces, so a value may span
  * several adjacent columns, for example "3 2 3 2 1".
  */
+/**
+ * Scrolls the virtual list of the page down from its top until a row for `name` is rendered: the host renders only
+ * the rows in view, and a list the write cases keep adding to (the backups of the lab) puts a new row below them.
+ * The list stays where the row is, for the steps that use it next.
+ */
+async function scrollListToRow(frame: Frame, name: string): Promise<void> {
+  const list = frame.locator(".ItemListLayout .VirtualList .list").first();
+
+  if ((await list.count()) === 0) return;
+  await list.evaluate((element) => element.scrollTo({ top: 0 }));
+  for (let step = 0; step < 100; step++) {
+    if ((await frame.locator(".TableRow", { hasText: name }).count()) > 0) return;
+    const atBottom = await list.evaluate((element) => {
+      const before = element.scrollTop;
+
+      element.scrollBy({ top: element.clientHeight * 0.8 });
+      return element.scrollTop === before;
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    if (atBottom) return;
+  }
+}
+
 export async function expectRow(frame: Frame, name: string, ...cells: string[]): Promise<void> {
   const row = tableRow(frame, name);
 
   try {
+    if (
+      !(await row.waitFor({ state: "visible", timeout: 10_000 }).then(
+        () => true,
+        () => false,
+      ))
+    ) {
+      await scrollListToRow(frame, name);
+    }
     await row.waitFor({ state: "visible", timeout: ELEMENT_TIMEOUT });
   } catch {
     const screenshot = await captureScreenshot(frame, `missing-row-${name}`);
