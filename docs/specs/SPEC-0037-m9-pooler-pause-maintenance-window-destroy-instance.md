@@ -1,6 +1,6 @@
 # SPEC-0037: Pooler pause and resume, maintenance window, destroy an instance
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -65,4 +65,33 @@ follows) stated. AGENTS.md "Safety rules" lists the maintenance window already; 
 
 ## Notes and deviations
 
-Filled during implementation.
+- **No "keep the volumes" on destroy.** On CloudNativePG 1.30 the operator gives a new instance the first
+  free serial (`generateNodeSerial`), so the destroyed instance comes back under the same name, and needs
+  a volume of the same name. A kept volume (detached as `kubectl cnpg destroy --keep-pvc` does: owner
+  reference dropped, `cnpg.io/pvcStatus: detached`) is that volume: the operator binds the new instance to
+  it, runs its join job and never marks it ready, and the cluster stays in "Creating a new replica" until
+  the kept volume is deleted (and the completed join pod that holds it). Reproduced on the lab with the
+  extension and with the official plugin `kubectl-cnpg` 1.30.1 itself. Destroy therefore always deletes
+  the volumes of the instance (and one detached from it earlier, as the plugin does). Worth an upstream
+  issue; not opened.
+- **Destroy, as the plugin does.** Volumes found by `cnpg.io/instanceName` with a role `PG_DATA`,
+  `PG_WAL` or `PG_TABLESPACE`, owned by the cluster; then the pod, refused when the cluster does not own
+  it; then the jobs of the instance (background propagation). Everything is read again right before the
+  writes; a plan that changed is not sent. A failure stops the sequence and says which writes were sent.
+  Refused on the current or the target primary, during a switchover or failover, and while a backup runs
+  on that instance. The dialog says the instance comes back under the first free name.
+- **Maintenance window.** Opening sends both settings (`inProgress: true`, `reusePVC` as chosen, on by
+  default as the API's own default; the plugin's `--reusePVC` flag defaults to off); closing sends
+  `inProgress: false` only and keeps the choice. The texts follow the upstream documentation of 1.30
+  ("Kubernetes upgrade and maintenance"), including its advice to prefer `spec.enablePDB`. The Overview
+  tile shows "maintenance window open"; the drawer row closes it.
+- **Pooler pause.** The pause dialog reads the clients connected right now from the exporter of the
+  pooler's pods while it is open. The drawer row shows the declared value against `status.phase`
+  (pausing and resuming while the operator has not reported yet). A pause does not roll the pods
+  (checked on the lab). The E2E creates its own pooler in `cnpg-e2e-actions` (the pooler of `e2e-main`
+  is a read-only fixture) and deletes it.
+- **Pooler drawer (SPEC-0012), fixed on the way.** Its live figures polled the pods the session held
+  before reloading them: a pod deleted while nothing watched the namespace got one round of 404s. The
+  first round now waits for a fresh list of the namespace's pods.
+- **E2E fixture names.** The pre-review case derived the standby of `e2e-actions` as "-1 or -2"; it now
+  reads `status.instanceNames`, since a destroyed instance may come back under any free name.

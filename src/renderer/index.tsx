@@ -39,10 +39,12 @@ import { ClusterFencingMenuItem } from "./menus/cluster-fencing-menu-item";
 import { ClusterHibernationMenuItem } from "./menus/cluster-hibernation-menu-item";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
+import { ClusterMaintenanceMenuItem } from "./menus/cluster-maintenance-menu-item";
 import { ClusterReloadMenuItem, ClusterRestartMenuItem } from "./menus/cluster-restart-menu-item";
 import { ClusterSwitchoverMenuItem } from "./menus/cluster-switchover-menu-item";
 import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
+import { PoolerPauseMenuItem } from "./menus/pooler-pause-menu-item";
 import { ScheduledBackupRunNowMenuItem } from "./menus/scheduled-backup-run-now-menu-item";
 import { ScheduledBackupSuspendMenuItem } from "./menus/scheduled-backup-suspend-menu-item";
 import {
@@ -383,6 +385,21 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         MenuItem: (props: { object: any; toolbar?: boolean }) => (
           <ClusterHibernationMenuItem {...props} extension={this} />
         ),
+      },
+    },
+    // SPEC-0037: the maintenance window of the cluster's nodes, and the pause of a pooler.
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterMaintenanceMenuItem {...props} />,
+      },
+    },
+    {
+      kind: PoolerV1.kind,
+      apiVersions: PoolerV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <PoolerPauseMenuItem {...props} />,
       },
     },
     // SPEC-0021: exactly one of Suspend and Resume, then the backup with the settings of the schedule.

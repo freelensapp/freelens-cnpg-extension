@@ -38,9 +38,12 @@ complete and every spec under `docs/specs/` is verified.
 ## Safety rules (binding)
 
 - Read-only first. Every write action (switchover, restart, reload, fencing,
-  hibernation, on-demand backup, maintenance window, delete) needs its own
-  spec and an explicit confirmation dialog that names the CloudNativePG
-  cluster and the Kubernetes context.
+  hibernation, on-demand backup, maintenance window, pooler pause, delete,
+  destroy of an instance) needs its own spec and an explicit confirmation
+  dialog that names the CloudNativePG cluster and the Kubernetes context.
+- Destroying an instance (SPEC-0037) is offered on a replica only, never on
+  the current or the target primary, after its name is typed, with every
+  write listed in the order of `kubectl cnpg destroy`.
 - Never run user-supplied SQL from the extension's programmatic path. Queries
   executed by the extension are fixed strings.
 - Do not store or forward database credentials. Prefer the metrics endpoint

@@ -605,10 +605,11 @@ describe.skipIf(!(await appReady({ cluster: true })))("pre-review pass of the Cl
         cluster.E2E_ACTIONS_CLUSTER,
         "{.status.currentPrimary}",
       );
-      const actionsStandby =
-        actionsPrimary === `${cluster.E2E_ACTIONS_CLUSTER}-1`
-          ? `${cluster.E2E_ACTIONS_CLUSTER}-2`
-          : `${cluster.E2E_ACTIONS_CLUSTER}-1`;
+      // Not "-1" or "-2": a destroyed instance (SPEC-0037) comes back under a new name.
+      const actionsStandby = cluster
+        .kubectlActionsField("clusters.postgresql.cnpg.io", cluster.E2E_ACTIONS_CLUSTER, "{.status.instanceNames[*]}")
+        .split(" ")
+        .find((instance) => instance !== "" && instance !== actionsPrimary);
 
       await table(frame, cluster.E2E_ACTIONS_CLUSTER).click();
       await frame

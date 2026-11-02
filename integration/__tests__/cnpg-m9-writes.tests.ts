@@ -9,6 +9,9 @@
 // catalog forms. They write in the namespace `cnpg-e2e-actions` (and one
 // cluster scoped catalog), and delete what they created.
 
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import * as cluster from "./cnpg-cluster";
 import { appReady, connectApp, dismissNotifications, installExtension, openLabCluster } from "./cnpg-session";
@@ -48,6 +51,31 @@ function deleteIfThere(resource: string, name: string, clusterScoped = false): v
   if (kubectl("get", resource, name).status === 0) {
     kubectl("delete", resource, name, "--wait=true", "--timeout=180s");
   }
+}
+
+/** Applies a manifest in the write namespace, through a file: the helpers of kubectl take no input. */
+function applyActions(manifest: string): void {
+  const file = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "cnpg-m9-")), "object.yaml");
+
+  fs.writeFileSync(file, manifest);
+  try {
+    const { status, stderr } = cluster.kubectlActions("apply", "-f", file);
+
+    if (status !== 0) throw new Error(`kubectl apply failed: ${stderr}`);
+  } finally {
+    fs.rmSync(path.dirname(file), { recursive: true, force: true });
+  }
+}
+
+/** The names of the instances of the write cluster, its primary first. */
+function actionsInstances(): { primary: string; replicas: string[] } {
+  const primary = cluster.kubectlActionsField(CLUSTERS, cluster.E2E_ACTIONS_CLUSTER, "{.status.currentPrimary}");
+  const names = cluster
+    .kubectlActionsField(CLUSTERS, cluster.E2E_ACTIONS_CLUSTER, "{.status.instanceNames[*]}")
+    .split(" ")
+    .filter(Boolean);
+
+  return { primary, replicas: names.filter((name) => name !== primary) };
 }
 
 describe.skipIf(!(await appReady({ cluster: true })))(
@@ -325,6 +353,302 @@ describe.skipIf(!(await appReady({ cluster: true })))(
           expect(kubectl("get", resource, name).status).not.toBe(0);
           if (!clusterScoped) await cluster.selectNamespace(frame);
         }
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "pauses a pooler from its menu and resumes it from its drawer (SPEC-0037)",
+      async () => {
+        const name = "e2e-m9-pause-pooler";
+        const poolers = "poolers.postgresql.cnpg.io";
+
+        deleteIfThere(poolers, name);
+        applyActions(
+          [
+            "apiVersion: postgresql.cnpg.io/v1",
+            "kind: Pooler",
+            "metadata:",
+            `  name: ${name}`,
+            "spec:",
+            `  cluster: { name: ${cluster.E2E_ACTIONS_CLUSTER} }`,
+            "  type: rw",
+            "  instances: 1",
+            "  pgbouncer: { poolMode: session }",
+            "",
+          ].join("\n"),
+        );
+        expect(
+          await waitUntil(
+            async () => cluster.kubectlActionsField(poolers, name, "{.status.phase}"),
+            (phase) => phase === "active",
+            4 * 60_000,
+          ),
+        ).toBe("active");
+        // The proxy answers 400 for a pod without an address yet: the exporter is read once the pod is ready.
+        // The pooler reads active before its pod exists: wait for the pod first, then for it to be ready.
+        await waitUntil(
+          async () => cluster.kubectlActions("get", "pods", "-l", `cnpg.io/poolerName=${name}`, "-o", "name").stdout,
+          (pods) => pods !== "",
+          3 * 60_000,
+        );
+        expect(
+          cluster.kubectlActions(
+            "wait",
+            "--for=condition=Ready",
+            "pod",
+            "-l",
+            `cnpg.io/poolerName=${name}`,
+            "--timeout=180s",
+          ).status,
+        ).toBe(0);
+
+        await cluster.openCnpgPage(frame, "cnpg-pooling-poolers", "Poolers");
+        await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+        await cluster.expectRow(frame, name);
+        await cluster.openRowMenu(frame, name);
+        await frame.locator('.Menu [data-testid="cnpg-pooler-pause-menu-item"]').first().click();
+
+        const dialog = frame.locator('[data-testid="cnpg-pooler-pause-dialog"]');
+
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+        expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toBe(
+          `patch Pooler ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: spec.pgbouncer.paused false -> true`,
+        );
+        // The clients connected right now, from the exporter of the pooler's pod.
+        expect(
+          await waitUntil(
+            async () => dialog.locator('[data-testid="cnpg-pooler-pause-clients"]').innerText(),
+            (text) => /connected through the pooler right now/.test(text),
+            60_000,
+          ),
+        ).toMatch(/connected through the pooler right now/);
+        await cluster.captureScreenshot(frame, "pooler-pause-dialog-dark");
+        await cluster.confirmDialog(frame);
+        await cluster.expectNotification(
+          frame,
+          "ok",
+          `Pause of the pooler ${cluster.E2E_ACTIONS_NAMESPACE}/${name} requested`,
+        );
+        expect(cluster.kubectlActionsField(poolers, name, "{.spec.pgbouncer.paused}")).toBe("true");
+        expect(
+          await waitUntil(
+            async () => cluster.kubectlActionsField(poolers, name, "{.status.phase}"),
+            (phase) => phase === "paused",
+            2 * 60_000,
+          ),
+        ).toBe("paused");
+
+        // The drawer says it, with the way back next to it.
+        await frame
+          .locator(".TableRow", { hasText: name })
+          .first()
+          .locator(".TableCell", { hasText: name })
+          .first()
+          .click();
+        const drawer = frame.locator(".Drawer.KubeObjectDetails");
+        const state = drawer.locator('[data-testid="cnpg-pooler-pause-state"]');
+
+        await state.waitFor({ state: "visible", timeout: 60_000 });
+        expect(
+          await waitUntil(
+            async () => state.innerText(),
+            (text) => text.startsWith("Paused"),
+            30_000,
+          ),
+        ).toMatch(/^Paused: PgBouncer holds every new query/);
+        await drawer.locator('[data-testid="cnpg-pooler-resume-button"]').click();
+        await frame.locator('[data-testid="cnpg-pooler-resume-dialog"]').waitFor({ state: "visible", timeout: 60_000 });
+        await cluster.confirmDialog(frame);
+        await cluster.expectNotification(
+          frame,
+          "ok",
+          `Resume of the pooler ${cluster.E2E_ACTIONS_NAMESPACE}/${name} requested`,
+        );
+        expect(cluster.kubectlActionsField(poolers, name, "{.spec.pgbouncer.paused}")).toBe("false");
+        expect(
+          await waitUntil(
+            async () => cluster.kubectlActionsField(poolers, name, "{.status.phase}"),
+            (phase) => phase === "active",
+            2 * 60_000,
+          ),
+        ).toBe("active");
+        await cluster.closeDetails(frame);
+
+        cluster.kubectlActions("delete", poolers, name, "--wait=true", "--timeout=120s");
+        await cluster.selectNamespace(frame);
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "opens the maintenance window with the choice about the volumes, and closes it from the drawer (SPEC-0037)",
+      async () => {
+        const name = cluster.E2E_ACTIONS_CLUSTER;
+
+        // A leftover of an interrupted run.
+        if (cluster.kubectlActionsField(CLUSTERS, name, "{.spec.nodeMaintenanceWindow.inProgress}") === "true") {
+          cluster.kubectlActions(
+            "patch",
+            CLUSTERS,
+            name,
+            "--type=merge",
+            "-p",
+            '{"spec":{"nodeMaintenanceWindow":{"inProgress":false}}}',
+          );
+        }
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await cluster.selectNamespace(frame, cluster.E2E_ACTIONS_NAMESPACE);
+        await cluster.openRowMenu(frame, name);
+        await frame.locator('.Menu [data-testid="cnpg-cluster-maintenance-open-menu-item"]').first().click();
+
+        const dialog = frame.locator('[data-testid="cnpg-maintenance-open-dialog"]');
+        const write = dialog.locator('[data-testid="cnpg-action-writes"] li').first();
+
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+        const before =
+          cluster.kubectlActionsField(CLUSTERS, name, "{.spec.nodeMaintenanceWindow.reusePVC}") !== "false";
+
+        expect(await write.innerText()).toBe(
+          `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: spec.nodeMaintenanceWindow inProgress false -> true, reusePVC ${before} -> ${before}`,
+        );
+        // The facts follow the choice: off recreates an instance elsewhere.
+        if (before) await dialog.locator('[data-testid="cnpg-maintenance-reuse-pvc"]').uncheck();
+        expect(await write.innerText()).toBe(
+          `patch Cluster ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: spec.nodeMaintenanceWindow inProgress false -> true, reusePVC ${before} -> false`,
+        );
+        expect((await dialog.innerText()).replace(/\s+/g, " ")).toContain("recreated on another node, on a new volume");
+        await dialog.locator('[data-testid="cnpg-maintenance-reuse-pvc"]').check();
+        expect((await dialog.innerText()).replace(/\s+/g, " ")).toContain("waits for the node to come back");
+        await cluster.captureScreenshot(frame, "maintenance-open-dialog-dark");
+        await cluster.confirmDialog(frame);
+        await cluster.expectNotification(
+          frame,
+          "ok",
+          `Maintenance window of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} open`,
+        );
+        expect(cluster.kubectlActionsField(CLUSTERS, name, "{.spec.nodeMaintenanceWindow.inProgress}")).toBe("true");
+        expect(cluster.kubectlActionsField(CLUSTERS, name, "{.spec.nodeMaintenanceWindow.reusePVC}")).toBe("true");
+
+        // The Overview tells it on the tile.
+        await cluster.openCnpgPage(frame, "cnpg-overview", "Overview");
+        await frame
+          .locator(`[data-testid="cnpg-overview-maintenance-${cluster.E2E_ACTIONS_NAMESPACE}-${name}"]`)
+          .waitFor({ state: "visible", timeout: 60_000 });
+
+        // The drawer says it, and closes it.
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await frame
+          .locator(".TableRow", { hasText: name })
+          .first()
+          .locator(".TableCell", { hasText: name })
+          .first()
+          .click();
+        const drawer = frame.locator(".Drawer.KubeObjectDetails");
+
+        await drawer.locator('[data-testid="cnpg-maintenance-state"]').waitFor({ state: "visible", timeout: 60_000 });
+        expect(await drawer.locator('[data-testid="cnpg-maintenance-state"]').innerText()).toBe(
+          "Open, volumes reused: an instance on a drained node waits for the node to come back",
+        );
+        await drawer.locator('[data-testid="cnpg-maintenance-close"]').click();
+        await frame
+          .locator('[data-testid="cnpg-maintenance-close-dialog"]')
+          .waitFor({ state: "visible", timeout: 60_000 });
+        await cluster.confirmDialog(frame);
+        await cluster.expectNotification(
+          frame,
+          "ok",
+          `Maintenance window of ${cluster.E2E_ACTIONS_NAMESPACE}/${name} closed`,
+        );
+        expect(cluster.kubectlActionsField(CLUSTERS, name, "{.spec.nodeMaintenanceWindow.inProgress}")).toBe("false");
+        await drawer.locator('[data-testid="cnpg-maintenance-state"]').waitFor({ state: "detached", timeout: 60_000 });
+        await cluster.closeDetails(frame);
+        await cluster.selectNamespace(frame);
+      },
+      TIMEOUT,
+    );
+
+    it(
+      "destroys a replica, and the operator recreates it from the primary; never the primary (SPEC-0037)",
+      async () => {
+        const name = cluster.E2E_ACTIONS_CLUSTER;
+        const ns = cluster.E2E_ACTIONS_NAMESPACE;
+        const { primary, replicas } = actionsInstances();
+        const [replica] = replicas;
+
+        expect(replicas).toHaveLength(1);
+        const uid = (kind: string) =>
+          cluster.kubectlActions("get", kind, replica, "-o", "jsonpath={.metadata.uid}").stdout;
+        const podBefore = uid("pod");
+        const claimBefore = uid("pvc");
+
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await cluster.selectNamespace(frame, ns);
+        await frame
+          .locator(".TableRow", { hasText: name })
+          .first()
+          .locator(".TableCell", { hasText: name })
+          .first()
+          .click();
+
+        const drawer = frame.locator(".Drawer.KubeObjectDetails");
+
+        await drawer
+          .locator(`[data-testid="cnpg-instance-destroy-${replica}"]`)
+          .waitFor({ state: "visible", timeout: 60_000 });
+        // Never on the primary.
+        expect(await drawer.locator(`[data-testid="cnpg-instance-destroy-${primary}"]`).count()).toBe(0);
+        await drawer.locator(`[data-testid="cnpg-instance-destroy-${replica}"]`).click();
+
+        const dialog = frame.locator('[data-testid="cnpg-destroy-instance-dialog"]');
+        const writes = dialog.locator('[data-testid="cnpg-action-writes"] li');
+
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+        const listed = await waitUntil(
+          async () => writes.allInnerTexts(),
+          (texts) => texts.length >= 2,
+          30_000,
+        );
+        const pod = listed.indexOf(`delete Pod ${ns}/${replica}`);
+
+        // The volumes first, then the pod, then the jobs.
+        expect(listed[0]).toMatch(new RegExp(`^delete PersistentVolumeClaim ${ns}/${replica} \\(PG_DATA`));
+        expect(pod).toBeGreaterThan(0);
+        expect(listed.slice(0, pod).every((text) => text.startsWith("delete PersistentVolumeClaim"))).toBe(true);
+        expect(listed.slice(pod + 1).every((text) => text.startsWith("delete Job"))).toBe(true);
+        // W5: OK waits for the instance name.
+        expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(true);
+        await dialog.locator('[data-testid="cnpg-action-typed-name"]').fill(replica);
+        expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(false);
+        await cluster.captureScreenshot(frame, "destroy-instance-dark");
+        await cluster.confirmDialog(frame);
+        await cluster.expectNotification(frame, "ok", `${replica} of ${ns}/${name} destroyed`);
+        await cluster.closeDetails(frame);
+
+        // CloudNativePG 1.30 gives the new instance the first free serial: the same name, a new pod and volume.
+        const recreated = await waitUntil(
+          async () => {
+            const phase = cluster.kubectlActionsField(CLUSTERS, name, "{.status.phase}");
+            const ready = cluster.kubectlActionsField(CLUSTERS, name, "{.status.readyInstances}");
+            const podNow = uid("pod");
+            const claimNow = uid("pvc");
+
+            return (
+              phase === "Cluster in healthy state" &&
+              ready === "2" &&
+              podNow !== "" &&
+              podNow !== podBefore &&
+              claimNow !== "" &&
+              claimNow !== claimBefore
+            );
+          },
+          (done) => done,
+          8 * 60_000,
+        );
+
+        expect(recreated).toBe(true);
+        expect(actionsInstances().primary).toBe(primary);
+        await cluster.selectNamespace(frame);
       },
       TIMEOUT,
     );

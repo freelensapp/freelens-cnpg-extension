@@ -28,7 +28,8 @@ The extension lives in the cluster sidebar under **CloudNativePG**:
 scheduled backups and object stores), **Pooling**, **Images** and
 **Operator**. Everything reads through the Freelens session that is already
 authenticated to the Kubernetes cluster. The write actions (backups,
-switchover, restart, reload, fencing, hibernation, the schedules) and the
+switchover, restart, reload, fencing, hibernation, the schedules, the
+maintenance window, the destroy of a replica, the pause of a pooler) and the
 creation forms write only after a dialog has listed the exact API calls, and
 no database credential is ever read, stored or asked for.
 
@@ -96,7 +97,7 @@ in the drawers (see the [roadmap](docs/development/ROADMAP.md)).
 | `Cluster`             | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage with the tablespaces, backups and archiving, certificates, services and secrets, plugins), Overview, Live View with the trends, Logs, Timeline, creation form (image, storage, tablespaces, bootstrap from a new database, a backup, an object store or the volume snapshots of a backup, WAL archiving, volume snapshot backups, replication, resources, updates, scheduling) |
 | `Backup`              | List and drawer with the restore coordinates and the volume snapshots                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `ScheduledBackup`     | List and drawer with the schedule in words and the backups it generated, creation form                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| `Pooler`              | List and drawer with the live PgBouncer figures, creation form                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `Pooler`              | List and drawer with the live PgBouncer figures, creation form, pause and resume                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `Database`            | List and drawer with the managed objects and the size of the database right now, creation form                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `DatabaseRole`        | List and drawer with attributes, password and client certificate expiry, creation form                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `Publication`         | List and drawer with the published objects, the replication path and the logical slots, creation form                                                                                                                                                                                                                                                                                                                                                                                                        |
@@ -150,8 +151,8 @@ You can also build and pack the extension yourself, see
    (instances and roles, replication, storage and tablespaces, backups and
    archiving, certificates, declared objects, plugins, the related pods,
    volumes, services and secrets). The row menu holds **Open psql**,
-   **Back up now**, **Switchover**, **Restart**, **Reload**, **Fence** and
-   **Hibernate**.
+   **Back up now**, **Switchover**, **Restart**, **Reload**, **Fence**,
+   **Hibernate** and **Open maintenance window**.
 4. Open **Live View** and pick a cluster: replication topology and lag,
    sessions, database sizes, WAL and archiving, replication slots, and the
    trends since the page opened, read from the instances through the API
@@ -258,6 +259,16 @@ account may not perform it.
   what happens to it listed before the click.
 - **Suspend**, **Resume** and **Run now** on a scheduled backup, with what
   the operator will do next said in the dialog.
+- **Open maintenance window** and **Close maintenance window** of the nodes
+  of a cluster, with what the operator does with an instance on a drained
+  node for the choice about its volumes; the Overview and the drawer say
+  while it is open.
+- **Destroy** on the row of a replica (never the primary), with the name
+  typed to confirm and the writes of `kubectl cnpg destroy` listed in their
+  order: its volumes, its pod, its jobs; the operator then recreates the
+  instance from the primary.
+- **Pause** and **Resume** of a pooler, with the clients connected through
+  it right now.
 
 ### Creation forms
 

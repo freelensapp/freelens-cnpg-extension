@@ -75,6 +75,8 @@ export interface ClusterTile {
   postgresMajor?: number;
   /** Declared databases, roles, publications and subscriptions of the cluster that failed (SPEC-0013). */
   declaredFailed: number;
+  /** The maintenance window of its nodes is open (SPEC-0037), and whether the volumes are reused. */
+  maintenance?: { reusePVC: boolean };
 }
 
 export interface OverviewSummary {
@@ -179,6 +181,9 @@ export function buildTile(
     scheduledBackupSuspended: schedule ? ScheduledBackup.isSuspended(schedule) : false,
     postgresMajor: status?.pgDataImageInfo?.majorVersion,
     declaredFailed,
+    maintenance: cluster.spec?.nodeMaintenanceWindow?.inProgress
+      ? { reusePVC: cluster.spec.nodeMaintenanceWindow.reusePVC !== false }
+      : undefined,
   };
 }
 

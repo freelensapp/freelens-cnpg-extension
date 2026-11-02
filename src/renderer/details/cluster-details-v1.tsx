@@ -35,6 +35,7 @@ import { GrafanaLink, grafanaUrlFor } from "../components/grafana-link";
 import { hibernationState, hibernationWords } from "../components/hibernation";
 import { backupPluginWords } from "../components/install-guide";
 import { InstanceBricks } from "../components/instance-bricks";
+import { maintenanceWindowState, maintenanceWindowWords } from "../components/maintenance-window";
 import { objectExists } from "../components/object-existence";
 import { openCreatePoolerDialog } from "../components/pooler-create-dialog";
 import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
@@ -43,8 +44,10 @@ import { openCreateScheduledBackupDialog } from "../components/scheduled-backup-
 import { StoreLink } from "../components/store-link";
 import { FencingButton } from "../menus/cluster-fencing-menu-item";
 import { hibernationFacts, ResumeButton } from "../menus/cluster-hibernation-menu-item";
+import { MaintenanceCloseButton, maintenanceFacts } from "../menus/cluster-maintenance-menu-item";
 import { RestartInstanceButton } from "../menus/cluster-restart-menu-item";
 import { PromoteButton } from "../menus/cluster-switchover-menu-item";
+import { DestroyInstanceButton } from "../menus/destroy-instance-button";
 import { PsqlButton } from "../menus/open-psql";
 import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
@@ -169,6 +172,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const fenced = Cluster.getFencedInstances(object);
     const hibernated = Cluster.getHibernation(object);
     const hibernation = hibernationState(hibernationFacts(object));
+    const maintenance = maintenanceWindowState(maintenanceFacts(object));
     const fencedSet = parseFenced(object.metadata?.annotations?.[FENCED_INSTANCES_ANNOTATION]);
     const conditions = status?.conditions ?? [];
     const declared = Cluster.getInstances(object);
@@ -316,6 +320,11 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerItem name="Hibernation" hidden={hibernation.kind === "off"}>
           <span data-testid="cnpg-hibernation-state">{hibernationWords(hibernation)}</span>{" "}
           {hibernated ? <ResumeButton cluster={object} extension={props.extension} /> : null}
+        </DrawerItem>
+        {/* SPEC-0037: an open window limits self-healing: it says so, with the way to close it next to it. */}
+        <DrawerItem name="Maintenance window" hidden={!maintenance.open}>
+          <span data-testid="cnpg-maintenance-state">{maintenanceWindowWords(maintenance)}</span>{" "}
+          <MaintenanceCloseButton cluster={object} />
         </DrawerItem>
         <DrawerItem name="Fenced instances" hidden={fencedSet.kind === "none"}>
           {fencedSet.kind === "unparseable" ? (
@@ -465,9 +474,17 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                         extension={props.extension}
                       />
                       <FencingButton cluster={object} instanceName={instance.name} extension={props.extension} />
-                      {/* Last, so the other two line up on every row: the primary has nothing to be promoted to. */}
+                      {/* Last, so the other two line up on every row: the primary has nothing to be promoted to, nor to be destroyed. */}
                       {instance.name === primary ? null : (
-                        <PromoteButton cluster={object} instanceName={instance.name} extension={props.extension} />
+                        <>
+                          <PromoteButton cluster={object} instanceName={instance.name} extension={props.extension} />
+                          {/* SPEC-0037: on a replica only, after the others: the most destructive of them. */}
+                          <DestroyInstanceButton
+                            cluster={object}
+                            instanceName={instance.name}
+                            extension={props.extension}
+                          />
+                        </>
                       )}
                     </span>
                   </TableCell>
