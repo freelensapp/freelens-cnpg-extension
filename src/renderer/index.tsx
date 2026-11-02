@@ -21,6 +21,11 @@ import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backu
 import { Subscription as SubscriptionV1 } from "./api/cnpg/subscription-v1";
 import { PluginConfiguration as KlioConfiguration } from "./api/klio/plugin-configuration-v1alpha1";
 import { createAvailableVersionPage } from "./components/available-version";
+import {
+  withDetailsErrorBoundary,
+  withMenuItemErrorBoundary,
+  withPageErrorBoundary,
+} from "./components/error-boundary";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
 import { DatabaseDetails as DatabaseDetailsV1 } from "./details/database-details-v1";
@@ -198,7 +203,7 @@ export default class CnpgRenderer extends Renderer.LensExtension {
     },
   ];
 
-  kubeObjectDetailItems = [
+  kubeObjectDetailItems: Renderer.LensExtension["kubeObjectDetailItems"] = [
     {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
@@ -319,9 +324,9 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         ),
       },
     },
-  ];
+  ].map((registration) => withDetailsErrorBoundary(this, registration));
 
-  kubeObjectMenuItems = [
+  kubeObjectMenuItems: Renderer.LensExtension["kubeObjectMenuItems"] = [
     {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
@@ -447,9 +452,9 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ScheduledBackupRunNowMenuItem {...props} />,
       },
     },
-  ];
+  ].map((registration) => withMenuItemErrorBoundary(this, registration));
 
-  clusterPages = [
+  clusterPages: Renderer.LensExtension["clusterPages"] = [
     {
       id: OVERVIEW_PAGE_ID,
       components: {
@@ -566,7 +571,7 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         Page: () => <AvailableClusterImageCatalogsPage extension={this} />,
       },
     },
-  ];
+  ].map((registration) => withPageErrorBoundary(this, registration));
 
   clusterPageMenus = [
     {

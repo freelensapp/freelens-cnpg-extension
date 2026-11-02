@@ -5,11 +5,13 @@ import styles from "./error-page.module.scss";
 export interface ErrorPageProps {
   error?: unknown;
   extension: Renderer.LensExtension;
+  /** The error was logged already, with its component stack, by `ErrorBoundary`. */
+  logged?: boolean;
   children?: React.ReactNode;
 }
 
-export function ErrorPage({ error, extension, children }: ErrorPageProps) {
-  if (error) {
+export function ErrorPage({ error, extension, logged, children }: ErrorPageProps) {
+  if (error && !logged) {
     Common.logger.error(`[${extension.name}]: ${error}`);
   }
   return (
