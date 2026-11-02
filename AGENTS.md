@@ -206,7 +206,7 @@ Other dependencies ARE bundled into the extension output (`cronstrue`, `js-yaml`
 - **Trunk** (`.trunk/trunk.yaml`) runs Biome, shellcheck, shfmt (which follows `.editorconfig`), yamllint, taplo,
   actionlint and the git checks on the changed files, in the hooks and in CI.
 - **Knip** (`knip.jsonc`, `pnpm knip:check`) reports unused files and dependencies, for development and for
-  production; `e2e/` and `integration/` are left out until they move to this repository's own harness.
+  production, the integration tests included.
 - **Renovate** (`.renovaterc.json`, the template's): every library and tool that Freelens also has takes the version
   Freelens has on `main`.
 - **Workflows** (`.github/workflows/`): build and checks, type check, unit tests, Trunk, mise.lock, OSV, the E2E and
