@@ -1,4 +1,5 @@
 import { Common, Renderer } from "@freelensapp/extensions";
+import { observer } from "mobx-react";
 import styles from "./available-version.module.scss";
 import { InstallGuide, useClusterComponents } from "./install-guide-view";
 
@@ -21,6 +22,10 @@ interface VersionVariant<T extends AvailableVersionPageProps> {
  * Tries versions in order and renders the first available one.
  * Shows a helpful message if no versions are available (CRD not installed).
  *
+ * The component is an observer: `getStore()` reads the host's observable API registry, so the page renders again
+ * when the host registers an API after the page was first rendered, as it does for a page opened while the cluster
+ * frame is still loading its CRDs (Freelens restores the last page when a cluster is opened).
+ *
  * @param resourceName - Human-readable resource name (e.g., "OCI Repositories")
  * @param variants - Array of version variants, ordered by preference
  * @returns A page component that auto-detects a valid API version if present
@@ -42,19 +47,19 @@ export function createAvailableVersionPage<T extends AvailableVersionPageProps>(
   /** What the kind belongs to when it is not the operator itself (an optional plugin), and what to do about it. */
   hint?: string,
 ): React.ComponentType<T> {
-  return (props: T) => {
+  return observer((props: T) => {
     for (const variant of variants) {
       try {
         const store = variant.kubeObjectClass.getStore();
         if (store) {
           Common.logger.debug(
-            `[@freelensapp/cnpg-extension]: Rendering ${resourceName} page with API version ${variant.version}`,
+            `[${props.extension.name}]: Rendering ${resourceName} page with API version ${variant.version}`,
           );
           return <variant.PageComponent {...props} />;
         }
       } catch (error) {
         Common.logger.debug(
-          `[@freelensapp/cnpg-extension]: API version ${variant.version} not available for ${resourceName}: ${error}`,
+          `[${props.extension.name}]: API version ${variant.version} not available for ${resourceName}: ${error}`,
         );
       }
     }
@@ -62,7 +67,7 @@ export function createAvailableVersionPage<T extends AvailableVersionPageProps>(
     // No version available - CRD not installed in cluster
     const triedVersions = variants.map((v) => v.version).join(", ");
     Common.logger.info(
-      `[@freelensapp/cnpg-extension]: ${resourceName} CRD not found in cluster (tried versions: ${triedVersions})`,
+      `[${props.extension.name}]: ${resourceName} CRD not found in cluster (tried versions: ${triedVersions})`,
     );
 
     return (
@@ -82,7 +87,7 @@ export function createAvailableVersionPage<T extends AvailableVersionPageProps>(
         </div>
       </>
     );
-  };
+  });
 }
 
 /** The installation guide of SPEC-0036 under the message: a component of its own, so its hook always runs. */
