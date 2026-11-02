@@ -4,16 +4,23 @@
  */
 
 // The channels main answers (`common/ipc.ts`): the local port forwards of
-// SPEC-0031 and the files of the primary of SPEC-0035. Each answer goes to the
-// frame that asked.
+// SPEC-0031, the files of the primary of SPEC-0035 and the save of the
+// diagnostic report of SPEC-0038. Each answer goes to the frame that asked.
 
 import { Main } from "@freelensapp/extensions";
 import { CNPG_IPC } from "../common/ipc";
 import { createKubectlHost } from "./kubectl-host";
 import { ServiceForwards } from "./port-forwards";
 import { readPrimaryFiles } from "./primary-files";
+import { saveReport } from "./report-save";
 
-import type { ForwardListRequest, ForwardStartRequest, ForwardStopRequest, PrimaryFilesRequest } from "../common/ipc";
+import type {
+  ForwardListRequest,
+  ForwardStartRequest,
+  ForwardStopRequest,
+  PrimaryFilesRequest,
+  ReportSaveRequest,
+} from "../common/ipc";
 import type { KubectlHost } from "./kubectl";
 
 export class CnpgIpcMain extends Main.Ipc {
@@ -31,6 +38,7 @@ export class CnpgIpcMain extends Main.Ipc {
     );
     this.handle(CNPG_IPC.forwardList, (_event, request: ForwardListRequest) => this.forwards.list(request));
     this.handle(CNPG_IPC.primaryFiles, (_event, request: PrimaryFilesRequest) => readPrimaryFiles(this.host, request));
+    this.handle(CNPG_IPC.reportSave, (_event, request: ReportSaveRequest) => saveReport(request));
   }
 
   /** Every forward closed: the extension is deactivated. */

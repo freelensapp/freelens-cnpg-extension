@@ -4,8 +4,8 @@
  */
 
 // The renderer's side of the channels of `common/ipc.ts`: the local port
-// forwards of SPEC-0031 and the files of the primary of SPEC-0035. Each call
-// carries the id of the Kubernetes cluster of this frame.
+// forwards of SPEC-0031, the files of the primary of SPEC-0035 and the save of
+// the diagnostic report of SPEC-0038.
 
 import { Renderer } from "@freelensapp/extensions";
 import { CNPG_IPC } from "../common/ipc";
@@ -17,6 +17,8 @@ import type {
   ForwardStartRequest,
   PrimaryFilesAnswer,
   PrimaryFilesRequest,
+  ReportSaveAnswer,
+  ReportSaveRequest,
 } from "../common/ipc";
 
 /** The id of the Kubernetes cluster of this frame, or undefined outside a cluster. */
@@ -43,6 +45,10 @@ export class CnpgIpcRenderer extends Renderer.Ipc {
 
   readPrimaryFiles(request: PrimaryFilesRequest): Promise<PrimaryFilesAnswer> {
     return this.invoke(CNPG_IPC.primaryFiles, request) as Promise<PrimaryFilesAnswer>;
+  }
+
+  saveReport(request: ReportSaveRequest): Promise<ReportSaveAnswer> {
+    return this.invoke(CNPG_IPC.reportSave, request) as Promise<ReportSaveAnswer>;
   }
 }
 

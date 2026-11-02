@@ -318,6 +318,18 @@ two fixed `cat` commands through `kubectl exec`, which needs `pods/exec`),
 where each parameter comes from, a value of the spec not applied yet, and
 for each instance whether a restart is pending.
 
+### Diagnostic report
+
+**Save diagnostic report**, in the menu of a cluster, saves one ZIP file
+where you choose, for an issue or a support case, after `kubectl cnpg report
+cluster`: the cluster and its pods, jobs, volumes, services and disruption
+budgets, its backups, schedules, poolers, declarative objects, failover
+quorum and object stores, the events about them, the status of each
+instance and, if you ask, the last lines of their logs. It reads only; no
+Secret is read, `managedFields` are removed and values under keys named like
+a password, a token or a key are replaced. A `README.txt` in the archive says
+what is in it and what could not be read.
+
 ### Open psql
 
 "Open psql" writes one command into a terminal tab of Freelens, the same one

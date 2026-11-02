@@ -8,8 +8,12 @@
 // the write of a feature, when it has one, goes to `cnpg-writes.tests.ts`.
 
 import { spawnSync } from "node:child_process";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import * as cluster from "./cnpg-cluster";
+import { replaceSaveDialog, restoreSaveDialog, saveDialogCalls } from "./cnpg-main";
 import {
   appReady,
   connectApp,
@@ -489,6 +493,108 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       expect(await panel.locator('[data-testid^="cnpg-config-hba-"][data-section="fixed"]').count()).toBe(5);
       expect(await panel.locator('[data-testid^="cnpg-config-hba-"][data-section="default"]').count()).toBe(1);
       await cluster.captureScreenshot(frame, "m9-config-hba-dark");
+    },
+    TIMEOUT,
+  );
+
+  it(
+    "saves the diagnostic report of e2e-main where the save dialog says, with its pods, statuses and logs, no secret (SPEC-0038)",
+    async () => {
+      const name = "e2e-main";
+      const folder = fs.mkdtempSync(path.join(os.tmpdir(), "cnpg-report-"));
+      const file = path.join(folder, "report.zip");
+
+      await replaceSaveDialog(file);
+      try {
+        const before = (await saveDialogCalls()).length;
+
+        await cluster.openCnpgPage(frame, "cnpg-clusters-clusters", "PostgreSQL Clusters");
+        await cluster.selectNamespace(frame, cluster.E2E_NAMESPACE);
+        await cluster.openRowMenu(frame, name);
+        await frame.locator('.Menu [data-testid="cnpg-cluster-report-menu-item"]').first().click();
+
+        const dialog = frame.locator('[data-testid="cnpg-report-dialog"]');
+
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+        expect(await dialog.locator('[data-testid="cnpg-action-writes"]').count()).toBe(0);
+        expect(await textOf(dialog)).toContain("Nothing is written to the Kubernetes cluster");
+        await dialog.locator('[data-testid="cnpg-report-logs"]').check();
+        await dialog.locator('[data-testid="cnpg-report-lines"]').fill("50");
+        await cluster.captureScreenshot(frame, "m9-report-dialog-dark");
+        await cluster.confirmDialog(frame);
+        await cluster.expectNotification(
+          frame,
+          "ok",
+          `Diagnostic report of ${cluster.E2E_NAMESPACE}/${name} saved to ${file}`,
+        );
+
+        const calls = (await saveDialogCalls()).slice(before);
+
+        expect(calls).toHaveLength(1);
+        expect(calls[0].title).toBe(`Save the diagnostic report of ${cluster.E2E_NAMESPACE}/${name}`);
+        expect(calls[0].defaultPath).toMatch(/^e2e-main-cnpg-e2e-\d{8}-\d{6}\.zip$/);
+
+        // Read back by another reader: Python's zipfile.
+        const read = spawnSync(
+          "python3",
+          [
+            "-c",
+            "import json,sys,zipfile; z=zipfile.ZipFile(sys.argv[1]); assert z.testzip() is None; print(json.dumps({n: z.read(n).decode() for n in z.namelist()}))",
+            file,
+          ],
+          { encoding: "utf8", maxBuffer: 64 * 1024 * 1024 },
+        );
+
+        expect(read.status).toBe(0);
+        const files = JSON.parse(read.stdout) as Record<string, string>;
+        const names = Object.keys(files);
+        const instances = cluster
+          .kubectlField("clusters.postgresql.cnpg.io", name, "{.status.instanceNames[*]}")
+          .split(" ")
+          .filter(Boolean);
+
+        expect(names[0]).toBe("README.txt");
+        expect(names).toContain("cluster.yaml");
+        for (const instance of instances) {
+          expect(names).toContain(`pods/${instance}.yaml`);
+          expect(names).toContain(`status/${instance}.json`);
+          expect(names).toContain(`logs/${instance}.log`);
+          expect(JSON.parse(files[`status/${instance}.json`]).pod?.metadata?.name ?? instance).toBe(instance);
+        }
+        expect(instances).toHaveLength(3);
+        expect(names.some((entry) => entry.startsWith("poolers/"))).toBe(true);
+        expect(names.some((entry) => /secret/i.test(entry))).toBe(false);
+        expect(files["README.txt"]).toContain("No Secret was read");
+        // No secret value anywhere: the password of the application user is in no file (compared, never printed).
+        const password = Buffer.from(
+          cluster.kubectlE2E("get", "secret", "e2e-main-app", "-o", "jsonpath={.data.password}").stdout.trim(),
+          "base64",
+        ).toString("utf8");
+
+        expect(password.length).toBeGreaterThan(8);
+        expect(Object.values(files).some((content) => content.includes(password))).toBe(false);
+        expect(Object.values(files).some((content) => content.includes("managedFields:"))).toBe(false);
+
+        // A closed dialog writes nothing.
+        fs.rmSync(file);
+        await replaceSaveDialog("");
+        await cluster.clearNotifications(frame);
+        await cluster.openRowMenu(frame, name);
+        await frame.locator('.Menu [data-testid="cnpg-cluster-report-menu-item"]').first().click();
+        await dialog.waitFor({ state: "visible", timeout: 60_000 });
+        await cluster.confirmDialog(frame);
+        expect(
+          await waitUntil(
+            async () => (await saveDialogCalls()).length,
+            (count) => count === before + 2,
+            30_000,
+          ),
+        ).toBe(before + 2);
+        expect(fs.existsSync(file)).toBe(false);
+      } finally {
+        await restoreSaveDialog();
+        fs.rmSync(folder, { recursive: true, force: true });
+      }
     },
     TIMEOUT,
   );

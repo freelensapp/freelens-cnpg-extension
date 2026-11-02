@@ -42,6 +42,7 @@ import { ClusterHibernationMenuItem } from "./menus/cluster-hibernation-menu-ite
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
 import { ClusterMaintenanceMenuItem } from "./menus/cluster-maintenance-menu-item";
+import { ClusterReportMenuItem } from "./menus/cluster-report-menu-item";
 import { ClusterReloadMenuItem, ClusterRestartMenuItem } from "./menus/cluster-restart-menu-item";
 import { ClusterSwitchoverMenuItem } from "./menus/cluster-switchover-menu-item";
 import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
@@ -351,6 +352,14 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       apiVersions: ClusterV1.crd.apiVersions,
       components: {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterConfigMenuItem {...props} extension={this} />,
+      },
+    },
+    // SPEC-0038: reads only, one file where the user chooses.
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterReportMenuItem {...props} />,
       },
     },
     {

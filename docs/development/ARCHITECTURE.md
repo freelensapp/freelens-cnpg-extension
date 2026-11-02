@@ -83,6 +83,9 @@ everything it can in the renderer.
   never broadcast; only Kubernetes names cross them, checked by main before
   they reach a command line. Main kills every kubectl it started when the
   cluster disconnects, the extension is deactivated or Freelens quits.
+  Main also writes the diagnostic report of SPEC-0038: the renderer sends
+  the files it collected, main asks Electron's save dialog where and writes
+  one ZIP there, nothing else.
 - **Common** (`src/common/`): code shared by both processes.
 
 The renderer-first decision rests on one fact to be proven by a spike

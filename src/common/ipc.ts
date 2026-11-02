@@ -13,6 +13,7 @@ export const CNPG_IPC = {
   forwardStop: "cnpg:forward:stop",
   forwardList: "cnpg:forward:list",
   primaryFiles: "cnpg:primary:files",
+  reportSave: "cnpg:report:save",
 } as const;
 
 /** The port of PostgreSQL and PgBouncer behind every service of a cluster or a pooler. */
@@ -72,5 +73,26 @@ export interface PrimaryFilesRequest {
 export interface PrimaryFilesAnswer {
   customConf?: string;
   pgHbaConf?: string;
+  error?: string;
+}
+
+/** One file of the diagnostic report of SPEC-0038: a relative path in the archive and its text. */
+export interface ReportFile {
+  path: string;
+  content: string;
+}
+
+export interface ReportSaveRequest {
+  /** The name the save dialog suggests: `<cluster>-<namespace>-<timestamp>.zip`. */
+  suggestedName: string;
+  /** What the dialog says is saved. */
+  title: string;
+  files: ReportFile[];
+}
+
+export interface ReportSaveAnswer {
+  /** Where the file was written. */
+  path?: string;
+  canceled?: boolean;
   error?: string;
 }

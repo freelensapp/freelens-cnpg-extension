@@ -145,17 +145,22 @@ const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
 export function ActionFactsBlock({ facts }: { facts: ActionDialogFacts }) {
   return (
     <>
-      <div className={styles.heading}>{facts.writes.length === 1 ? "The one write" : "The writes, in order"}</div>
-      <ol
-        className={facts.writes.length === 1 ? `${styles.writes} ${styles.single}` : styles.writes}
-        data-testid="cnpg-action-writes"
-      >
-        {facts.writes.map((write) => (
-          <li key={write.text}>
-            <code>{write.text}</code>
-          </li>
-        ))}
-      </ol>
+      {/* An action that writes nothing to the cluster (the report of SPEC-0038) has no list to show. */}
+      {facts.writes.length > 0 ? (
+        <>
+          <div className={styles.heading}>{facts.writes.length === 1 ? "The one write" : "The writes, in order"}</div>
+          <ol
+            className={facts.writes.length === 1 ? `${styles.writes} ${styles.single}` : styles.writes}
+            data-testid="cnpg-action-writes"
+          >
+            {facts.writes.map((write) => (
+              <li key={write.text}>
+                <code>{write.text}</code>
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : null}
       {facts.notes.map((note) => (
         <p key={note}>{note}</p>
       ))}
