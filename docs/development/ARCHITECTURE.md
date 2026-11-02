@@ -38,7 +38,8 @@ pinned operator release. See the "Licensing and provenance constraints" section 
 
 Recorded in detail in
 [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md), pinned to
-CloudNativePG **v1.30.0**:
+CloudNativePG **v1.30.0**, reviewed again at **v1.30.1** with the Barman Cloud
+plugin **v0.15.1** for M9:
 
 - API group `postgresql.cnpg.io/v1`, 11 kinds: `Cluster`, `Backup`,
   `ScheduledBackup`, `Pooler`, `Database`, `DatabaseRole`, `Publication`,

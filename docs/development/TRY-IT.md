@@ -10,7 +10,7 @@ busy.
 
 - Docker (Docker Desktop with about 8 GB of memory for its VM is enough),
   `kind`, `kubectl`, Node.js and `pnpm` as in the README.
-- Freelens 1.10.3 or newer.
+- Freelens 2.0.0 or newer.
 
 ## 1. Bring the demo cluster up
 

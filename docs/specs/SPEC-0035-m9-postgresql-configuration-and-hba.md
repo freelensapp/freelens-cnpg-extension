@@ -1,6 +1,6 @@
 # SPEC-0035: PostgreSQL configuration and HBA rules of a cluster
 
-- **Status:** Done
+- **Status:** Implemented
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28

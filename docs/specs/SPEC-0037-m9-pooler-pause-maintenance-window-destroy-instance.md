@@ -1,6 +1,6 @@
 # SPEC-0037: Pooler pause and resume, maintenance window, destroy an instance
 
-- **Status:** Done
+- **Status:** Implemented
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28

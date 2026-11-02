@@ -59,6 +59,9 @@ certificate), and every such fixture says so in a comment.
 - A checkout of `freelensapp/freelens` next to this one (`../freelens`), with
   its dependencies installed and `pnpm build:resources` run once. Point
   `FREELENS_DIR` elsewhere to use another checkout.
+- `psql`, `pg_isready` and `python3` on `PATH`, for the cases of M9 that
+  connect through a forwarded port (SPEC-0031) and read the diagnostic report
+  back (SPEC-0038).
 
 #### Commands
 
@@ -105,10 +108,17 @@ certificate), and every such fixture says so in a comment.
   cluster connects, the pod proxy answers, then every page, drawer and
   chart against the fixtures and what the instances say),
   `cnpg-terminal-logs.tests.ts` (psql, the Logs page), `cnpg-writes.tests.ts`
-  (every write and form, read back), and `pre-review.tests.ts` (layer 4).
-  `cnpg-session.ts` attaches, installs and opens the cluster;
-  `cnpg-cluster.ts`, `cnpg-steps.ts` and `cnpg-design-checks.ts` hold the
-  shared steps. The versions the cases expect come from `lib.sh`.
+  (every write and form, read back), `cnpg-m9.tests.ts` (the read-only
+  features of M9, SPEC-0031 to SPEC-0039, among them a forward that `psql`
+  reaches and the diagnostic report read back), `cnpg-m9-writes.tests.ts` (the
+  writes of M9, in `cnpg-e2e-actions`), `cnpg-bare.tests.ts` (on the cluster of
+  `pnpm e2e:bare:up`, without CloudNativePG) and `pre-review.tests.ts`
+  (layer 4). `cnpg-session.ts` attaches, installs and opens the cluster, and
+  `forgetErrors` drops only the errors a case causes on purpose;
+  `cnpg-main.ts` reaches the main process of Freelens dev through its
+  inspector, to answer the save dialog; `cnpg-cluster.ts`, `cnpg-steps.ts`
+  and `cnpg-design-checks.ts` hold the shared steps. The versions the cases
+  expect come from `lib.sh`.
 
 The details of this layer are specified in SPEC-0002 and evolve with it.
 
@@ -180,8 +190,11 @@ is part of the runner.
 What cannot be automated is escalated to the lead maintainer following the
 protocol in [PROCESS.md](PROCESS.md) ("Manual testing escalation"), and its
 outcome is recorded in the spec. Current known manual-only areas: the psql
-terminal on every desktop platform, the live view against a busy
-production-like database, a real switchover or failover, and the overall
+terminal on every desktop platform, a desktop database client (pgAdmin,
+DBeaver) through a forwarded port on Windows and macOS (SPEC-0031), the
+system's own save dialog of the diagnostic report (SPEC-0038), the live view
+against a busy production-like database, a real switchover or failover, and
+the overall
 look and feel inside a real Freelens on Windows, Linux and macOS (agents
 verify rendering via Playwright screenshots, not the lived experience).
 

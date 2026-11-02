@@ -12,12 +12,14 @@ CloudNativePG resources (Cluster, Backup, ScheduledBackup, Pooler and the
 other CRDs of `postgresql.cnpg.io`) and the live state of the databases inside
 Freelens. The goal is the most complete and usable graphical interface for
 CloudNativePG. It was scaffolded from freelens-example-extension and built
-spec by spec; the roadmap to v1.0.0 (`docs/development/ROADMAP.md`) is
-complete and every spec under `docs/specs/` is verified.
+spec by spec; the roadmap (`docs/development/ROADMAP.md`) is complete to M9,
+version 2 for the Freelens v2 extension API, and every spec under
+`docs/specs/` is verified.
 
-- **Language**: TypeScript 5.9.3
-- **Runtime**: Node.js >= 22.0.0, Freelens >= 1.10.3
-- **Package manager**: pnpm 10.x (locked)
+- **Language**: TypeScript 7.0.2
+- **Runtime**: Freelens >= 2.0.0 (the extension API of `@freelensapp/extensions`
+  2.x); Node.js of `.nvmrc` to build
+- **Package manager**: pnpm 12 (`packageManager`, locked)
 - **License**: MIT
 
 ## Licensing and provenance constraints (critical)
@@ -179,7 +181,11 @@ Each CRD file exports three classes: the KubeObject, the KubeApi, and the KubeOb
 
 ## Renderer Components
 
-- Detail views and pages are wrapped with `observer` from `mobx-react` and render through `withErrorPage` (see `src/renderer/components/error-page.tsx`).
+- Detail views and pages are wrapped with `observer` from `mobx-react`. Every registration of `clusterPages`, `kubeObjectDetailItems` and `kubeObjectMenuItems` goes through `withPageErrorBoundary`, `withDetailsErrorBoundary` or `withMenuItemErrorBoundary` (`src/renderer/components/error-boundary.tsx`): `withErrorPage`, a `try`/`catch` around the call, does not see what a child component throws, and the host has no boundary of its own around a details panel or a menu item.
+- Rules that fail silently, from the template's `AGENTS.md`:
+  - a component that decides through `getStore()` (as `createAvailableVersionPage` does) is an `observer`: the host registers the APIs of a CRD after the cluster frame has loaded the CRDs, and a page rendered before then (Freelens restores the last page of a cluster) would say the kind is not installed until the user navigates away;
+  - an effect creates inside itself the `AbortController` and the watches its cleanup releases: Freelens dev renders in `React.StrictMode`, and one kept in a ref is aborted by the first cleanup, so a view that is the first to load its stores shows nothing;
+  - every kind with a page of its own is in `customResources`, so the Custom Resources tree of the sidebar does not list it a second time.
 - SCSS modules generate TypeScript type files (`*.module.d.scss.ts`) through `build/vite-plugin-css-module-declarations.mjs` on every build; they are committed. Only local classes are declared: a host class under `:global()` is not. Every module ends up in `dist/renderer.css`, which the host links; nothing injects a `<style>`.
 - mobx 7: field annotations are `observable`, `observableRef`, `computed`, `action` in `makeObservable`; `observable.ref` and the other dotted forms are gone.
 - Chart.js v4 for the host's `Chart` and `BarChart`: keyed `scales` (`x`, `y`), `grid`, `ticks.color`/`ticks.font`, `plugins.tooltip` and `plugins.legend`.
