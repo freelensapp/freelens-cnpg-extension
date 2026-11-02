@@ -61,6 +61,10 @@
       flex-grow: 0.7;
     }
 
+    &.recoverCell {
+      flex-grow: 0.8;
+    }
+
     &.type,
     &.tablespace,
     &.condition,
@@ -88,4 +92,17 @@
   align-items: baseline;
   gap: $unit;
   min-width: 0;
+}
+
+// "Recover into a new cluster" on a row of the recovery windows (SPEC-0032).
+.recover {
+  display: inline-flex;
+  align-items: center;
+  gap: calc($unit / 2);
+  white-space: nowrap;
+}
+
+.recoverOff {
+  opacity: 0.5;
+  cursor: default;
 }

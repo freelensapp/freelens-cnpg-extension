@@ -48,6 +48,7 @@ import {
   poolerTypeReason,
   poolerWarnings,
 } from "./pooler-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { ActionDialogModel } from "./action-dialog";
@@ -385,6 +386,12 @@ function open(model: PoolerCreateModel, delayed: boolean, changedNotice?: string
       facts: () => poolerFacts(model.inputs, model.form),
       form: () => <PoolerCreateForm model={model} />,
       yaml: () => toYaml(poolerBody(model.form)),
+      server: {
+        apiBase: Pooler.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => poolerBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => poolerBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {

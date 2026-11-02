@@ -554,6 +554,22 @@ export async function confirmDialogText(frame: Frame): Promise<string> {
   return (await dialog.innerText()).replace(/\s+/g, " ").trim();
 }
 
+/**
+ * Waits for the server check of a creation form (SPEC-0032) to answer about the YAML of the moment, and gives its
+ * state: `valid`, `refused` or `unchecked`.
+ */
+export async function waitServerCheck(dialog: Locator, timeout = 30_000): Promise<string | null> {
+  const line = dialog.locator('[data-testid="cnpg-server-check"]');
+  const deadline = Date.now() + timeout;
+  let state: string | null = null;
+  while (Date.now() < deadline) {
+    state = (await line.count()) > 0 ? await line.getAttribute("data-state") : null;
+    if (state === "valid" || state === "refused" || state === "unchecked") return state;
+    await new Promise((resolve) => setTimeout(resolve, 200));
+  }
+  return state;
+}
+
 /** Confirms the open dialog, and waits for it to go away. */
 export async function confirmDialog(frame: Frame): Promise<void> {
   await frame.locator('[data-testid="confirm"]').click();

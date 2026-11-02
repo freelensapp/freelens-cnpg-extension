@@ -957,6 +957,8 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
 
       expect(warnings.some((warning) => warning.includes("One instance"))).toBe(true);
       expect(warnings.some((warning) => warning.includes("No resource requests"))).toBe(true);
+      // SPEC-0032: the API server has checked the YAML of the moment with a dry run.
+      expect(await cluster.waitServerCheck(dialog)).toBe("valid");
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
       expect(await frame.locator('[data-testid="confirm"]').isDisabled()).toBe(false);
       await cluster.captureScreenshot(frame, "create-cluster-dialog-dark");
@@ -998,7 +1000,7 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       expect(cluster.kubectlActions("get", clusters, name).status).not.toBe(0);
       await cluster.clearNotifications(frame);
 
-      // F5 and F6, on a second form: a collision warns and never blocks, a rule of the operator refuses at the field.
+      // F5 and F6, on a second form: a collision warns and the API server refuses it, a rule of the operator refuses at the field.
       await frame.locator(".AddRemoveButtons .add-button").click();
       await dialog.waitFor({ state: "visible", timeout: 60_000 });
       await dialog.locator('[data-testid="cnpg-create-cluster-name"]').fill(cluster.E2E_ACTIONS_CLUSTER);
@@ -1006,7 +1008,11 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       expect(await dialog.locator('[data-testid="cnpg-create-cluster-name-field-warning"]').innerText()).toContain(
         "already exists",
       );
-      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
+      // SPEC-0032: the list read on open only warns, the API server's own answer to the dry run blocks.
+      expect(await cluster.waitServerCheck(dialog)).toBe("refused");
+      expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').innerText()).toBe(
+        `The API server refuses it (Name): clusters.postgresql.cnpg.io "${cluster.E2E_ACTIONS_CLUSTER}" already exists`,
+      );
 
       await dialog.locator('[data-testid="cnpg-create-cluster-instances"]').fill("2");
       await dialog.locator('[data-testid="cnpg-create-cluster-replication-section-toggle"]').click();
@@ -1102,6 +1108,8 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toContain(
         "1 tablespace",
       );
+      // SPEC-0032: the API server has checked the YAML of the moment with a dry run.
+      expect(await cluster.waitServerCheck(dialog)).toBe("valid");
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
       await cluster.captureScreenshot(frame, "create-cluster-tablespaces-dark");
       await cluster.confirmDialog(frame);
@@ -1310,6 +1318,8 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toContain(
         `recovery from the volume snapshot ${dataSnapshot} (cold, backup ${dataSnapshot} of ${cluster.E2E_SNAPSHOT_CLUSTER})`,
       );
+      // SPEC-0032: the API server has checked the YAML of the moment with a dry run.
+      expect(await cluster.waitServerCheck(dialog)).toBe("valid");
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
       await cluster.captureScreenshot(frame, "create-cluster-snapshot-recovery-dark");
       await cluster.confirmDialog(frame);
@@ -1437,6 +1447,8 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       expect(await dialog.locator('[data-testid="cnpg-action-writes"] li').first().innerText()).toBe(
         `create ScheduledBackup ${cluster.E2E_ACTIONS_NAMESPACE}/${name}: cluster ${cluster.E2E_ACTIONS_CLUSTER}, schedule "0 0 3 * * *", method plugin (barman-cloud.cloudnative-pg.io), owner self`,
       );
+      // SPEC-0032: the API server has checked the YAML of the moment with a dry run.
+      expect(await cluster.waitServerCheck(dialog)).toBe("valid");
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
       await cluster.captureScreenshot(frame, "create-schedule-dialog-dark");
 
@@ -1695,6 +1707,8 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
       const warnings = await dialog.locator('[data-testid="cnpg-action-warning"]').allInnerTexts();
 
       expect(warnings.some((warning) => warning.includes("plaintext endpoint"))).toBe(true);
+      // SPEC-0032: the API server has checked the YAML of the moment with a dry run.
+      expect(await cluster.waitServerCheck(dialog)).toBe("valid");
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
       await cluster.captureScreenshot(frame, "create-object-store-dialog-dark");
 
@@ -2065,6 +2079,8 @@ describe.skipIf(!(await appReady({ cluster: true })))("CloudNativePG extension: 
           note.includes("CONNECTION '<e2e-main-rw.cnpg-e2e.svc, database app>' PUBLICATION e2e_numbers_pub"),
         ),
       ).toBe(true);
+      // SPEC-0032: the API server has checked the YAML of the moment with a dry run.
+      expect(await cluster.waitServerCheck(dialog)).toBe("valid");
       expect(await dialog.locator('[data-testid="cnpg-action-blocked"]').count()).toBe(0);
       await cluster.captureScreenshot(frame, "create-subscription-dialog-dark");
       await cluster.confirmDialog(frame);

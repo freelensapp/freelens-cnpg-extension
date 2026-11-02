@@ -38,6 +38,7 @@ import {
 } from "./create-forms";
 import { subjectOf } from "./write-actions";
 
+import type { Cluster } from "../api/cnpg/cluster-v1";
 import type { KeyValue } from "./create-forms";
 import type { ActionDialogFacts } from "./write-actions";
 
@@ -1031,3 +1032,40 @@ export function clusterCreateSuccessMessage(namespace: string, name: string): st
 export const CLUSTER_NAME_HINT = `A DNS label of ${CLUSTER_NAME_MAX} characters at most: it becomes the prefix of the pods, the volumes, the services and the secrets.`;
 export const OBJECT_NAME_HINT = "Lowercase letters, digits, dashes and dots.";
 export { objectNameError };
+
+/**
+ * The form of "Recover into a new cluster" (SPEC-0032), from a server of an object store: a recovery from that
+ * store and server, named after it. With the cluster that wrote there, the same image (a recovery needs the same
+ * major) and the same volumes; without one, the user picks them.
+ */
+export function recoveryClusterForm(
+  namespace: string,
+  objectStore: string,
+  serverName: string,
+  source?: Cluster,
+): Partial<ClusterForm> {
+  const spec = source?.spec;
+  const catalog = spec?.imageCatalogRef;
+  const image = spec?.imageName || source?.status?.image;
+  return {
+    namespace,
+    name: `${serverName}-recovered`,
+    bootstrap: "recovery",
+    recoverySource: "objectStore",
+    recoveryObjectStore: objectStore,
+    recoveryServerName: serverName,
+    ...(catalog
+      ? {
+          imageSource: "catalog" as const,
+          catalog: `${catalog.kind}/${catalog.name}`,
+          catalogMajor: String(catalog.major),
+        }
+      : image
+        ? { imageSource: "name" as const, imageName: image }
+        : {}),
+    ...(spec?.storage?.size ? { storageSize: spec.storage.size, storageClass: spec.storage.storageClass ?? "" } : {}),
+    ...(spec?.walStorage?.size
+      ? { walEnabled: true, walSize: spec.walStorage.size, walClass: spec.walStorage.storageClass ?? "" }
+      : {}),
+  };
+}

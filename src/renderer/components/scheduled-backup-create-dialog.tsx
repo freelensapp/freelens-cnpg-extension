@@ -48,6 +48,7 @@ import {
   scheduleExpression,
   scheduleMethodOptions,
 } from "./scheduled-backup-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { ActionDialogModel } from "./action-dialog";
@@ -477,6 +478,12 @@ function open(model: ScheduleCreateModel, delayed: boolean, changedNotice?: stri
       facts: () => scheduledBackupFacts(model.inputs, model.form, new Date()),
       form: () => <ScheduleCreateForm model={model} />,
       yaml: () => toYaml(scheduledBackupBody(model.inputs, model.form)),
+      server: {
+        apiBase: ScheduledBackup.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => scheduledBackupBody(model.inputs, model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => scheduledBackupBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {

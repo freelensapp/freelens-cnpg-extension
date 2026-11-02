@@ -47,6 +47,7 @@ import {
   publicationSuccessMessage,
   publicationWarnings,
 } from "./publication-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 
 import type { ActionDialogModel } from "./action-dialog";
 import type { KeyValue } from "./create-forms";
@@ -413,6 +414,12 @@ function open(model: PublicationCreateModel, delayed: boolean, changedNotice?: s
       facts: () => publicationFacts(model.inputs, model.form),
       form: () => <PublicationCreateForm model={model} />,
       yaml: () => toYaml(publicationBody(model.form)),
+      server: {
+        apiBase: Publication.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => publicationBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => publicationBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: () => {

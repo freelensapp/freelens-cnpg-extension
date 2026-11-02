@@ -30,5 +30,7 @@ declare const classNames: {
   readonly radioLine: "radioLine";
   readonly choiceHint: "choiceHint";
   readonly copied: "copied";
+  readonly serverCheck: "serverCheck";
+  readonly serverCauses: "serverCauses";
 };
 export = classNames;

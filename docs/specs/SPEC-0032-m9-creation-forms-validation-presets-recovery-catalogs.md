@@ -1,6 +1,6 @@
 # SPEC-0032: Creation forms: server validation, parameter presets, recovery from an object store, image catalogs
 
-- **Status:** Approved
+- **Status:** Done
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1` (Barman Cloud plugin `v0.15.1`)
 - **Author / date:** freelensapp core team, 2026-10-28
@@ -85,4 +85,35 @@ view, read-back test).
 
 ## Notes and deviations
 
-Filled during implementation.
+- **Where the answer shows.** The API server's answer is one line under the YAML pane (it is about that
+  YAML, and stays in sight however far the form scrolls), not under each input: a refusal lists every
+  cause with the field of the form in words and the path the server named
+  (`PostgreSQL parameters (spec.postgresql.parameters.min_wal_size)`), and its first cause is the
+  reason OK is disabled. The webhook's message is shown verbatim (CNPG 1.30.1 writes "Invalid vale").
+- **When it runs.** Only once the inline checks pass (nothing is sent for a form that still says what is
+  missing), 500 ms after the YAML stops changing; an answer about an older YAML is dropped and OK stays
+  off until the YAML of the moment is answered. 400, 409 and 422 refuse; 401, 403, no answer and any
+  other code leave the form "not checked", said in the line, and do not block.
+- **A name taken.** SPEC-0025 F5 stays for the list read on open (a warning, since the list may be
+  stale); the dry run's `409 AlreadyExists` is the API server's own word and now blocks, attributed to
+  Name. The E2E of SPEC-0025 was updated accordingly.
+- **Presets.** General purpose, write heavy, analytics, small development. Sized on the memory request,
+  else the limit, else an assumed 1GB (the hint says so), and also on the WAL disk (the WAL volume,
+  else the data volume): `max_wal_size` takes at most a quarter of it, so a preset never fills a small
+  volume, and `min_wal_size` stays below it and at 32MB or more. `checkpoint_completion_target` is left
+  out (0.9 is already PostgreSQL's default); write heavy adds `checkpoint_timeout`, analytics
+  `default_statistics_target`. "None" removes the preset's rows the user left alone; a switch replaces
+  them; the user's own rows are never touched. A unit test runs every preset over memory and disk sizes
+  through the form's own key and value checks.
+- **Recovery.** The image comes from the referring cluster's `imageCatalogRef`, else `imageName`, else
+  `status.image` (a recovery needs the same major); the volumes and their classes too. A server with no
+  cluster (a deleted one) gets the recovery fields only. The target time is the existing field of
+  SPEC-0025, left empty (the end of the archive). WAL archiving of the new cluster is left unset: the
+  plugin refuses to archive into a server that already holds WAL, so the user picks a store or another
+  server name. The E2E recovers `e2e-actions` from `actions-store` (the store of the write namespace)
+  and finds a row written after the last backup, which only the archived WAL carries.
+- **Catalogs.** The CRD allows 1 to 8 images and majors of 10 or more (not just "positive"); both are
+  checked inline. A tag whose version is another major than the row's only warns: the API server does
+  not check it, and a cluster asking for that major would run the other one.
+- **E2E noise.** Chromium logs every refused dry run as a console error; the session lets through only
+  400, 409 and 422 on `?dryRun=All` creates of the CNPG group.

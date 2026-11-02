@@ -12,13 +12,17 @@
 // pure module of the kind computes every message and every fact.
 
 import { Renderer } from "@freelensapp/extensions";
+import * as Mobx from "mobx";
 import * as MobxReact from "mobx-react";
 import React from "react";
+import { dryRunCreate } from "../api/writes/dry-run";
 import { ActionFactsBlock, kubernetesClusterWords, openActionDialog } from "./action-dialog";
 import styles from "./create-dialog.module.scss";
+import { IDLE_CHECK, readServerAnswer, serverCheckBlockReason } from "./server-check";
 
 import type { ActionDialogModel, ActionDialogParams } from "./action-dialog";
 import type { KeyValue } from "./create-forms";
+import type { FieldOf, ServerCheck } from "./server-check";
 
 const { observer } = MobxReact;
 
@@ -429,10 +433,11 @@ export function Inline({ children }: { children: React.ReactNode }) {
 interface YamlPaneProps {
   yaml: string;
   testId: string;
+  children?: React.ReactNode;
 }
 
 /** The YAML of the exact body the create sends (F12), read only, with the copy button of those who commit it instead. */
-function YamlPane({ yaml, testId }: YamlPaneProps) {
+function YamlPane({ yaml, testId, children }: YamlPaneProps) {
   const [copied, setCopied] = React.useState(false);
   React.useEffect(() => {
     if (!copied) return;
@@ -472,16 +477,92 @@ function YamlPane({ yaml, testId }: YamlPaneProps) {
           options={{ scrollbar: { alwaysConsumeMouseWheel: false }, minimap: { enabled: false }, lineNumbers: "off" }}
         />
       </div>
+      {children}
     </div>
   );
 }
+
+/** What the server check of SPEC-0032 sends: the body of the create, where the create sends it. */
+export interface CreateServerParams {
+  /** The `apiBase` of the kind. */
+  apiBase: string;
+  /** The namespace of a namespaced kind, read when the check runs. */
+  namespace?: () => string | undefined;
+  body: () => unknown;
+  /** The field of the form a path of the body belongs to. */
+  fieldOf?: FieldOf;
+}
+
+/** How long the form rests before its YAML is sent for a check. */
+export const SERVER_CHECK_DELAY_MS = 500;
 
 export interface CreateDialogParams extends Omit<ActionDialogParams, "message" | "form"> {
   /** The fields, in reading order. */
   form: () => React.ReactNode;
   /** The YAML of the body, recomputed as the form changes. */
   yaml: () => string;
+  /** The server check (SPEC-0032): the body is sent with dryRun=All before OK is enabled. */
+  server?: CreateServerParams;
 }
+
+type CheckBox = Mobx.IObservableValue<ServerCheck>;
+
+/**
+ * Sends the YAML of the moment for a check once the form rests, unless the form itself still says what is
+ * missing; an answer that comes back after the YAML changed is dropped.
+ */
+function useServerCheck(server: CreateServerParams | undefined, check: CheckBox, yaml: string, formBlocked: boolean) {
+  React.useEffect(() => {
+    if (!server) return;
+    if (formBlocked) {
+      Mobx.runInAction(() => check.set(IDLE_CHECK));
+      return;
+    }
+    let current = true;
+    Mobx.runInAction(() => check.set({ state: "checking", yaml, causes: [] }));
+    const timer = setTimeout(() => {
+      void dryRunCreate({ apiBase: server.apiBase, namespace: server.namespace?.(), body: server.body() }).then(
+        ({ status, body }) => {
+          if (current) Mobx.runInAction(() => check.set(readServerAnswer(status, body, yaml, server.fieldOf)));
+        },
+      );
+    }, SERVER_CHECK_DELAY_MS);
+    return () => {
+      current = false;
+      clearTimeout(timer);
+    };
+  }, [server, check, yaml, formBlocked]);
+}
+
+const ServerCheckLine = observer(({ check, yaml }: { check: CheckBox; yaml: string }) => {
+  const answer = check.get();
+  const state = answer.state !== "idle" && answer.yaml !== yaml ? "checking" : answer.state;
+  if (state === "idle") return null;
+  return (
+    <div className={styles.serverCheck} data-testid="cnpg-server-check" data-state={state}>
+      {state === "checking" ? <span className={styles.hint}>Checking with the API server</span> : null}
+      {state === "valid" ? (
+        <span className={styles.hint}>The API server accepts it (a dry run: nothing was created).</span>
+      ) : null}
+      {state === "unchecked" ? <span className={styles.warning}>{answer.message}</span> : null}
+      {state === "refused" ? (
+        <>
+          <span className={styles.error}>The API server refuses it, before anything is created:</span>
+          <ul className={styles.serverCauses}>
+            {answer.causes.map((cause) => (
+              <li key={`${cause.path ?? ""}${cause.message}`} className={styles.error}>
+                {cause.field || cause.path ? <b>{cause.field ?? cause.path}</b> : null}
+                {cause.field && cause.path ? <span className={styles.hint}> ({cause.path})</span> : null}
+                {cause.field || cause.path ? ": " : ""}
+                {cause.message}
+              </li>
+            ))}
+          </ul>
+        </>
+      ) : null}
+    </div>
+  );
+});
 
 /**
  * The message of a creation dialog: the subject, the two panes, the reason
@@ -489,10 +570,17 @@ export interface CreateDialogParams extends Omit<ActionDialogParams, "message" |
  * dialogs: the facts and the YAML follow every change of the model.
  */
 export const CreateDialogMessage = observer(
-  ({ params, model }: { params: CreateDialogParams; model: ActionDialogModel }) => {
+  ({ params, model, check }: { params: CreateDialogParams; model: ActionDialogModel; check: CheckBox }) => {
     const facts = params.facts();
     const cluster = kubernetesClusterWords();
-    const blocked = params.blockReason?.();
+    const formBlocked = params.blockReason?.();
+    const yaml = params.yaml();
+    useServerCheck(params.server, check, yaml, Boolean(formBlocked));
+    // The refusal of the API server is a reason like the form's; "checking" is said by the line of the check alone.
+    const answer = check.get();
+    const blocked =
+      formBlocked ??
+      (answer.state === "refused" && answer.yaml === yaml ? serverCheckBlockReason(answer, yaml) : undefined);
     void model;
     return (
       <div className={styles.dialog} data-testid={params.testId}>
@@ -520,7 +608,10 @@ export const CreateDialogMessage = observer(
             ) : null}
             <ActionFactsBlock facts={facts} />
           </div>
-          <YamlPane yaml={params.yaml()} testId={`${params.testId}-yaml`} />
+          {/* Under the YAML it is about, in sight however far the form scrolls. */}
+          <YamlPane yaml={yaml} testId={`${params.testId}-yaml`}>
+            <ServerCheckLine check={check} yaml={yaml} />
+          </YamlPane>
         </div>
       </div>
     );
@@ -533,11 +624,20 @@ export const CreateDialogMessage = observer(
  * two pane message. `model` is passed on a reopen so the fields survive it.
  */
 export function openCreateDialog(params: CreateDialogParams, model?: ActionDialogModel, delayed = false): void {
-  const { form, yaml, ...rest } = params;
+  const { form, yaml, server, blockReason: formBlockReason, ...rest } = params;
+  const check: CheckBox = Mobx.observable.box<ServerCheck>(IDLE_CHECK, { deep: false });
   openActionDialog(
     {
       ...rest,
-      message: (actionParams, state) => <CreateDialogMessage params={{ ...actionParams, form, yaml }} model={state} />,
+      // OK waits for the answer about the YAML of the moment, and stays off when the API server refuses it.
+      blockReason: () => formBlockReason?.() ?? (server ? serverCheckBlockReason(check.get(), yaml()) : undefined),
+      message: (actionParams, state) => (
+        <CreateDialogMessage
+          params={{ ...actionParams, blockReason: formBlockReason, form, yaml, server }}
+          model={state}
+          check={check}
+        />
+      ),
     },
     model,
     delayed,

@@ -46,6 +46,7 @@ import {
   objectStoreWarnings,
   WAL_COMPRESSIONS,
 } from "./object-store-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { ActionDialogModel } from "./action-dialog";
@@ -557,6 +558,12 @@ function open(model: StoreCreateModel, delayed: boolean, changedNotice?: string)
       facts: () => objectStoreFacts(model.inputs, model.form),
       form: () => <StoreCreateForm model={model} />,
       yaml: () => toYaml(objectStoreBody(model.form)),
+      server: {
+        apiBase: ObjectStore.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => objectStoreBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => objectStoreBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {

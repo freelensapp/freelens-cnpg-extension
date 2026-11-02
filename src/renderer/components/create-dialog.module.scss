@@ -308,3 +308,17 @@ $tint-strong: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
   color: $ink-secondary;
   font-size: 0.9em;
 }
+
+// The answer of the API server to the dry run of the form (SPEC-0032).
+.serverCheck {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.serverCauses {
+  margin: 0;
+  padding-left: calc($unit * 2);
+  list-style: disc outside;
+  overflow-wrap: anywhere;
+}

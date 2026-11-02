@@ -29,6 +29,7 @@ import {
   readInto,
   runCreate,
 } from "./declarative-dialog";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import {
   defaultSubscriptionForm,
   emptySubscriptionInputs,
@@ -392,6 +393,12 @@ function open(model: SubscriptionCreateModel, delayed: boolean, changedNotice?: 
       facts: () => subscriptionFacts(model.inputs, model.form),
       form: () => <SubscriptionCreateForm model={model} />,
       yaml: () => toYaml(subscriptionBody(model.form)),
+      server: {
+        apiBase: Subscription.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => subscriptionBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => subscriptionBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: () => {

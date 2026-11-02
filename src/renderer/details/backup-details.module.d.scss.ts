@@ -12,6 +12,7 @@ declare const classNames: {
   readonly first: "first";
   readonly last: "last";
   readonly windowState: "windowState";
+  readonly recoverCell: "recoverCell";
   readonly type: "type";
   readonly tablespace: "tablespace";
   readonly condition: "condition";
@@ -20,5 +21,7 @@ declare const classNames: {
   readonly door: "door";
   readonly secretKey: "secretKey";
   readonly secretRef: "secretRef";
+  readonly recover: "recover";
+  readonly recoverOff: "recoverOff";
 };
 export = classNames;

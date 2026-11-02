@@ -39,6 +39,7 @@ import {
   emptyDatabaseInputs,
 } from "./database-create";
 import { listClusterFacts, NamespaceAndClusterFields, ReclaimField, readInto, runCreate } from "./declarative-dialog";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 
 import type { ActionDialogModel } from "./action-dialog";
 import type { DatabaseForm, DatabaseInputs, ExistingDatabase, ExtensionRow, SchemaRow } from "./database-create";
@@ -498,6 +499,12 @@ function open(model: DatabaseCreateModel, delayed: boolean, changedNotice?: stri
       facts: () => databaseFacts(model.inputs, model.form),
       form: () => <DatabaseCreateForm model={model} />,
       yaml: () => toYaml(databaseBody(model.form)),
+      server: {
+        apiBase: Database.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => databaseBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => databaseBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: () => {

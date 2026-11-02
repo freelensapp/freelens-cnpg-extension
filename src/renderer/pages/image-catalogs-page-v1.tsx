@@ -14,6 +14,7 @@ import { maybe } from "../../common/utils";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
 import { withErrorPage } from "../components/error-page";
+import { openCreateCatalogDialog } from "../components/image-catalog-create-dialog";
 import { catalogMajors, classifyCatalog, clustersOfCatalog } from "../components/image-catalogs";
 import { useReferenceStores } from "../components/reference-loader";
 import styles from "./image-catalogs-page.module.scss";
@@ -96,6 +97,10 @@ function createCatalogsPage(kubeObjectClass: typeof ImageCatalog | typeof Cluste
             sortingCallbacks={sortingCallbacks}
             searchFilters={[(object: AnyImageCatalog) => object.getSearchFields(), searchFields]}
             renderHeaderTitle={kubeObjectClass.crd.title}
+            addRemoveButtons={{
+              onAdd: () => openCreateCatalogDialog(kubeObjectClass.kind),
+              addTooltip: namespaced ? "Create image catalog" : "Create cluster image catalog",
+            }}
             renderTableHeader={headers}
             renderTableContents={(object: AnyImageCatalog) => {
               const all = (clusterStore?.items ?? []) as Cluster[];

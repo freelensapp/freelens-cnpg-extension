@@ -106,6 +106,11 @@ const canceledProxyPattern = /context canceled/;
 const expectedConflictPattern =
   /^Failed to load resource: the server responded with a status of 409 \(\) @ https:\/\/[^/]+\/api-kube\/apis\/postgresql\.cnpg\.io\/v1\/namespaces\/[^/]+\/clusters\/[^/]+(\/status)?$/;
 
+// A refusal of a dry run is what the server check of every creation form (SPEC-0032) asks for: the API server or the
+// operator's webhook says what is wrong before anything exists. Only `dryRun=All` creates are let through.
+const expectedDryRunRefusalPattern =
+  /^Failed to load resource: the server responded with a status of (400|409|422) \(\) @ https:\/\/[^/]+\/api-kube\/apis\/postgresql\.cnpg\.io\/v1\/(namespaces\/[^/]+\/)?[a-z]+\?dryRun=All$/;
+
 function collectErrors(window: Page) {
   const errorLogs: string[] = [];
   let mainLogOffset = mainLogFile && fs.existsSync(mainLogFile) ? fs.statSync(mainLogFile).size : 0;
@@ -115,7 +120,8 @@ function collectErrors(window: Page) {
     if (msg.type() !== "error") return;
     const line = `${msg.text().replaceAll(ansiEscapePattern, "")} @ ${msg.location().url}`;
 
-    if (!expectedConflictPattern.test(line)) errorLogs.push(`[renderer] ${line}`);
+    if (!expectedConflictPattern.test(line) && !expectedDryRunRefusalPattern.test(line))
+      errorLogs.push(`[renderer] ${line}`);
   };
   const onPageError = (error: Error) => {
     errorLogs.push(`[renderer] ${error.stack ?? error.message}`);

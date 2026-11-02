@@ -40,6 +40,7 @@ import {
   emptyDatabaseRoleInputs,
 } from "./database-role-create";
 import { listClusterFacts, NamespaceAndClusterFields, ReclaimField, readInto, runCreate } from "./declarative-dialog";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 
 import type { ActionDialogModel } from "./action-dialog";
 import type { DatabaseRoleForm, DatabaseRoleInputs, ExistingRole, RoleSecretChoice } from "./database-role-create";
@@ -415,6 +416,12 @@ function open(model: RoleCreateModel, delayed: boolean, changedNotice?: string):
       facts: () => databaseRoleFacts(model.inputs, model.form),
       form: () => <RoleCreateForm model={model} />,
       yaml: () => toYaml(databaseRoleBody(model.form)),
+      server: {
+        apiBase: DatabaseRole.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => databaseRoleBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => databaseRoleBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: () => {

@@ -142,7 +142,7 @@ export function accessGuard(questions: readonly AccessQuestion[], answers: reado
   if (index < 0) return enabledGuard;
   const question = questions[index];
   return disabledGuard(
-    `Your account may not ${question.verb} ${resourceWords(question)} in ${question.namespace} (the API server was asked)`,
+    `Your account may not ${question.verb} ${resourceWords(question)} ${question.namespace ? `in ${question.namespace}` : "cluster-wide"} (the API server was asked)`,
   );
 }
 
