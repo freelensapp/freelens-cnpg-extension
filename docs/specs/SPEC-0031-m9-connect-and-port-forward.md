@@ -21,8 +21,8 @@ or the pooler to connect a desktop tool, without typing `kubectl port-forward`.
 - The services of a cluster: `<cluster>-rw` (primary), `-ro` (replicas only), `-r` (any instance);
   a `Pooler` has its own service. `spec.managed.services` can disable `-ro` and `-r` and add more.
 - `kubectl port-forward service/<name> <local>:5432`; RBAC `create` on `pods/portforward`.
-- Other UIs: the Headlamp plugin shows a connection panel from the Secret; port-forward is asked for
-  in cloudnative-pg/cnpg-headlamp-plugin#94. Functional reference only (AGENTS.md).
+- Other UIs: a connection panel from the Secret exists elsewhere; a port-forward is asked for by their
+  users. Functional reference only (AGENTS.md).
 
 ## Scope
 

@@ -19,7 +19,7 @@ missing and how to install it; with it, the page shows what each CNPG-I plugin c
 - CNPG-I plugins: services labelled `cnpg.io/pluginName`; `Cluster.status.pluginStatus[]` with
   `capabilities` and, new in v1.30.1, `postgresCapabilities`.
 - Klio: a CNPG-I backup plugin with its `PluginConfiguration` (`klio.cnpg.io/v1alpha1`).
-- Other UIs: the Headlamp plugin has an install guide and basic Klio support. Functional reference
+- Other UIs: another interface has an install guide and basic Klio support. Functional reference
   only (AGENTS.md).
 
 ## Scope

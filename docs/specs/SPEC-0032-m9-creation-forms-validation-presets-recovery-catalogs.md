@@ -21,7 +21,7 @@ store's recovery window in one click; image catalogs are created like everything
   (`externalClusters[].plugin` of `barman-cloud.cloudnative-pg.io` with `barmanObjectName` and
   `serverName`); `ImageCatalog` (namespaced) and `ClusterImageCatalog` (cluster-scoped),
   `spec.images[]` of `{ major, image }`, majors unique.
-- Other UIs: the Headlamp plugin validates Create Cluster with a dry run, offers parameter presets and
+- Other UIs: another interface validates Create Cluster with a dry run, offers parameter presets and
   a Recover button in the ObjectStore recovery window. Functional reference only (AGENTS.md): our
   presets and texts are our own.
 

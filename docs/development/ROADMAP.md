@@ -113,8 +113,8 @@ real Freelens and reads it back from the cluster.
 
 ### M9 - Beyond the other user interfaces
 
-Scope from a feature comparison with the CloudNativePG plugin for Headlamp (v0.1.6) on the same
-kind cluster, the `kubectl cnpg` plugin and the k9s plugin (CloudNativePG v1.30.1).
+Scope from a feature comparison with other CloudNativePG user interfaces on the same kind cluster,
+the `kubectl cnpg` plugin and the k9s plugin (CloudNativePG v1.30.1).
 
 | Feature                                                                                                                    | Spec                                                                                         | Status |
 | -------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- | ------ |

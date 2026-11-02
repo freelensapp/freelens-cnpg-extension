@@ -26,7 +26,7 @@ which client certificate it has; the cluster list says how many clusters need at
   and renew a certificate signed by the cluster's client CA, stored in the Secret
   `<databaserole>-client-cert`; `status.clientCertificate` reports its `expiration` and a `message`.
 - Jobs live only while they work: the operator removes a finished bootstrap or join job.
-- Other UIs: the Headlamp plugin has a storage tab, a jobs table, list counts and a role certificate
+- Other UIs: another interface has a storage tab, a jobs table, list counts and a role certificate
   section. Functional reference only (AGENTS.md).
 
 ## Scope
@@ -69,7 +69,7 @@ Reads only; no Secret is read (the certificate's expiry comes from the role's st
   `cluster-resource-sections.tsx` (the drawer), the counts on `clusters-page-v1.tsx`.
 - **The client certificate of a role was already there.** SPEC-0014 shipped it in 1.0.0: the badge,
   the Secret, the expiry and the operator's note, with an E2E case on `e2e-role-reporting`. The
-  Headlamp comparison of phase 1 listed it as missing by mistake. Its expiry keeps the window of
+  feature comparison listed it as missing by mistake. Its expiry keeps the window of
   SPEC-0014 (the operator renews a client certificate in its last 7 days) rather than the 30 days of
   the cluster certificates: that is when the operator acts. No new fixture: the existing role has a
   real certificate.
