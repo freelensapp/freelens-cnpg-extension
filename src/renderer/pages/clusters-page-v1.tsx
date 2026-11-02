@@ -175,11 +175,12 @@ export const ClustersPage = observer((props: ClustersPageProps) =>
           ]}
           customizeHeader={({ info, ...rest }) => ({
             ...rest,
+            // One wrapping row: the host's info panel does not wrap, and the counts would run under the filters.
             info: (
-              <>
+              <span className={styles.headerInfo}>
                 {info}
                 <ClusterCountsBar clusters={store.contextItems as KubeObject[]} />
-              </>
+              </span>
             ),
           })}
           renderHeaderTitle={KubeObject.crd.title}

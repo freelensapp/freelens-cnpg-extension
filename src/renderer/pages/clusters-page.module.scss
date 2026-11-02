@@ -62,12 +62,27 @@
 
 // The counts above the list (SPEC-0034): chips that filter it, the way the
 // Timeline filters its rows.
-.counts {
-  display: inline-flex;
+// The host's info panel keeps its content on one line (white-space: nowrap) and
+// cannot shrink below it: the item count and the counts wrap here instead,
+// within the room the panel has next to the filters.
+.headerInfo {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: center;
+  gap: calc($unit / 2) $unit;
+  min-width: 0;
+  white-space: normal;
+}
+
+.counts {
+  display: inline-flex;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
   gap: calc($unit / 2);
-  margin-left: $unit;
+  min-width: 0;
 }
 
 .chip {
@@ -80,6 +95,7 @@
   color: var(--textColorSecondary);
   font: inherit;
   font-size: var(--font-size-small, 12px);
+  white-space: nowrap;
   cursor: pointer;
 
   &:hover,
@@ -97,4 +113,5 @@
 .instancesCount {
   color: var(--textColorSecondary);
   font-size: var(--font-size-small, 12px);
+  white-space: nowrap;
 }

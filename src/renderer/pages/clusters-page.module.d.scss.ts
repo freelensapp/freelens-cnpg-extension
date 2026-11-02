@@ -11,6 +11,7 @@ declare const classNames: {
   readonly instancesCell: "instancesCell";
   readonly primaryCell: "primaryCell";
   readonly switching: "switching";
+  readonly headerInfo: "headerInfo";
   readonly counts: "counts";
   readonly chip: "chip";
   readonly chipOn: "chipOn";
