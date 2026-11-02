@@ -14,6 +14,7 @@ declare const classNames: {
   readonly value: "value";
   readonly origin: "origin";
   readonly narrow: "narrow";
+  readonly method: "method";
   readonly mono: "mono";
 };
 export = classNames;

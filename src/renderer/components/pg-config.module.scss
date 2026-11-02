@@ -91,6 +91,12 @@ $tint-strong: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
     &.narrow {
       flex-grow: 0.8;
     }
+
+    // scram-sha-256, the longest method, whole.
+    &.method {
+      flex-grow: 1.2;
+      min-width: calc($unit * 14);
+    }
   }
 }
 

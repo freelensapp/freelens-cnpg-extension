@@ -284,7 +284,7 @@ const ConfigPanel = observer(({ cluster }: { cluster: Cluster }) => {
               <TableCell className={styles.name}>Database</TableCell>
               <TableCell className={styles.name}>User</TableCell>
               <TableCell className={styles.name}>Address</TableCell>
-              <TableCell className={styles.narrow}>Method</TableCell>
+              <TableCell className={styles.method}>Method</TableCell>
               <TableCell className={styles.value}>Options</TableCell>
               <TableCell className={styles.origin}>From</TableCell>
             </TableHead>
@@ -303,7 +303,7 @@ const ConfigPanel = observer(({ cluster }: { cluster: Cluster }) => {
                   <WithTooltip>{rule.user}</WithTooltip>
                 </TableCell>
                 <TableCell className={styles.name}>{rule.address ?? ""}</TableCell>
-                <TableCell className={styles.narrow}>{rule.method}</TableCell>
+                <TableCell className={styles.method}>{rule.method}</TableCell>
                 <TableCell className={styles.value}>
                   <span className={styles.mono}>{rule.options ?? ""}</span>
                 </TableCell>
