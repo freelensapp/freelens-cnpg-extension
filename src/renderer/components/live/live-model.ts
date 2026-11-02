@@ -28,6 +28,22 @@ export const READY_WAL_WARNING = 10;
 /** Transaction ID age: autovacuum should keep it far below; the wraparound limit is about 2.1 billion. */
 export const XID_AGE_WARNING = 1_000_000_000;
 export const XID_AGE_ERROR = 1_500_000_000;
+/**
+ * Multixact ID age (SPEC-0033): autovacuum forces a freeze at
+ * `autovacuum_multixact_freeze_max_age` (400 million by default); twice that
+ * means it is not keeping up, capped at the warning of the XID age. Error and
+ * wraparound as for transaction IDs: both limits are 2^31.
+ */
+export const MXID_AGE_WARNING_CAP = 1_000_000_000;
+export const MXID_AGE_ERROR = 1_500_000_000;
+export const WRAPAROUND_LIMIT = 2 ** 31;
+/**
+ * Checkpoints (SPEC-0033): a requested checkpoint comes from WAL filling
+ * `max_wal_size`; when half of them are requested the setting is small for
+ * the load. Judged once there are enough to tell.
+ */
+export const CHECKPOINTS_REQUESTED_WARNING = 0.5;
+export const CHECKPOINTS_TO_JUDGE = 10;
 /** How many databases and users the sessions tile lists. */
 export const TOP_SESSIONS = 10;
 
@@ -55,6 +71,11 @@ export interface LiveInput {
   instances: readonly InstanceSeed[];
   /** `Cluster.status.currentPrimary`. */
   declaredPrimary?: string;
+  /**
+   * Set on a replica cluster (SPEC-0034): its designated primary replicates from the source and stays in recovery,
+   * so its instance manager says it is not the primary.
+   */
+  replicaCluster?: boolean;
   readings: ReadonlyMap<string, InstanceReading>;
 }
 
@@ -69,6 +90,8 @@ export interface LiveInstance {
   lsn?: string;
   receivedLsn?: string;
   fenced: boolean;
+  /** The designated primary of a replica cluster: the primary of this cluster, in recovery from the source. */
+  designated?: boolean;
   /** The instance manager answered, PostgreSQL did not: the reason it gave. */
   postgresDown?: string;
   /** The status endpoint could not be read at all. */
@@ -90,7 +113,9 @@ export interface LiveEdge {
   writeLagMs?: number;
   flushLagMs?: number;
   replayLagMs?: number;
-  /** WAL the standby still has to replay, in bytes. */
+  /** WAL the standby has still to write, to flush and to replay, in bytes, from the LSNs the primary reports. */
+  writeBytes?: bigint;
+  flushBytes?: bigint;
   replayBytes?: bigint;
   level: Level;
 }
@@ -116,6 +141,49 @@ export interface DatabaseView {
   /** Share of the largest database, 0 to 1, for the proportional bar. */
   share: number;
   xidAge?: number;
+  level: Level;
+  /** Undefined when the exporter has no query for it (SPEC-0033: "not collected", never zero). */
+  mxidAge?: number;
+  mxidLevel: Level;
+  /** The extensions of the database with a newer version available; undefined when not collected. */
+  extensionUpdates?: ExtensionUpdate[];
+}
+
+export interface ExtensionUpdate {
+  name: string;
+  installed?: string;
+  available?: string;
+}
+
+/** The thresholds of the multixact age of this cluster, worded in the tile. */
+export interface MxidThresholds {
+  /** `autovacuum_multixact_freeze_max_age` of the primary, when the exporter reads it. */
+  freezeMaxAge?: number;
+  warning: number;
+  error: number;
+}
+
+/** The checkpoints (or, on a standby, the restartpoints) of one instance since its statistics were reset. */
+export interface CheckpointView {
+  instance: string;
+  role: LiveRole;
+  /** In recovery, so it writes restartpoints: a standby, or the designated primary of a replica cluster. */
+  inRecovery: boolean;
+  /** False when the exporter has no query for the checkpointer. */
+  collected: boolean;
+  timed?: number;
+  requested?: number;
+  /** Requested of all, 0 to 1. */
+  requestedShare?: number;
+  buffersWritten?: number;
+  writeTimeMs?: number;
+  syncTimeMs?: number;
+  restartpointsTimed?: number;
+  restartpointsRequested?: number;
+  restartpointsDone?: number;
+  since?: Date;
+  /** `max_wal_size` in MiB, the setting a high share of requested checkpoints points at. */
+  maxWalSizeMb?: number;
   level: Level;
 }
 
@@ -166,6 +234,11 @@ export interface LiveView {
   syncWarning?: string;
   sessions?: SessionsView;
   databases: DatabaseView[];
+  /** True when the exporter reads the multixact age and the extension versions (the default queries do). */
+  mxidCollected: boolean;
+  extensionsCollected: boolean;
+  mxidThresholds: MxidThresholds;
+  checkpoints: CheckpointView[];
   wal?: WalView;
   slots: SlotView[];
   basebackups: BasebackupInfo[];
@@ -176,14 +249,15 @@ export interface LiveView {
   pending: boolean;
 }
 
-function flagsOf(status: PostgresqlStatus, fenced: boolean): string[] {
+function flagsOf(status: PostgresqlStatus, fenced: boolean, designated: boolean): string[] {
   const flags: string[] = [];
   if (fenced) flags.push("fenced");
   if (status.pendingRestart) flags.push("pending restart");
   if (status.replayPaused) flags.push("replay paused");
   if (status.isPgRewindRunning) flags.push("pg_rewind running");
   if (status.isInstanceManagerUpgrading) flags.push("manager upgrading");
-  if (!status.isPrimary && status.isWalReceiverActive === false && !status.mightBeUnavailable) {
+  // A designated primary may restore from an object store, with no WAL receiver at all.
+  if (!status.isPrimary && !designated && status.isWalReceiverActive === false && !status.mightBeUnavailable) {
     flags.push("WAL receiver down");
   }
   return flags;
@@ -193,7 +267,11 @@ function firstLine(text: string | undefined): string | undefined {
   return text?.trim().split("\n")[0]?.trim() || undefined;
 }
 
-function buildInstance(seed: InstanceSeed, reading: InstanceReading | undefined): LiveInstance {
+function buildInstance(
+  seed: InstanceSeed,
+  reading: InstanceReading | undefined,
+  designatedPrimary?: string,
+): LiveInstance {
   const base: LiveInstance = {
     name: seed.name,
     role: "unknown",
@@ -207,6 +285,7 @@ function buildInstance(seed: InstanceSeed, reading: InstanceReading | undefined)
   if (!status.ok) return { ...base, statusFailure: status.failure };
 
   const value = status.value;
+  const designated = !value.isPrimary && seed.name === designatedPrimary;
   // When PostgreSQL is down the manager cannot tell the role: it answers
   // `isPrimary: true` with an empty system ID (observed on a fenced instance).
   const down = value.mightBeUnavailable
@@ -214,13 +293,14 @@ function buildInstance(seed: InstanceSeed, reading: InstanceReading | undefined)
     : undefined;
   return {
     ...base,
-    role: down ? "unknown" : value.isPrimary ? "primary" : "standby",
+    role: down ? "unknown" : value.isPrimary || designated ? "primary" : "standby",
+    designated: designated || undefined,
     node: value.node || seed.node,
     timeline: value.timeLineID,
     lsn: value.isPrimary ? value.currentLsn : value.replayLsn,
     receivedLsn: value.receivedLsn,
     postgresDown: down,
-    flags: flagsOf(value, seed.fenced),
+    flags: flagsOf(value, seed.fenced, designated),
     managerVersion: value.instanceManagerVersion,
     arch: value.instanceArch,
   };
@@ -231,6 +311,12 @@ function lagLevel(streaming: boolean, replayLagMs: number | undefined, replayByt
   if (replayLagMs !== undefined && replayLagMs > LAG_WARNING_MS) return "warning";
   if (replayBytes !== undefined && replayBytes > LAG_WARNING_BYTES) return "warning";
   return "ok";
+}
+
+/** How far an LSN of a standby is behind the primary's, in bytes; undefined when either is unknown. */
+function behind(lsn: string | undefined, current: string | undefined): bigint | undefined {
+  const distance = lsnDistance(lsn, current);
+  return distance !== undefined && distance >= 0n ? distance : undefined;
 }
 
 function buildEdges(primary: PostgresqlStatus | undefined, instances: readonly LiveInstance[]): LiveEdge[] {
@@ -247,8 +333,7 @@ function buildEdges(primary: PostgresqlStatus | undefined, instances: readonly L
     }
     const streaming = info.state === "streaming";
     const replayLagMs = parsePgInterval(info.replayLag);
-    const distance = lsnDistance(info.replayLsn, primary?.currentLsn);
-    const replayBytes = distance !== undefined && distance >= 0n ? distance : undefined;
+    const replayBytes = behind(info.replayLsn, primary?.currentLsn);
     const priority = Number(info.syncPriority);
     edges.push({
       standby: standby.name,
@@ -259,6 +344,8 @@ function buildEdges(primary: PostgresqlStatus | undefined, instances: readonly L
       writeLagMs: parsePgInterval(info.writeLag),
       flushLagMs: parsePgInterval(info.flushLag),
       replayLagMs,
+      writeBytes: behind(info.writeLsn, primary?.currentLsn),
+      flushBytes: behind(info.flushLsn, primary?.currentLsn),
       replayBytes,
       level: lagLevel(streaming, replayLagMs, replayBytes),
     });
@@ -356,15 +443,51 @@ function xidLevel(age: number | undefined): Level {
   return age > XID_AGE_WARNING ? "warning" : "ok";
 }
 
+function mxidThresholds(samples: readonly MetricSample[] | undefined): MxidThresholds {
+  const freezeMaxAge = samples
+    ? singleValue(samples, "cnpg_pg_settings_setting", { name: "autovacuum_multixact_freeze_max_age" })
+    : undefined;
+  const warning =
+    freezeMaxAge !== undefined && freezeMaxAge > 0
+      ? Math.min(2 * freezeMaxAge, MXID_AGE_WARNING_CAP)
+      : MXID_AGE_WARNING_CAP;
+  return { freezeMaxAge, warning, error: MXID_AGE_ERROR };
+}
+
+function ageLevel(age: number | undefined, { warning, error }: { warning: number; error: number }): Level {
+  if (age === undefined) return "ok";
+  if (age > error) return "error";
+  return age > warning ? "warning" : "ok";
+}
+
+function hasFamily(samples: readonly MetricSample[] | undefined, name: string): boolean {
+  return Boolean(samples?.some((sample) => sample.name === name));
+}
+
+function extensionUpdates(samples: readonly MetricSample[], datname: string): ExtensionUpdate[] {
+  return selectSamples(samples, "cnpg_pg_extensions_update_available", { datname })
+    .filter((sample) => sample.value > 0)
+    .map((sample) => ({
+      name: sample.labels.extname ?? "",
+      installed: sample.labels.installed_version || undefined,
+      available: sample.labels.default_version || undefined,
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
 /** From the primary only: every instance holds its own copy of the same databases. */
 function buildDatabases(samples: readonly MetricSample[] | undefined): DatabaseView[] {
   if (!samples) return [];
+  const thresholds = mxidThresholds(samples);
+  const mxidCollected = hasFamily(samples, "cnpg_pg_database_mxid_age");
+  const extensionsCollected = hasFamily(samples, "cnpg_pg_extensions_update_available");
   const sizes = selectSamples(samples, "cnpg_pg_database_size_bytes");
   const largest = Math.max(0, ...sizes.map((sample) => (Number.isFinite(sample.value) ? sample.value : 0)));
   return sizes
     .map((sample) => {
       const name = sample.labels.datname ?? "";
       const xidAge = singleValue(samples, "cnpg_pg_database_xid_age", { datname: name });
+      const mxidAge = mxidCollected ? singleValue(samples, "cnpg_pg_database_mxid_age", { datname: name }) : undefined;
       const sizeBytes = Number.isFinite(sample.value) ? sample.value : undefined;
       return {
         name,
@@ -372,9 +495,81 @@ function buildDatabases(samples: readonly MetricSample[] | undefined): DatabaseV
         share: largest > 0 && sizeBytes !== undefined ? sizeBytes / largest : 0,
         xidAge,
         level: xidLevel(xidAge),
+        mxidAge,
+        mxidLevel: ageLevel(mxidAge, thresholds),
+        extensionUpdates: extensionsCollected ? extensionUpdates(samples, name) : undefined,
       };
     })
     .sort((a, b) => (b.sizeBytes ?? 0) - (a.sizeBytes ?? 0) || a.name.localeCompare(b.name));
+}
+
+function buildCheckpoints(
+  instances: readonly LiveInstance[],
+  metricsByInstance: ReadonlyMap<string, MetricSample[]>,
+): CheckpointView[] {
+  const views: CheckpointView[] = [];
+  for (const instance of instances) {
+    const samples = metricsByInstance.get(instance.name);
+    if (!samples) continue;
+    // PostgreSQL 17 moved the checkpoints from pg_stat_bgwriter to pg_stat_checkpointer.
+    const checkpointer = hasFamily(samples, "cnpg_pg_stat_checkpointer_checkpoints_timed");
+    const bgwriter = !checkpointer && hasFamily(samples, "cnpg_pg_stat_bgwriter_checkpoints_timed");
+    if (!checkpointer && !bgwriter) {
+      views.push({
+        instance: instance.name,
+        role: instance.role,
+        inRecovery: instance.role === "standby" || Boolean(instance.designated),
+        collected: false,
+        level: "ok",
+      });
+      continue;
+    }
+    const one = (name: string) => singleValue(samples, name);
+    const timed = one(
+      checkpointer ? "cnpg_pg_stat_checkpointer_checkpoints_timed" : "cnpg_pg_stat_bgwriter_checkpoints_timed",
+    );
+    const requested = one(
+      checkpointer ? "cnpg_pg_stat_checkpointer_checkpoints_req" : "cnpg_pg_stat_bgwriter_checkpoints_req",
+    );
+    const total = (timed ?? 0) + (requested ?? 0);
+    const requestedShare = timed !== undefined && requested !== undefined && total > 0 ? requested / total : undefined;
+    const reset = one(
+      checkpointer ? "cnpg_pg_stat_checkpointer_stats_reset_time" : "cnpg_pg_stat_bgwriter_stats_reset_time",
+    );
+    const inRecovery = instance.role === "standby" || Boolean(instance.designated);
+    const level: Level =
+      !inRecovery &&
+      requestedShare !== undefined &&
+      total >= CHECKPOINTS_TO_JUDGE &&
+      requestedShare >= CHECKPOINTS_REQUESTED_WARNING
+        ? "warning"
+        : "ok";
+    views.push({
+      instance: instance.name,
+      role: instance.role,
+      inRecovery,
+      collected: true,
+      timed,
+      requested,
+      requestedShare,
+      buffersWritten: one(
+        checkpointer ? "cnpg_pg_stat_checkpointer_buffers_written" : "cnpg_pg_stat_bgwriter_buffers_checkpoint",
+      ),
+      writeTimeMs: one(
+        checkpointer ? "cnpg_pg_stat_checkpointer_write_time" : "cnpg_pg_stat_bgwriter_checkpoint_write_time",
+      ),
+      syncTimeMs: one(
+        checkpointer ? "cnpg_pg_stat_checkpointer_sync_time" : "cnpg_pg_stat_bgwriter_checkpoint_sync_time",
+      ),
+      restartpointsTimed: checkpointer ? one("cnpg_pg_stat_checkpointer_restartpoints_timed") : undefined,
+      restartpointsRequested: checkpointer ? one("cnpg_pg_stat_checkpointer_restartpoints_req") : undefined,
+      restartpointsDone: checkpointer ? one("cnpg_pg_stat_checkpointer_restartpoints_done") : undefined,
+      since: reset !== undefined && reset > 0 ? new Date(reset * 1000) : undefined,
+      maxWalSizeMb: singleValue(samples, "cnpg_pg_settings_setting", { name: "max_wal_size" }),
+      level,
+    });
+  }
+  return views;
 }
 
 function buildWal(
@@ -434,8 +629,9 @@ function buildSlots(status: PostgresqlStatus | undefined, samples: readonly Metr
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export function buildLiveView({ instances: seeds, declaredPrimary, readings }: LiveInput): LiveView {
-  const instances = seeds.map((seed) => buildInstance(seed, readings.get(seed.name)));
+export function buildLiveView({ instances: seeds, declaredPrimary, replicaCluster, readings }: LiveInput): LiveView {
+  const designatedPrimary = replicaCluster ? declaredPrimary : undefined;
+  const instances = seeds.map((seed) => buildInstance(seed, readings.get(seed.name), designatedPrimary));
 
   const statuses = new Map<string, PostgresqlStatus>();
   const metricsByInstance = new Map<string, MetricSample[]>();
@@ -488,6 +684,10 @@ export function buildLiveView({ instances: seeds, declaredPrimary, readings }: L
     syncWarning,
     sessions: buildSessions(metricsByInstance, primary),
     databases: buildDatabases(primaryMetrics),
+    mxidCollected: hasFamily(primaryMetrics, "cnpg_pg_database_mxid_age"),
+    extensionsCollected: hasFamily(primaryMetrics, "cnpg_pg_extensions_update_available"),
+    mxidThresholds: mxidThresholds(primaryMetrics),
+    checkpoints: buildCheckpoints(instances, metricsByInstance),
     wal: primary ? buildWal(primaryStatus, primaryMetrics) : undefined,
     slots: buildSlots(primaryStatus, primaryMetrics),
     basebackups: primaryStatus?.pgStatBasebackupsInfo ?? [],

@@ -48,6 +48,7 @@ import {
   scheduleExpression,
   scheduleMethodOptions,
 } from "./scheduled-backup-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { ActionDialogModel } from "./action-dialog";
@@ -93,7 +94,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref },
+    { inputs: Mobx.observableRef },
   );
 }
 
@@ -317,7 +318,7 @@ const ScheduleCreateForm = observer(({ model }: { model: ScheduleCreateModel }) 
         <Field label="Namespace" error={errors.namespace} testId={`${TEST_ID}-namespace`}>
           <NamespaceSelect
             id={`${TEST_ID}-namespace-select`}
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={form.namespace || null}
             onChange={(option: { value: string } | null) => changeNamespace(model, option?.value ?? "")}
@@ -477,6 +478,12 @@ function open(model: ScheduleCreateModel, delayed: boolean, changedNotice?: stri
       facts: () => scheduledBackupFacts(model.inputs, model.form, new Date()),
       form: () => <ScheduleCreateForm model={model} />,
       yaml: () => toYaml(scheduledBackupBody(model.inputs, model.form)),
+      server: {
+        apiBase: ScheduledBackup.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => scheduledBackupBody(model.inputs, model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => scheduledBackupBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {

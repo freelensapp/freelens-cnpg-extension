@@ -14,27 +14,61 @@ import { maybe } from "../../common/utils";
 import { ObjectStore } from "../api/barmancloud/object-store-v1";
 import { Cluster } from "../api/cnpg/cluster-v1";
 import { humanizeRelative } from "../components/backup-health";
+import { recoveryClusterForm } from "../components/cluster-create";
+import { openCreateClusterDialog } from "../components/cluster-create-dialog";
 import { withErrorPage } from "../components/error-page";
 import { classifyStore, clustersOfStore, recoveryWindows, storeProvider } from "../components/object-stores";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { BACKUPS_PAGE_ID, extensionPageUrl } from "../navigation";
 import styles from "./backup-details.module.scss";
-import stylesInline from "./backup-details.module.scss?inline";
 
 import type { SecretKeySelector } from "../api/barmancloud/object-store-v1";
-import type { RecoveryWindowState } from "../components/object-stores";
+import type { RecoveryWindow, RecoveryWindowState } from "../components/object-stores";
 
 const { observer } = MobxReact;
 
 const {
-  Component: { Badge, DrawerItem, DrawerTitle, MaybeLink, Table, TableCell, TableHead, TableRow, WithTooltip },
+  Component: { Badge, DrawerItem, DrawerTitle, Icon, MaybeLink, Table, TableCell, TableHead, TableRow, WithTooltip },
   K8sApi: { secretsStore },
 } = Renderer;
 
 const notAvailable = "N/A";
 
 const WINDOW_CLASS: Record<RecoveryWindowState, string> = { Protected: "success", Failing: "error", Empty: "info" };
+
+/** "Recover into a new cluster" (SPEC-0032): Create Cluster, filled for a recovery of this server. */
+function RecoverLink({ store, window }: { store: ObjectStore; window: RecoveryWindow }) {
+  const testId = `cnpg-recover-${window.serverName}`;
+  if (!window.firstRecoverabilityPoint) {
+    return (
+      <WithTooltip tooltip="No backup of this server is complete yet: there is nothing to recover from">
+        <span className={styles.recoverOff} data-testid={testId} data-disabled="true">
+          Recover
+        </span>
+      </WithTooltip>
+    );
+  }
+  const namespace = store.getNs() ?? "";
+  return (
+    <a
+      href="#"
+      className={styles.recover}
+      data-testid={testId}
+      title={`Create a new cluster from the backups and WAL of ${window.serverName} in ${store.getName()}`}
+      onClick={(event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        openCreateClusterDialog({
+          namespace,
+          prefill: recoveryClusterForm(namespace, store.getName(), window.serverName, window.cluster?.cluster),
+        });
+      }}
+    >
+      Recover <Icon small material="restore" />
+    </a>
+  );
+}
 
 export interface ObjectStoreDetailsProps extends Renderer.Component.KubeObjectDetailsProps<ObjectStore> {
   extension: Renderer.LensExtension;
@@ -99,8 +133,6 @@ export const ObjectStoreDetails = observer((props: ObjectStoreDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Store</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />
@@ -171,6 +203,7 @@ export const ObjectStoreDetails = observer((props: ObjectStoreDetailsProps) =>
               <TableCell className={styles.last}>Last successful</TableCell>
               <TableCell className={styles.last}>Last failed</TableCell>
               <TableCell className={styles.windowState}>State</TableCell>
+              <TableCell className={styles.recoverCell} />
             </TableHead>
             {windows.map((window) => (
               <TableRow key={window.serverName} nowrap>
@@ -194,6 +227,9 @@ export const ObjectStoreDetails = observer((props: ObjectStoreDetailsProps) =>
                 </TableCell>
                 <TableCell className={styles.windowState}>
                   <Badge small className={WINDOW_CLASS[window.state]} label={window.state} />
+                </TableCell>
+                <TableCell className={styles.recoverCell}>
+                  <RecoverLink store={object} window={window} />
                 </TableCell>
               </TableRow>
             ))}

@@ -16,7 +16,6 @@ import { clusterOfQuorum, quorumFacts } from "../components/failover-quorum";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./failover-quorums-page.module.scss";
-import stylesInline from "./failover-quorums-page.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -72,7 +71,6 @@ export const FailoverQuorumsPage = observer((props: FailoverQuorumsPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgFailoverQuorumsTable"
           className={styles.page}

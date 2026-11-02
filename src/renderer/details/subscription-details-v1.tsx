@@ -32,7 +32,6 @@ import { useReferenceStores } from "../components/reference-loader";
 import { RightNow } from "../components/right-now";
 import { StoreLink } from "../components/store-link";
 import styles from "./declarative-details.module.scss";
-import stylesInline from "./declarative-details.module.scss?inline";
 import { ReplicationPath } from "./replication-path";
 
 const { observer } = MobxReact;
@@ -81,8 +80,6 @@ export const SubscriptionDetails = observer((props: SubscriptionDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <ReconciliationSection object={object} health={health} rivals={rivals} store={subscriptionStore} />
 
         <DrawerTitle>Replication path</DrawerTitle>

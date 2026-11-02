@@ -17,6 +17,7 @@ import { FailoverQuorum } from "../api/cnpg/failover-quorum-v1";
 import { ClusterImageCatalog, ImageCatalog } from "../api/cnpg/image-catalog-v1";
 import { Pooler } from "../api/cnpg/pooler-v1";
 import { ScheduledBackup } from "../api/cnpg/scheduled-backup-v1";
+import { PluginConfiguration as KlioConfiguration } from "../api/klio/plugin-configuration-v1alpha1";
 import { buildHistory, schedulesOfCluster } from "../components/backup-history";
 import { BackupHistoryStrip } from "../components/backup-history-strip";
 import {
@@ -27,11 +28,16 @@ import {
   classifyCluster,
   instanceFacts,
 } from "../components/cluster-health";
+import { applicationUser, clusterServiceRows } from "../components/connect";
+import { ConnectSection } from "../components/connect-section";
 import { withErrorPage } from "../components/error-page";
 import { quorumFacts } from "../components/failover-quorum";
 import { FENCED_INSTANCES_ANNOTATION, parseFenced, UNPARSEABLE_FENCING } from "../components/fencing";
+import { GrafanaLink, grafanaUrlFor } from "../components/grafana-link";
 import { hibernationState, hibernationWords } from "../components/hibernation";
+import { backupPluginWords } from "../components/install-guide";
 import { InstanceBricks } from "../components/instance-bricks";
+import { maintenanceWindowState, maintenanceWindowWords } from "../components/maintenance-window";
 import { objectExists } from "../components/object-existence";
 import { openCreatePoolerDialog } from "../components/pooler-create-dialog";
 import { classifyPooler, poolersOfCluster, poolerTypeWords } from "../components/poolers";
@@ -40,14 +46,16 @@ import { openCreateScheduledBackupDialog } from "../components/scheduled-backup-
 import { StoreLink } from "../components/store-link";
 import { FencingButton } from "../menus/cluster-fencing-menu-item";
 import { hibernationFacts, ResumeButton } from "../menus/cluster-hibernation-menu-item";
+import { MaintenanceCloseButton, maintenanceFacts } from "../menus/cluster-maintenance-menu-item";
 import { RestartInstanceButton } from "../menus/cluster-restart-menu-item";
 import { PromoteButton } from "../menus/cluster-switchover-menu-item";
+import { DestroyInstanceButton } from "../menus/destroy-instance-button";
 import { PsqlButton } from "../menus/open-psql";
-import { BACKUPS_PAGE_ID, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
+import { BACKUPS_PAGE_ID, configUrl, extensionPageUrl, liveViewUrl, logsUrl, timelineUrl } from "../navigation";
 import { ClusterDeclarativeSection } from "./cluster-declarative-section";
 import styles from "./cluster-details.module.scss";
-import stylesInline from "./cluster-details.module.scss?inline";
 import { ClusterLeaseRows } from "./cluster-lease-rows";
+import { JobsSection, ReplicaClusterSection, StorageTable } from "./cluster-resource-sections";
 
 import type { CertificateFact, InstanceFact } from "../components/cluster-health";
 
@@ -71,7 +79,7 @@ const {
     TableRow,
     WithTooltip,
   },
-  K8sApi: { nodesStore, podsStore, pvcStore, secretsStore, serviceStore },
+  K8sApi: { jobStore, nodesStore, podsStore, pvcStore, secretsStore, serviceStore },
   Navigation: { getDetailsUrl },
 } = Renderer;
 
@@ -135,31 +143,6 @@ function ServiceRef({ name, namespace }: { name: string | undefined; namespace: 
   );
 }
 
-/** A PVC name rendered as a link when the claim is in the store, else as text. */
-function PvcRef({ name, namespace }: { name: string; namespace: string }) {
-  const claim = pvcStore.getByName(name, namespace);
-  return claim ? (
-    <MaybeLink to={getDetailsUrl(claim.selfLink)} onClick={(event) => event.stopPropagation()}>
-      {name}
-    </MaybeLink>
-  ) : (
-    <WithTooltip>{name}</WithTooltip>
-  );
-}
-
-function PvcList({ title, names, namespace }: { title: string; names: string[] | undefined; namespace: string }) {
-  if (!names || names.length === 0) return null;
-  return (
-    <DrawerItem name={title}>
-      <div className={styles.list}>
-        {names.map((name) => (
-          <PvcRef key={name} name={name} namespace={namespace} />
-        ))}
-      </div>
-    </DrawerItem>
-  );
-}
-
 export const ClusterDetails = observer((props: ClusterDetailsProps) =>
   withErrorPage(props, () => {
     const { object } = props;
@@ -191,6 +174,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
     const fenced = Cluster.getFencedInstances(object);
     const hibernated = Cluster.getHibernation(object);
     const hibernation = hibernationState(hibernationFacts(object));
+    const maintenance = maintenanceWindowState(maintenanceFacts(object));
     const fencedSet = parseFenced(object.metadata?.annotations?.[FENCED_INSTANCES_ANNOTATION]);
     const conditions = status?.conditions ?? [];
     const declared = Cluster.getInstances(object);
@@ -211,6 +195,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
       },
       { label: "nodes", store: nodesStore },
       { label: "persistentvolumeclaims", store: pvcStore, namespaces: [namespace] },
+      { label: "jobs", store: jobStore, namespaces: [namespace] },
       { label: "services", store: serviceStore, namespaces: [namespace] },
       { label: "secrets", store: secretsStore, namespaces: [namespace] },
       { label: Backup.crd.plural, store: backupStore, namespaces: [namespace] },
@@ -296,8 +281,6 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Health</DrawerTitle>
         <DrawerItem name="Live view" hidden={hibernated}>
           <MaybeLink
@@ -326,6 +309,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             Events, backups, changes of primary and what is scheduled, in order
           </MaybeLink>
         </DrawerItem>
+        <DrawerItem name="Configuration" hidden={hibernated}>
+          <MaybeLink
+            to={configUrl(props.extension.name, namespace, name)}
+            data-testid="cnpg-cluster-config-link"
+            onClick={(event) => event.stopPropagation()}
+          >
+            The parameters and the HBA rules the primary runs with, and the restarts they wait for
+          </MaybeLink>
+        </DrawerItem>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />
         </DrawerItem>
@@ -339,6 +331,11 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerItem name="Hibernation" hidden={hibernation.kind === "off"}>
           <span data-testid="cnpg-hibernation-state">{hibernationWords(hibernation)}</span>{" "}
           {hibernated ? <ResumeButton cluster={object} extension={props.extension} /> : null}
+        </DrawerItem>
+        {/* SPEC-0037: an open window limits self-healing: it says so, with the way to close it next to it. */}
+        <DrawerItem name="Maintenance window" hidden={!maintenance.open}>
+          <span data-testid="cnpg-maintenance-state">{maintenanceWindowWords(maintenance)}</span>{" "}
+          <MaintenanceCloseButton cluster={object} />
         </DrawerItem>
         <DrawerItem name="Fenced instances" hidden={fencedSet.kind === "none"}>
           {fencedSet.kind === "unparseable" ? (
@@ -392,6 +389,14 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             ))}
           </Table>
         ) : null}
+
+        {/* SPEC-0031: how an application reaches the database, and a local port forwarded to a service. */}
+        <ConnectSection
+          namespace={namespace}
+          cluster={name}
+          rows={clusterServiceRows({ name, namespace, managed: object.spec?.managed })}
+          user={applicationUser({ name, namespace, bootstrap: object.spec?.bootstrap })}
+        />
 
         <DrawerTitle>Instances</DrawerTitle>
         <DrawerItem name="Ready">
@@ -488,9 +493,17 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
                         extension={props.extension}
                       />
                       <FencingButton cluster={object} instanceName={instance.name} extension={props.extension} />
-                      {/* Last, so the other two line up on every row: the primary has nothing to be promoted to. */}
+                      {/* Last, so the other two line up on every row: the primary has nothing to be promoted to, nor to be destroyed. */}
                       {instance.name === primary ? null : (
-                        <PromoteButton cluster={object} instanceName={instance.name} extension={props.extension} />
+                        <>
+                          <PromoteButton cluster={object} instanceName={instance.name} extension={props.extension} />
+                          {/* SPEC-0037: on a replica only, after the others: the most destructive of them. */}
+                          <DestroyInstanceButton
+                            cluster={object}
+                            instanceName={instance.name}
+                            extension={props.extension}
+                          />
+                        </>
                       )}
                     </span>
                   </TableCell>
@@ -542,9 +555,7 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
             ))}
           </div>
         </DrawerItem>
-        <DrawerItem name="Replica cluster" hidden={!spec?.replica?.enabled}>
-          <WithTooltip>{spec?.replica?.source ?? "enabled"}</WithTooltip>
-        </DrawerItem>
+        <ReplicaClusterSection cluster={object} />
 
         <DrawerTitle>PostgreSQL</DrawerTitle>
         <DrawerItem name="Image" hidden={!image}>
@@ -653,11 +664,12 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
         <DrawerItem name="Volumes" hidden={status?.pvcCount === undefined}>
           {status?.pvcCount}
         </DrawerItem>
-        <PvcList title="Healthy volumes" names={status?.healthyPVC} namespace={namespace} />
-        <PvcList title="Resizing volumes" names={status?.resizingPVC} namespace={namespace} />
-        <PvcList title="Initializing volumes" names={status?.initializingPVC} namespace={namespace} />
-        <PvcList title="Dangling volumes" names={status?.danglingPVC} namespace={namespace} />
-        <PvcList title="Unusable volumes" names={status?.unusablePVC} namespace={namespace} />
+        <StorageTable cluster={object} />
+        <JobsSection cluster={object} />
+
+        <DrawerItem name="Monitoring" hidden={!grafanaUrlFor(namespace, name)}>
+          <GrafanaLink extension={props.extension} namespace={namespace} cluster={name} />
+        </DrawerItem>
 
         <DrawerTitle>Backups and archiving</DrawerTitle>
         <DrawerItem name="WAL archiving" labelsOnly>
@@ -671,7 +683,15 @@ export const ClusterDetails = observer((props: ClusterDetailsProps) =>
           <WithTooltip>{archiving.message}</WithTooltip>
         </DrawerItem>
         <DrawerItem name="Backup plugin" hidden={!walArchiver && plugins.length === 0}>
-          <WithTooltip>{(walArchiver ?? plugins[0])?.name}</WithTooltip>
+          <WithTooltip>{backupPluginWords((walArchiver ?? plugins[0])?.name)}</WithTooltip>
+        </DrawerItem>
+        <DrawerItem name="Klio configuration" hidden={!(walArchiver ?? plugins[0])?.parameters?.pluginConfigurationRef}>
+          <StoreLink
+            store={maybe(() => KlioConfiguration.getStore<KlioConfiguration>())}
+            name={(walArchiver ?? plugins[0])?.parameters?.pluginConfigurationRef}
+            namespace={namespace}
+            missing="The PluginConfiguration is not there (or Klio is not installed)"
+          />
         </DrawerItem>
         <DrawerItem name="Object store" hidden={!(walArchiver ?? plugins[0])?.parameters?.barmanObjectName}>
           <StoreLink

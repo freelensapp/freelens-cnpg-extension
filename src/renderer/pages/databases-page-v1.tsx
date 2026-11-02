@@ -17,7 +17,6 @@ import { withErrorPage } from "../components/error-page";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./databases-page.module.scss";
-import stylesInline from "./databases-page.module.scss?inline";
 
 import type { ClusterLookup } from "../components/declarative";
 
@@ -75,7 +74,6 @@ export const DatabasesPage = observer((props: DatabasesPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgDatabasesTable"
           className={styles.page}

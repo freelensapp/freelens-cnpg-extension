@@ -64,12 +64,22 @@ import {
 import { defaultNamespace, OPERATOR_WRITTEN_PARAMETERS, toYaml } from "./create-forms";
 import { ObjectChoiceField } from "./create-pickers";
 import { findOperators } from "./operator";
+import {
+  applyPreset,
+  PARAMETER_PRESETS,
+  presetIntact,
+  presetSizing,
+  presetSizingWords,
+  presetValues,
+} from "./parameter-presets";
+import { CLUSTER_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { SnapshotRole, VolumeSnapshot, VolumeSnapshotClass } from "../api/snapshot/volume-snapshot-v1";
 import type { ActionDialogModel } from "./action-dialog";
 import type { ClusterCreateInputs, ClusterForm, ReadState, TablespaceRow } from "./cluster-create";
 import type { KeyValue } from "./create-forms";
+import type { PresetId } from "./parameter-presets";
 
 const { observer } = MobxReact;
 
@@ -105,6 +115,8 @@ interface ClusterCreateModel extends ActionDialogModel {
   accessReason?: string;
   /** The namespace the form was opened from, when it came from a cluster: shown as a fact (F4). */
   fixedNamespace?: string;
+  /** The parameter preset picked (SPEC-0032) and the values it last set. */
+  preset: { id: PresetId | ""; applied: Record<string, string> };
 }
 
 function createModel(namespace: string, fixedNamespace?: string): ClusterCreateModel {
@@ -127,14 +139,33 @@ function createModel(namespace: string, fixedNamespace?: string): ClusterCreateM
       typing: {},
       accessReason: undefined,
       fixedNamespace,
+      preset: { id: "", applied: {} },
     },
-    { inputs: Mobx.observable.ref },
+    { inputs: Mobx.observableRef },
   );
 }
 
 function update(model: ClusterCreateModel, patch: Partial<ClusterForm>): void {
   Mobx.runInAction(() => {
     Object.assign(model.form, patch);
+    // A preset follows the memory and the WAL disk while its values are left as it set them.
+    const { id, applied } = model.preset;
+    if (id && !("parameters" in patch) && presetIntact(model.form.parameters, applied)) {
+      const values = presetValues(id, presetSizing(model.form));
+      if (JSON.stringify(values) !== JSON.stringify(applied)) {
+        model.form.parameters = applyPreset(model.form.parameters, values, applied);
+        model.preset = { id, applied: values };
+      }
+    }
+  });
+}
+
+/** Picks a preset: its values replace the previous preset's ones the user left alone; none removes them. */
+function choosePreset(model: ClusterCreateModel, id: PresetId | ""): void {
+  Mobx.runInAction(() => {
+    const values = id ? presetValues(id, presetSizing(model.form)) : {};
+    model.form.parameters = applyPreset(model.form.parameters, values, model.preset.applied);
+    model.preset = { id, applied: values };
   });
 }
 
@@ -225,7 +256,7 @@ function loadNamespaced(model: ClusterCreateModel, namespace: string): void {
     model,
     "catalogs",
     async () => {
-      const [namespaced, clusterWide] = await Promise.all([
+      const [namespaced, clusterWide]: [ImageCatalog[] | null, ClusterImageCatalog[]] = await Promise.all([
         ImageCatalog.getStore<ImageCatalog>().api.list({ namespace }),
         ClusterImageCatalog.getStore<ClusterImageCatalog>()
           .api.list()
@@ -342,7 +373,7 @@ const IdentitySection = observer(({ model }: SectionProps) => {
         <Field label="Namespace" error={errors.namespace} testId={`${TEST_ID}-namespace`}>
           <NamespaceSelect
             id={`${TEST_ID}-namespace-select`}
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={form.namespace || null}
             onChange={(option: { value: string } | null) => changeNamespace(model, option?.value ?? "")}
@@ -1320,6 +1351,24 @@ const UpdatesSection = observer(({ model }: SectionProps) => {
           effective={effective.updateMethod}
         />
       </Inline>
+      <ChoiceField<PresetId | "">
+        id={`${TEST_ID}-preset`}
+        label="Parameter preset"
+        value={model.preset.id}
+        options={[
+          { value: "", label: "None: only the parameters below" },
+          ...PARAMETER_PRESETS.map((preset) => ({ value: preset.id, label: `${preset.label}: ${preset.description}` })),
+        ]}
+        onChange={(id) => choosePreset(model, id)}
+        hint={
+          model.preset.id
+            ? presetIntact(form.parameters, model.preset.applied)
+              ? `${presetSizingWords(presetSizing(form))} The values follow the memory and the disk until you edit one; review them below.`
+              : "Edited: the values no longer follow the memory and the disk."
+            : "A starting point for the parameters below, sized on the memory of the instances and on the WAL disk."
+        }
+        testId={`${TEST_ID}-preset-field`}
+      />
       <Field
         label="PostgreSQL parameters"
         hint={`Settings of postgresql.conf. The operator writes ${OPERATOR_WRITTEN_PARAMETERS.length} of its own on every cluster (wal_level logical among them) and refuses the ones it fixes; a value set here overrides the operator's.`}
@@ -1418,6 +1467,8 @@ const ClusterCreateForm = observer(({ model }: SectionProps) => (
 export interface OpenCreateClusterOptions {
   /** The namespace of the cluster the form was opened from (F4): shown as a fact. */
   namespace?: string;
+  /** Values the form opens with, such as a recovery from an object store (SPEC-0032). */
+  prefill?: Partial<ClusterForm>;
 }
 
 function open(model: ClusterCreateModel, delayed: boolean, changedNotice?: string): void {
@@ -1428,6 +1479,12 @@ function open(model: ClusterCreateModel, delayed: boolean, changedNotice?: strin
       facts: () => clusterCreateFacts(model.inputs, model.form),
       form: () => <ClusterCreateForm model={model} />,
       yaml: () => toYaml(clusterCreateBody(model.form)),
+      server: {
+        apiBase: Cluster.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => clusterCreateBody(model.form),
+        fieldOf: prefixFieldOf(CLUSTER_FIELDS),
+      },
       blockReason: () => clusterCreateBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {
@@ -1468,6 +1525,7 @@ function open(model: ClusterCreateModel, delayed: boolean, changedNotice?: strin
 export function openCreateClusterDialog(options: OpenCreateClusterOptions = {}): void {
   const namespace = options.namespace ?? defaultNamespace(maybe(() => namespaceStore.contextNamespaces) ?? []);
   const model = createModel(namespace, options.namespace);
+  if (options.prefill) update(model, options.prefill);
   loadClusterWide(model);
   loadNamespaced(model, namespace);
   askAccess(model, namespace);

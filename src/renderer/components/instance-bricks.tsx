@@ -9,7 +9,6 @@
 
 import { Renderer } from "@freelensapp/extensions";
 import styles from "./instance-bricks.module.scss";
-import stylesInline from "./instance-bricks.module.scss?inline";
 
 import type { InstanceFact, InstanceHealth } from "./cluster-health";
 
@@ -43,7 +42,6 @@ export function InstanceBricks({ instances }: InstanceBricksProps) {
 
   return (
     <>
-      <style>{stylesInline}</style>
       <span className={styles.bricks} data-testid="cnpg-instance-bricks">
         {instances.map((instance) => (
           <StatusBrick

@@ -33,7 +33,6 @@ import { requestedFromSchedule } from "../components/scheduled-backup-actions";
 import { StoreLink } from "../components/store-link";
 import { BACKUPS_PAGE_ID, extensionPageUrl } from "../navigation";
 import styles from "./backup-details.module.scss";
-import stylesInline from "./backup-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -130,8 +129,6 @@ export const ScheduledBackupDetails = observer((props: ScheduledBackupDetailsPro
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Schedule</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />

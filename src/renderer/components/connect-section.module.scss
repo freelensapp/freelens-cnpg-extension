@@ -1,0 +1,66 @@
+@use "../vars" as *;
+
+$ink-secondary: var(--textColorSecondary);
+$line: var(--borderFaintColor);
+$tint: color-mix(in srgb, var(--textColorAccent) 4%, transparent);
+$tint-strong: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
+
+// The Connect section of the Cluster and Pooler drawers (SPEC-0031).
+.table {
+  margin: $unit 0 calc($unit * 2);
+
+  :global(.TableCell) {
+    &.service {
+      flex-grow: 1.2;
+    }
+
+    &.host {
+      flex-grow: 1.8;
+      overflow-wrap: anywhere;
+    }
+
+    &.purpose {
+      flex-grow: 2;
+    }
+
+    &.actions {
+      flex-grow: 1.4;
+      text-align: right;
+    }
+  }
+}
+
+.mono {
+  font-family: var(--font-monospace, monospace);
+}
+
+.buttons {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: calc($unit / 2);
+}
+
+.button {
+  padding: calc($unit / 4) $unit;
+  border: 1px solid $line;
+  border-radius: calc($unit / 2);
+  background: $tint;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9em;
+  white-space: nowrap;
+  cursor: pointer;
+
+  &:hover {
+    background: $tint-strong;
+  }
+
+  &:disabled {
+    color: $ink-secondary;
+    cursor: default;
+  }
+}
+
+.hint {
+  color: $ink-secondary;
+}

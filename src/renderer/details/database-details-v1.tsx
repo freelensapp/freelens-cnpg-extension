@@ -31,7 +31,6 @@ import { useReferenceStores } from "../components/reference-loader";
 import { RightNow } from "../components/right-now";
 import { StoreLink } from "../components/store-link";
 import styles from "./declarative-details.module.scss";
-import stylesInline from "./declarative-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -74,8 +73,6 @@ export const DatabaseDetails = observer((props: DatabaseDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <ReconciliationSection object={object} health={health} rivals={rivals} store={databaseStore} />
 
         <DrawerTitle>Database</DrawerTitle>

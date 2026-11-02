@@ -233,9 +233,38 @@ describe("pluginFacts", () => {
           className: "success",
           clusters: [{ name: "e2e-main", namespace: "cnpg-e2e", version: "0.15.0" }],
           capabilities: ["TYPE_LIFECYCLE_SERVICE", "TYPE_RECONCILER_HOOKS"],
+          version: "0.15.0",
+          capabilityGroups: [],
         },
       ],
     );
+  });
+
+  it("groups what each service of a plugin can do, and takes the newest version the clusters report (SPEC-0036)", () => {
+    const reporting = (name: string, version: string, extra: Record<string, string[]>) =>
+      new Cluster({
+        apiVersion: "postgresql.cnpg.io/v1",
+        kind: "Cluster",
+        metadata: { name, namespace: "cnpg-e2e" },
+        spec: { instances: 1 },
+        status: { pluginStatus: [{ name: "barman-cloud.cloudnative-pg.io", version, ...extra }] },
+      } as never);
+    const [facts] = pluginFacts(
+      [service],
+      [deployment],
+      [
+        reporting("a", "0.9.0", { walCapabilities: ["TYPE_ARCHIVE_WAL", "TYPE_RESTORE_WAL"] }),
+        reporting("b", "0.15.1", {
+          postgresCapabilities: ["TYPE_SET_PARAMETERS"],
+          walCapabilities: ["TYPE_ARCHIVE_WAL"],
+        }),
+      ],
+    );
+    expect(facts.version).toBe("0.15.1");
+    expect(facts.capabilityGroups).toEqual([
+      { group: "WAL", items: ["TYPE_ARCHIVE_WAL", "TYPE_RESTORE_WAL"] },
+      { group: "PostgreSQL", items: ["TYPE_SET_PARAMETERS"] },
+    ]);
   });
 
   it("says so when the deployment behind it is down or cannot be found", () => {

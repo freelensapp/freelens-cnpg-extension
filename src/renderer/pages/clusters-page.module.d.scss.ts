@@ -1,8 +1,5 @@
 declare const classNames: {
   readonly page: "page";
-  readonly virtualList: "virtualList";
-  readonly list: "list";
-  readonly tableCell: "tableCell";
   readonly instances: "instances";
   readonly primary: "primary";
   readonly postgres: "postgres";
@@ -14,5 +11,10 @@ declare const classNames: {
   readonly instancesCell: "instancesCell";
   readonly primaryCell: "primaryCell";
   readonly switching: "switching";
+  readonly headerInfo: "headerInfo";
+  readonly counts: "counts";
+  readonly chip: "chip";
+  readonly chipOn: "chipOn";
+  readonly instancesCount: "instancesCount";
 };
 export = classNames;

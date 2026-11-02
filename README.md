@@ -8,7 +8,6 @@
 [![Release](https://img.shields.io/github/v/release/freelensapp/freelens-cnpg-extension?display_name=tag&sort=semver)](https://github.com/freelensapp/freelens-cnpg-extension/releases)
 [![Unit tests](https://github.com/freelensapp/freelens-cnpg-extension/actions/workflows/unit-tests.yaml/badge.svg?branch=main)](https://github.com/freelensapp/freelens-cnpg-extension/actions/workflows/unit-tests.yaml)
 [![Integration tests](https://github.com/freelensapp/freelens-cnpg-extension/actions/workflows/integration-tests.yaml/badge.svg?branch=main)](https://github.com/freelensapp/freelens-cnpg-extension/actions/workflows/integration-tests.yaml)
-[![E2E tests](https://github.com/freelensapp/freelens-cnpg-extension/actions/workflows/e2e-tests.yaml/badge.svg?branch=main)](https://github.com/freelensapp/freelens-cnpg-extension/actions/workflows/e2e-tests.yaml)
 [![npm](https://img.shields.io/npm/v/@freelensapp/cnpg-extension.svg)](https://www.npmjs.com/package/@freelensapp/cnpg-extension)
 
 <!-- markdownlint-enable MD013 -->
@@ -28,7 +27,8 @@ The extension lives in the cluster sidebar under **CloudNativePG**:
 scheduled backups and object stores), **Pooling**, **Images** and
 **Operator**. Everything reads through the Freelens session that is already
 authenticated to the Kubernetes cluster. The write actions (backups,
-switchover, restart, reload, fencing, hibernation, the schedules) and the
+switchover, restart, reload, fencing, hibernation, the schedules, the
+maintenance window, the destroy of a replica, the pause of a pooler) and the
 creation forms write only after a dialog has listed the exact API calls, and
 no database credential is ever read, stored or asked for.
 
@@ -49,22 +49,27 @@ product.
 
 ### Status
 
-> **Feature complete for v1.0.0: every milestone of the roadmap, M1 to M7,
-> is implemented and verified.** The repository is developed spec-first: one
-> spec per feature under [docs/specs](docs/specs/), each one implemented
-> behind an approved spec and verified by unit tests, by an E2E suite that
-> drives the packaged extension in the real Freelens against a kind cluster
-> with the real operator, and by an agent pass that walks every view on both
-> themes before the review of the lead maintainer. See the
+> **Version 2 for Freelens 2.** Every milestone of the roadmap is implemented
+> and verified: M1 to M7 (the views, the live data, the write actions and the
+> creation forms of 1.0.0), M8 (the port to the Freelens v2 extension API) and
+> M9 (Connect and port forwarding, the server check of the forms, presets,
+> recovery from an object store, the PostgreSQL configuration, the pooler
+> pause, the maintenance window, the destroy of a replica, the diagnostic
+> report, the operator's installation guide, Grafana links). The repository
+> is developed spec-first: one spec per feature under
+> [docs/specs](docs/specs/), each one verified by unit tests and by
+> integration tests that drive this checkout in Freelens dev against a kind
+> cluster with the real operator. See the
 > [roadmap](docs/development/ROADMAP.md).
 
 ## Requirements
 
-- **Freelens >= 1.10.3.** Verified on Freelens 1.10.3, the version the
-  integration and E2E tests run against.
+- **Freelens >= 2.0.0.** For Freelens 1.x, use a 1.x release of this
+  extension.
 - **A Kubernetes cluster with the CloudNativePG operator.** The reviewed
-  operator version is 1.30.0, the API is `postgresql.cnpg.io/v1`.
-- **Optional:** the Barman Cloud plugin (reviewed at v0.15.0) for object
+  operator version is 1.30.1, the API is `postgresql.cnpg.io/v1`. On a cluster
+  without it, every page says so and shows what to install.
+- **Optional:** the Barman Cloud plugin (reviewed at v0.15.1) for object
   stores, WAL archiving and backups through the plugin; the VolumeSnapshot
   CRDs and a CSI driver with snapshot support for backups taken as volume
   snapshots.
@@ -72,14 +77,17 @@ product.
   cluster. The lists and drawers need `list` and `watch` on the
   CloudNativePG kinds; the Live View, the live figures of the poolers and
   the metrics of the operator need `get` on `pods/proxy`; the Logs need
-  `get` on `pods/log`; Open psql needs `create` on `pods/exec`; every write
-  action and form needs the verb it performs on the kind it touches, and
-  the switchover also `patch` on `clusters/status`. An action the account
-  may not perform is disabled with the reason.
+  `get` on `pods/log`; Open psql and the PostgreSQL configuration need
+  `create` on `pods/exec`; a local port needs `create` on
+  `pods/portforward`; the copy buttons of the Connect section need `get` on
+  the application user's Secret; every write action and form needs the verb
+  it performs on the kind it touches (the server check of a form uses the
+  same `create`), the switchover also `patch` on `clusters/status`, and the
+  destroy of a replica `delete` on its volumes, its pod and its jobs. An
+  action the account may not perform is disabled with the reason.
 - **Node.js** is required only when building the extension from source; it
-  is not needed to run it. The package is a self-contained bundle: its
-  runtime libraries are compiled into `out/`, so Freelens loads it without
-  installing anything extra.
+  is not needed to run it. The package is a self-contained bundle in
+  `dist/`, so Freelens loads it without installing anything extra.
 
 ## Supported resources
 
@@ -91,48 +99,62 @@ in the drawers (see the [roadmap](docs/development/ROADMAP.md)).
 
 <!-- markdownlint-disable MD013 -->
 
-| Kind | Views |
-| --- | --- |
-| `Cluster` | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage with the tablespaces, backups and archiving, certificates, services and secrets, plugins), Overview, Live View with the trends, Logs, Timeline, creation form (image, storage, tablespaces, bootstrap from a new database, a backup, an object store or the volume snapshots of a backup, WAL archiving, volume snapshot backups, replication, resources, updates, scheduling) |
-| `Backup` | List and drawer with the restore coordinates and the volume snapshots |
-| `ScheduledBackup` | List and drawer with the schedule in words and the backups it generated, creation form |
-| `Pooler` | List and drawer with the live PgBouncer figures, creation form |
-| `Database` | List and drawer with the managed objects and the size of the database right now, creation form |
-| `DatabaseRole` | List and drawer with attributes, password and client certificate expiry, creation form |
-| `Publication` | List and drawer with the published objects, the replication path and the logical slots, creation form |
-| `Subscription` | List and drawer with the replication path, the slot on the publisher and the failover caveat, creation form |
-| `ImageCatalog` | List and drawer with the clusters that follow it |
-| `ClusterImageCatalog` | List and drawer with the clusters that follow it |
-| `FailoverQuorum` | List and drawer with the failover check told in words |
+| Kind                  | Views                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `Cluster`             | List with the health summary, drawer (instances, replication with the primary lease, PostgreSQL, declarative objects, storage with the tablespaces, backups and archiving, certificates, services and secrets, plugins), Overview, Live View with the trends, Logs, Timeline, creation form (image, storage, tablespaces, bootstrap from a new database, a backup, an object store or the volume snapshots of a backup, WAL archiving, volume snapshot backups, replication, resources, updates, scheduling) |
+| `Backup`              | List and drawer with the restore coordinates and the volume snapshots                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `ScheduledBackup`     | List and drawer with the schedule in words and the backups it generated, creation form                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `Pooler`              | List and drawer with the live PgBouncer figures, creation form, pause and resume                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `Database`            | List and drawer with the managed objects and the size of the database right now, creation form                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `DatabaseRole`        | List and drawer with attributes, password and client certificate expiry, creation form                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `Publication`         | List and drawer with the published objects, the replication path and the logical slots, creation form                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `Subscription`        | List and drawer with the replication path, the slot on the publisher and the failover caveat, creation form                                                                                                                                                                                                                                                                                                                                                                                                  |
+| `ImageCatalog`        | List and drawer with the clusters that follow it, creation form                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `ClusterImageCatalog` | List and drawer with the clusters that follow it, creation form                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| `FailoverQuorum`      | List and drawer with the failover check told in words                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ### barmancloud.cnpg.io/v1
 
-| Kind | Views |
-| --- | --- |
-| `ObjectStore` | List and drawer with the recovery windows, creation form (Barman Cloud plugin; the in-tree `barmanObjectStore` form is deprecated and is never generated by the extension) |
+| Kind          | Views                                                                                                                                                                                                                          |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `ObjectStore` | List and drawer with the recovery windows (a cluster recovered from any of them in one click), creation form (Barman Cloud plugin; the in-tree `barmanObjectStore` form is deprecated and is never generated by the extension) |
 
 <!-- markdownlint-enable MD013 -->
 
-## Installation
+## Install
 
-Install the extension from the Freelens **Extensions** page
-(`ctrl`+`shift`+`E` or `cmd`+`shift`+`E`) by npm name:
+Open Freelens and go to Extensions (`ctrl`+`shift`+`E` or
+`cmd`+`shift`+`E`). The field at the top takes a package name, the URL of a
+tarball, or the path to a tarball or a directory.
 
-```text
-@freelensapp/cnpg-extension
-```
+### From the registry
+
+Enter `@freelensapp/cnpg-extension` and press Install.
 
 Alternatively, open the following URL in the browser to install directly:
 
 [freelens://app/extensions/install/%40freelensapp%2Fcnpg-extension](freelens://app/extensions/install/%40freelensapp%2Fcnpg-extension)
 
-or download the `.tgz` from the
-[GitHub releases](https://github.com/freelensapp/freelens-cnpg-extension/releases)
-page and drag it into the Freelens window, or provide its path on the
-Extensions page.
+### From a release tarball
 
-You can also build and pack the extension yourself, see
-[Build from the source](#build-from-the-source).
+Each [release](https://github.com/freelensapp/freelens-cnpg-extension/releases)
+has the extension as `freelensapp-cnpg-extension-<version>.tgz`, with its
+checksum in `freelensapp-cnpg-extension-<version>.tgz.sha256`. Use a release
+whose major version matches your Freelens version.
+
+- Enter the URL of the `.tgz` asset and press Install. Freelens downloads the
+  `.tgz.sha256` next to it and checks the tarball against it.
+- Or download both files into one directory and enter the path to the `.tgz`,
+  or drop the `.tgz` on the Freelens window. Freelens checks it against the
+  `.tgz.sha256` next to it.
+
+### From a directory
+
+Build the extension (see [Build from the source](#build-from-the-source)),
+then enter the path to your checkout, the directory with `package.json`, and
+press Install. Freelens runs the extension from that directory, from the
+files in `dist/`, and lists it as unverified. This is how you work on the
+extension: see [Development loop](#development-loop).
 
 ## Getting started
 
@@ -150,8 +172,8 @@ You can also build and pack the extension yourself, see
    (instances and roles, replication, storage and tablespaces, backups and
    archiving, certificates, declared objects, plugins, the related pods,
    volumes, services and secrets). The row menu holds **Open psql**,
-   **Back up now**, **Switchover**, **Restart**, **Reload**, **Fence** and
-   **Hibernate**.
+   **Back up now**, **Switchover**, **Restart**, **Reload**, **Fence**,
+   **Hibernate** and **Open maintenance window**.
 4. Open **Live View** and pick a cluster: replication topology and lag,
    sessions, database sizes, WAL and archiving, replication slots, and the
    trends since the page opened, read from the instances through the API
@@ -258,24 +280,76 @@ account may not perform it.
   what happens to it listed before the click.
 - **Suspend**, **Resume** and **Run now** on a scheduled backup, with what
   the operator will do next said in the dialog.
+- **Open maintenance window** and **Close maintenance window** of the nodes
+  of a cluster, with what the operator does with an instance on a drained
+  node for the choice about its volumes; the Overview and the drawer say
+  while it is open.
+- **Destroy** on the row of a replica (never the primary), with the name
+  typed to confirm and the writes of `kubectl cnpg destroy` listed in their
+  order: its volumes, its pod, its jobs; the operator then recreates the
+  instance from the primary.
+- **Pause** and **Resume** of a pooler, with the clients connected through
+  it right now.
 
 ### Creation forms
 
 A PostgreSQL cluster, a scheduled backup, a pooler, an object store, a
-database, a role, a publication and a subscription, from the **+** button of
+database, a role, a publication, a subscription and an image catalog (of a
+namespace or of the whole Kubernetes cluster), from the **+** button of
 their lists and from the drawer of a cluster. The form is the confirmation:
 its right pane is the exact YAML the create sends, every rule of the
 operator's admission the form can express is checked at the field, the
 recommended shape is the default (backups through the Barman Cloud plugin,
 no deprecated field), the values the operator stamps on its own are shown and
 never sent, and the OK button says why it is disabled until the form is
-complete. The cluster form covers the image, the storage, the tablespaces,
+complete. Once the form is complete, the API server checks the YAML with a
+dry run (the operator's webhooks included, nothing created) and its answer
+shows under the YAML, a refusal naming the field. The cluster form covers the image, the storage, the tablespaces,
 the bootstrap (a new database, a completed backup, an object store, or the
 volume snapshots of a backup with the optional WAL archive of the source),
 WAL archiving, backups as volume snapshots (hot or cold), replication,
-resources, updates and scheduling. The scheduled backup form has a cron
+resources, updates and scheduling, with presets of PostgreSQL parameters
+sized on the memory of the instances and on the WAL disk. "Recover" on a
+server of an object store's recovery windows opens it filled for a recovery
+of that server. The scheduled backup form has a cron
 editor with the next three runs; the declarative forms say the SQL the
 primary will run.
+
+### Connect and forward a local port
+
+The drawer of a cluster (and of a pooler) has a **Connect** section: each
+service with its in-cluster host and port and what it is for (rw, ro, r and
+those of `spec.managed.services`), the application database and user, and
+buttons that copy the password, the URI or the JDBC URI of its Secret. The
+Secret is read when the button is pressed and its value goes to the
+clipboard only. **Forward a local port** runs `kubectl port-forward --address
+127.0.0.1 service/<name> :5432` in the Freelens main process with the
+kubectl and the connection of the cluster; the drawer lists the forwards
+with their local address, "Copy psql command" (no password in it) and
+"Stop". A forward ends when it is stopped, when the cluster disconnects, when
+the extension is disabled and when Freelens quits. It needs `create` on
+`pods/portforward`.
+
+### PostgreSQL configuration
+
+**Configuration**, from the sidebar, the menu or the drawer of a cluster,
+shows the parameters and the HBA rules the primary runs with, as `kubectl
+cnpg status -v -v` prints them (`custom.conf` and `pg_hba.conf`, read with
+two fixed `cat` commands through `kubectl exec`, which needs `pods/exec`),
+where each parameter comes from, a value of the spec not applied yet, and
+for each instance whether a restart is pending.
+
+### Diagnostic report
+
+**Save diagnostic report**, in the menu of a cluster, saves one ZIP file
+where you choose, for an issue or a support case, after `kubectl cnpg report
+cluster`: the cluster and its pods, jobs, volumes, services and disruption
+budgets, its backups, schedules, poolers, declarative objects, failover
+quorum and object stores, the events about them, the status of each
+instance and, if you ask, the last lines of their logs. It reads only; no
+Secret is read, `managedFields` are removed and values under keys named like
+a password, a token or a key are replaced. A `README.txt` in the archive says
+what is in it and what could not be read.
 
 ### Open psql
 
@@ -329,8 +403,8 @@ The repository is developed spec-first, with the specs in the repository:
 
 ### Local gates
 
-Node.js 24.15.0 (`.nvmrc` / `mise.toml`) and `corepack pnpm`. Run the local
-gates after every change:
+The Node.js version of `.nvmrc` (also in `mise.toml`) and `corepack pnpm`.
+Run the local gates after every change:
 
 ```sh
 pnpm type:check
@@ -338,6 +412,7 @@ pnpm lint:check     # biome (lint:fix to auto-format)
 pnpm build
 pnpm knip:check
 pnpm test:unit
+pnpm trunk:check    # the formats Biome does not cover
 ```
 
 ### Demo environment (Docker + kind)
@@ -362,31 +437,53 @@ real backups, schedules, a pooler, and declared databases, roles,
 publications and subscriptions, some of them failing on purpose. The
 [walkthrough](docs/development/TRY-IT.md) then takes you through every view.
 
-### E2E suite and pre-review pass
+### Integration tests and pre-review pass
 
-The E2E suite drives the packaged extension in a Freelens build against the
-same kind cluster; the pre-review pass walks every view on both themes,
-checks the rules of DESIGN.md a machine can check, and leaves the screenshots
-and a report under `e2e-artifacts/`. Both need a Freelens checkout, see
+The integration tests drive this checkout, installed in place in Freelens
+dev, against a kind cluster with the real operator; the pre-review pass walks
+every view on both themes, checks the rules of DESIGN.md a machine can
+check, and leaves the screenshots and a report under `e2e-artifacts/`. Both
+need a Freelens checkout next to this one, see
 [TESTING.md](docs/development/TESTING.md).
 
 ```sh
 pnpm e2e:cluster:up
-pnpm e2e
-pnpm pre-review
+pnpm e2e:freelens        # in another terminal: Freelens dev on the cluster
+pnpm build
+pnpm test:integration
 pnpm e2e:cluster:down
 ```
 
-## Build from the source
+The writes go to the namespace `cnpg-e2e-actions` of the cluster the script
+created, never to another cluster. The cases of the Connect section and of
+the diagnostic report also need `psql`, `pg_isready` and `python3` on the
+`PATH`. Without Freelens dev or the cluster the tests are skipped.
 
-You can build the extension from this repository.
+Optional variables:
+
+- `E2E_CLUSTER_NAME`: the kind cluster, `cnpg-e2e` by default, used through
+  the context `kind-<name>`; `cnpg-bare` runs `cnpg-bare.tests.ts` on the
+  cluster of `pnpm e2e:bare:up`, which has no CloudNativePG.
+- `FREELENS_CDP_URL`: the CDP endpoint of Freelens dev,
+  `http://127.0.0.1:9223` by default.
+- `FREELENS_MAIN_LOG`: a log of the main process to check for errors. Without
+  it only the renderer's errors are checked.
+- `FREELENS_MAIN_INSPECT`: the inspector port of the main process of
+  Freelens dev, `5858` by default, through which the case of the diagnostic
+  report answers the save dialog.
+- `E2E_ARTIFACTS_DIR`: where the screenshots go, `e2e-artifacts/` by default.
+
+The pre-review pass (`pnpm pre-review`) runs on the demo cluster, with Freelens
+dev started on it as TESTING.md describes.
+
+## Build from the source
 
 ### Prerequisites
 
 Use [NVM](https://github.com/nvm-sh/nvm),
 [mise-en-place](https://mise.jdx.dev/), or
 [windows-nvm](https://github.com/coreybutler/nvm-windows) to install the
-required Node.js version.
+Node.js version in `.nvmrc`.
 
 From the root of this repository:
 
@@ -396,8 +493,8 @@ nvm install
 mise install
 # or
 winget install CoreyButler.NVMforWindows
-nvm install 24.15.0
-nvm use 24.15.0
+nvm install "$(cat .nvmrc)"
+nvm use "$(cat .nvmrc)"
 ```
 
 Install pnpm:
@@ -413,46 +510,60 @@ winget install pnpm.pnpm
 ### Build extension
 
 ```sh
-pnpm i
+pnpm install
 pnpm build
+```
+
+The extension is built into `dist/`. To pack it into a tarball:
+
+```sh
 pnpm pack
 ```
 
-One script to build and pack the extension for testing:
+One script to bump the prerelease version, build and pack the extension for
+testing:
 
 ```sh
 pnpm pack:dev
 ```
 
-This bumps a throwaway prerelease version, builds, and writes a
-`freelensapp-cnpg-extension-*.tgz` into the repo root. The version bump
-makes Freelens treat each rebuild as an upgrade, so re-installing actually
-reloads your changes.
+The tarball is placed in the current directory. Install it as described in
+[From a release tarball](#from-a-release-tarball).
 
-### Install built extension
+### Development loop
 
-The tarball will be placed in the current directory. In Freelens, navigate
-to the Extensions page (`ctrl`+`shift`+`E` or `cmd`+`shift`+`E`) and provide
-the path to the tarball, or drag and drop the `.tgz` file into the Freelens
-window. Enable it if prompted.
-
-### Check code statically
+Install the extension from your checkout once, as described in
+[From a directory](#from-a-directory), then run:
 
 ```sh
-pnpm lint:check
+pnpm dev
 ```
 
-or
+It rebuilds the extension whenever a source file changes, and Freelens
+reloads the extension after each rebuild, the main process included, without
+a restart and without packing. Stop it with `ctrl`+`C`.
+
+Neither `pnpm build` nor `pnpm dev` type-checks; run `pnpm type:check` for
+that. A change to `main` or `renderer` in `package.json` needs Freelens
+restarted once.
+
+To check the extension in Freelens with an AI agent, see "Checking the
+Extension in Freelens Dev" in the
+[template's AGENTS.md](https://github.com/freelensapp/freelens-example-extension/blob/main/AGENTS.md).
+
+### Check the code
+
+```sh
+pnpm type:check
+pnpm test:unit
+pnpm lint:check
+pnpm knip:check
+```
+
+and, for the formats that Biome does not cover:
 
 ```sh
 pnpm trunk:check
-```
-
-and
-
-```sh
-pnpm build
-pnpm knip:check
 ```
 
 ### Testing the extension with unpublished Freelens

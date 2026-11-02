@@ -28,7 +28,6 @@ import {
   SUBSCRIPTIONS_PAGE_ID,
 } from "../navigation";
 import styles from "./declarative-details.module.scss";
-import stylesInline from "./declarative-details.module.scss?inline";
 
 import type { Cluster } from "../api/cnpg/cluster-v1";
 import type { DeclarativeCounts } from "../components/declarative";
@@ -101,7 +100,6 @@ export const ClusterDeclarativeSection = observer(({ cluster, extension }: Clust
 
   return (
     <>
-      <style>{stylesInline}</style>
       <DrawerTitle>Declarative objects</DrawerTitle>
       {rows.map((row) => (
         <DrawerItem key={row.label} name={row.label}>

@@ -8,9 +8,11 @@ declare const classNames: {
   readonly muted: "muted";
   readonly list: "list";
   readonly table: "table";
-  readonly tableCell: "tableCell";
   readonly name: "name";
   readonly number: "number";
   readonly error: "error";
+  readonly plugin: "plugin";
+  readonly pluginHead: "pluginHead";
+  readonly plainList: "plainList";
 };
 export = classNames;

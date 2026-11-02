@@ -29,6 +29,7 @@ import {
   readInto,
   runCreate,
 } from "./declarative-dialog";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import {
   defaultSubscriptionForm,
   emptySubscriptionInputs,
@@ -113,7 +114,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref, clusterFacts: Mobx.observable.ref, databaseObjects: Mobx.observable.ref },
+    { inputs: Mobx.observableRef, clusterFacts: Mobx.observableRef, databaseObjects: Mobx.observableRef },
   );
 }
 
@@ -172,7 +173,7 @@ function loadNamespaced(model: SubscriptionCreateModel, namespace: string): void
   );
   Database.getStore<Database>()
     .api.list({ namespace })
-    .then((items) => {
+    .then((items: Database[] | null) => {
       Mobx.runInAction(() => {
         model.databaseObjects = (items ?? []).map((item) => ({
           cluster: item.spec?.cluster?.name ?? "",
@@ -392,6 +393,12 @@ function open(model: SubscriptionCreateModel, delayed: boolean, changedNotice?: 
       facts: () => subscriptionFacts(model.inputs, model.form),
       form: () => <SubscriptionCreateForm model={model} />,
       yaml: () => toYaml(subscriptionBody(model.form)),
+      server: {
+        apiBase: Subscription.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => subscriptionBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => subscriptionBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: () => {

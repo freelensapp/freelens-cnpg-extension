@@ -15,11 +15,14 @@ export const CLUSTERS_PAGE_ID = "cnpg-clusters-clusters";
 export const LIVE_PAGE_ID = "cnpg-clusters-live";
 export const LOGS_PAGE_ID = "cnpg-clusters-logs";
 export const TIMELINE_PAGE_ID = "cnpg-clusters-timeline";
+export const CONFIG_PAGE_ID = "cnpg-clusters-config";
 export const FAILOVER_QUORUMS_PAGE_ID = "cnpg-clusters-failoverquorums";
 export const BACKUPS_GROUP_ID = "cnpg-backups";
 export const BACKUPS_PAGE_ID = "cnpg-backups-backups";
 export const SCHEDULED_BACKUPS_PAGE_ID = "cnpg-backups-scheduledbackups";
 export const OBJECT_STORES_PAGE_ID = "cnpg-backups-objectstores";
+/** The Klio PluginConfiguration objects (SPEC-0036): Klio is an optional backup plugin. */
+export const KLIO_CONFIGURATIONS_PAGE_ID = "cnpg-backups-klioconfigurations";
 export const POOLING_GROUP_ID = "cnpg-pooling";
 export const POOLERS_PAGE_ID = "cnpg-pooling-poolers";
 export const DATABASES_GROUP_ID = "cnpg-databases";
@@ -68,5 +71,11 @@ export function logsUrl(extensionName: string, namespace?: string, name?: string
 /** The Timeline of a cluster (SPEC-0017): the cluster travels in the URL. */
 export function timelineUrl(extensionName: string, namespace?: string, name?: string): string {
   const base = extensionPageUrl(extensionName, TIMELINE_PAGE_ID);
+  return namespace && name ? `${base}?${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}` : base;
+}
+
+/** The PostgreSQL configuration of a cluster (SPEC-0035): the cluster travels in the URL. */
+export function configUrl(extensionName: string, namespace?: string, name?: string): string {
+  const base = extensionPageUrl(extensionName, CONFIG_PAGE_ID);
   return namespace && name ? `${base}?${LIVE_CLUSTER_PARAM}=${encodeURIComponent(`${namespace}/${name}`)}` : base;
 }

@@ -13,21 +13,21 @@ DEMO_REPO_ROOT="$(cd -- "${DEMO_SCRIPTS_DIR}/../.." && pwd)"
 
 export E2E_CLUSTER_NAME="${DEMO_CLUSTER_NAME:-cnpg-demo}"
 case "${DEMO_STATE_DIR:-.demo}" in
-/*) export E2E_STATE_DIR="${DEMO_STATE_DIR}" ;;
-*) export E2E_STATE_DIR="${DEMO_REPO_ROOT}/${DEMO_STATE_DIR:-.demo}" ;;
+  /*) export E2E_STATE_DIR="${DEMO_STATE_DIR}" ;;
+  *) export E2E_STATE_DIR="${DEMO_REPO_ROOT}/${DEMO_STATE_DIR:-.demo}" ;;
 esac
 
 # shellcheck source=e2e/scripts/lib.sh
 source "${DEMO_SCRIPTS_DIR}/lib.sh"
 
 main() {
-	if [[ ${E2E_CLUSTER_NAME} == "cnpg-e2e" ]]; then
-		log "the demo was pointed at the E2E cluster: removing the pgbench load only"
-		kubectl_e2e delete -f "${E2E_FIXTURES_DIR}/demo/70-pgbench.yaml" --ignore-not-found >/dev/null 2>&1 || true
-		return
-	fi
-	"${DEMO_SCRIPTS_DIR}/cluster-down.sh"
-	rm -rf "${E2E_STATE_DIR}"
+  if [[ ${E2E_CLUSTER_NAME} == "cnpg-e2e" ]]; then
+    log "the demo was pointed at the E2E cluster: removing the pgbench load only"
+    kubectl_e2e delete -f "${E2E_FIXTURES_DIR}/demo/70-pgbench.yaml" --ignore-not-found >/dev/null 2>&1 || true
+    return
+  fi
+  "${DEMO_SCRIPTS_DIR}/cluster-down.sh"
+  rm -rf "${E2E_STATE_DIR}"
 }
 
 main "$@"

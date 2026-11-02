@@ -63,7 +63,9 @@ function InstanceCard({ instance, namespace, action }: InstanceCardProps) {
           <Badge
             small
             className={instance.role === "primary" ? "success" : "info"}
-            label={instance.role === "unknown" ? "role unknown" : instance.role}
+            label={
+              instance.designated ? "designated primary" : instance.role === "unknown" ? "role unknown" : instance.role
+            }
           />
         </span>
       </div>
@@ -80,7 +82,11 @@ function InstanceCard({ instance, namespace, action }: InstanceCardProps) {
       ) : null}
       {!instance.pending && !failure && !instance.postgresDown ? (
         <div className={styles.instanceFacts}>
-          <span title={instance.role === "primary" ? "Current write position" : "Last position replayed"}>
+          <span
+            title={
+              instance.role === "primary" && !instance.designated ? "Current write position" : "Last position replayed"
+            }
+          >
             LSN <span className={styles.mono}>{instance.lsn ?? "N/A"}</span>
           </span>
           <span>timeline {instance.timeline ?? "N/A"}</span>

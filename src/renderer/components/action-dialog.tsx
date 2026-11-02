@@ -25,7 +25,6 @@ import * as MobxReact from "mobx-react";
 import React from "react";
 import { maybe } from "../../common/utils";
 import styles from "./action-dialog.module.scss";
-import stylesInline from "./action-dialog.module.scss?inline";
 import { DIALOG_REOPEN_DELAY_MS, typedNameMatches } from "./write-actions";
 
 import type { ActionDialogFacts } from "./write-actions";
@@ -73,7 +72,7 @@ export interface ActionDialogParams {
   /** Called once when the dialog goes away, confirmed or not: where an action stops what it started on open. */
   onClose?: () => void;
   /** A message of its own (the creation forms of SPEC-0025), over the same model and machinery. */
-  message?: (params: ActionDialogParams, model: ActionDialogModel) => React.ReactNode;
+  message?: (params: ActionDialogParams, model: ActionDialogModel) => React.ReactElement;
 }
 
 interface MessageProps {
@@ -97,7 +96,6 @@ const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
 
   return (
     <div className={styles.dialog} data-testid={params.testId} ref={body}>
-      <style>{stylesInline}</style>
       <p className={styles.lead}>
         {`${params.title} `}
         <b data-testid="cnpg-action-subject">{facts.subject}</b>?
@@ -147,17 +145,22 @@ const ActionDialogMessage = observer(({ params, model }: MessageProps) => {
 export function ActionFactsBlock({ facts }: { facts: ActionDialogFacts }) {
   return (
     <>
-      <div className={styles.heading}>{facts.writes.length === 1 ? "The one write" : "The writes, in order"}</div>
-      <ol
-        className={facts.writes.length === 1 ? `${styles.writes} ${styles.single}` : styles.writes}
-        data-testid="cnpg-action-writes"
-      >
-        {facts.writes.map((write) => (
-          <li key={write.text}>
-            <code>{write.text}</code>
-          </li>
-        ))}
-      </ol>
+      {/* An action that writes nothing to the cluster (the report of SPEC-0038) has no list to show. */}
+      {facts.writes.length > 0 ? (
+        <>
+          <div className={styles.heading}>{facts.writes.length === 1 ? "The one write" : "The writes, in order"}</div>
+          <ol
+            className={facts.writes.length === 1 ? `${styles.writes} ${styles.single}` : styles.writes}
+            data-testid="cnpg-action-writes"
+          >
+            {facts.writes.map((write) => (
+              <li key={write.text}>
+                <code>{write.text}</code>
+              </li>
+            ))}
+          </ol>
+        </>
+      ) : null}
       {facts.notes.map((note) => (
         <p key={note}>{note}</p>
       ))}

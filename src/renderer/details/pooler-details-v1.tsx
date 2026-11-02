@@ -22,15 +22,18 @@ import {
   poolerMetricsScheme,
 } from "../api/instance/pod-proxy";
 import { humanizeRelative } from "../components/backup-health";
+import { poolerServiceRow } from "../components/connect";
+import { ConnectSection } from "../components/connect-section";
 import { withErrorPage } from "../components/error-page";
 import { formatCount, formatLag } from "../components/live/format";
 import { buildPoolerView } from "../components/live/pooler-model";
 import { PoolerPoller } from "../components/live/pooler-poller";
+import { poolerPauseState, poolerPauseWords } from "../components/pooler-pause";
 import { classifyPooler, poolerInstances, poolerServiceHost, poolerTypeWords } from "../components/poolers";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
+import { PoolerPauseButton, poolerPauseFacts } from "../menus/pooler-pause-menu-item";
 import styles from "./pooler-details.module.scss";
-import stylesInline from "./pooler-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -76,9 +79,20 @@ const RightNow = observer(({ pooler }: { pooler: Pooler }) => {
   );
 
   React.useEffect(() => {
-    poller.start();
-    return () => poller.stop();
-  }, [poller]);
+    // The pods the session holds may include one deleted while nothing watched the namespace: the first round
+    // waits for a fresh list, instead of asking a pod that is gone.
+    let mounted = true;
+    void podsStore
+      .loadAll({ namespaces: [namespace], merge: true })
+      .catch(() => undefined)
+      .then(() => {
+        if (mounted) poller.start();
+      });
+    return () => {
+      mounted = false;
+      poller.stop();
+    };
+  }, [poller, namespace]);
 
   const now = new Date();
   const view = buildPoolerView(poller.samples);
@@ -195,8 +209,6 @@ export const PoolerDetails = observer((props: PoolerDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Pooler</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />
@@ -211,6 +223,13 @@ export const PoolerDetails = observer((props: PoolerDetailsProps) =>
           />
         </DrawerItem>
         <DrawerItem name="Fronts">{poolerTypeWords(object)}</DrawerItem>
+        {/* SPEC-0037: the pause as declared against what the operator reports, with the way to change it next to it. */}
+        <DrawerItem name="Pause">
+          <span data-testid="cnpg-pooler-pause-state">
+            {poolerPauseWords(poolerPauseState(poolerPauseFacts(object)))}
+          </span>{" "}
+          <PoolerPauseButton pooler={object} />
+        </DrawerItem>
         <DrawerItem name="Connect to">
           <WithTooltip tooltip="What an application puts in its connection string, port 5432">
             <span className={styles.mono}>{poolerServiceHost(object)}</span>
@@ -234,6 +253,13 @@ export const PoolerDetails = observer((props: PoolerDetailsProps) =>
         <DrawerItem name="Accepting clients" labelsOnly>
           <BadgeBoolean value={!(pgbouncer?.paused ?? false)} />
         </DrawerItem>
+
+        {/* SPEC-0031: the service of the pooler, and a local port forwarded to it. */}
+        <ConnectSection
+          namespace={namespace}
+          cluster={Pooler.getClusterName(object) ?? ""}
+          rows={[poolerServiceRow(object.getName(), namespace, object.spec?.type ?? "rw")]}
+        />
 
         <DrawerTitle>Right now</DrawerTitle>
         <RightNow pooler={object} />

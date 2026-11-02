@@ -1,0 +1,32 @@
+@use "../vars" as *;
+
+// The Grafana preferences (SPEC-0039): one row per Kubernetes cluster of the catalog.
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: $unit;
+}
+
+.row {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(0, 2fr) minmax(0, 1fr);
+  gap: $unit;
+  align-items: start;
+}
+
+.name {
+  padding-top: calc($unit / 2);
+  overflow: hidden;
+  color: var(--textColorAccent);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.problem {
+  color: var(--colorError);
+  font-size: 0.85em;
+}
+
+.muted {
+  color: var(--textColorSecondary);
+}

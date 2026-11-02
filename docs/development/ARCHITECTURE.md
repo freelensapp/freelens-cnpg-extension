@@ -38,7 +38,8 @@ pinned operator release. See the "Licensing and provenance constraints" section 
 
 Recorded in detail in
 [SPEC-0001](../specs/SPEC-0001-recon-and-architecture.md), pinned to
-CloudNativePG **v1.30.0**:
+CloudNativePG **v1.30.0**, reviewed again at **v1.30.1** with the Barman Cloud
+plugin **v0.15.1** for M9:
 
 - API group `postgresql.cnpg.io/v1`, 11 kinds: `Cluster`, `Backup`,
   `ScheduledBackup`, `Pooler`, `Database`, `DatabaseRole`, `Publication`,
@@ -69,12 +70,23 @@ everything it can in the renderer.
   pod proxy path
   `/api/v1/namespaces/<ns>/pods/<scheme>:<pod>:<port>/proxy/<path>`.
   No extra dependency, no kubeconfig handling, no CORS.
-- **Main** (`src/main/`): nothing beyond the scaffold's preferences store
-  until a feature needs it. The one candidate is programmatic `exec` into
-  an instance (fixed diagnostic queries), which would use
-  `@kubernetes/client-node` from the main process with the cluster's own
-  kubeconfig path and context, following the pattern proven in
-  freelens-kafka-extension. It is a spike in M2, not a dependency of 0.1.
+- **Main** (`src/main/`): the preferences store (SPEC-0039), and what a
+  renderer cannot do: the local port forwards of SPEC-0031
+  (`kubectl port-forward --address 127.0.0.1 service/<name> :5432`) and the
+  two fixed `cat` commands of SPEC-0035 on the primary (`kubectl exec`).
+  Both run the kubectl the host runs for the cluster
+  (`Main.Shell.getKubectlPath(clusterId)`) with the environment the host
+  gives for it (`Main.Shell.getEnvironment(clusterId)`), so they go through
+  the Freelens proxy with the identity of the host's connection, as
+  freelens-kafka-extension does; no `@kubernetes/client-node`, no kubeconfig
+  handling. The renderer reaches main over `Main.Ipc`/`Renderer.Ipc`
+  `invoke` channels (`src/common/ipc.ts`), answered to the frame that asked,
+  never broadcast; only Kubernetes names cross them, checked by main before
+  they reach a command line. Main kills every kubectl it started when the
+  cluster disconnects, the extension is deactivated or Freelens quits.
+  Main also writes the diagnostic report of SPEC-0038: the renderer sends
+  the files it collected, main asks Electron's save dialog where and writes
+  one ZIP there, nothing else.
 - **Common** (`src/common/`): code shared by both processes.
 
 The renderer-first decision rests on one fact to be proven by a spike
@@ -85,32 +97,32 @@ client above, exposed to the renderer through the extension's IPC.
 
 ## Data paths
 
-| Need | Source | Path | Credentials |
-| --- | --- | --- | --- |
-| Clusters, backups, poolers, ... | CRDs | `KubeObjectStore` watch through the Freelens proxy | user's kubeconfig (host) |
-| Instance pods, PVCs, services, secrets metadata, events | core stores | host stores (`podsStore`, `pvcStore`, ...) | user's kubeconfig (host) |
-| Instance status (LSN, WAL, replication, slots, basebackups) | instance manager `GET /pg/status` | pod proxy, port 8000 | RBAC `pods/proxy` |
-| Sessions, lag, sizes, archiver counters | metrics exporter `GET /metrics` | pod proxy, port 9187 | RBAC `pods/proxy` |
-| Operator reconciles, workers, queues | operator `GET /metrics` | pod proxy, the `metrics` port of its container (8080) | RBAC `pods/proxy` in the operator's namespace |
-| Instance logs | Kubernetes pod log API `GET .../pods/<pod>/log` | Freelens cluster proxy | RBAC `pods/log` |
-| Primary lease, operator lease | `Lease` objects | the host's own store, through the API manager | user's kubeconfig (host) |
-| psql | host terminal tab | `kubectl exec -it -n <ns> -c postgres <pod> -- psql -U postgres` | user's kubeconfig (terminal) |
-| Query-level detail (later, if ever) | `exec` with fixed queries | main process, `@kubernetes/client-node` | RBAC `pods/exec` |
+| Need                                                        | Source                                          | Path                                                             | Credentials                                   |
+| ----------------------------------------------------------- | ----------------------------------------------- | ---------------------------------------------------------------- | --------------------------------------------- |
+| Clusters, backups, poolers, ...                             | CRDs                                            | `KubeObjectStore` watch through the Freelens proxy               | user's kubeconfig (host)                      |
+| Instance pods, PVCs, services, secrets metadata, events     | core stores                                     | host stores (`podsStore`, `pvcStore`, ...)                       | user's kubeconfig (host)                      |
+| Instance status (LSN, WAL, replication, slots, basebackups) | instance manager `GET /pg/status`               | pod proxy, port 8000                                             | RBAC `pods/proxy`                             |
+| Sessions, lag, sizes, archiver counters                     | metrics exporter `GET /metrics`                 | pod proxy, port 9187                                             | RBAC `pods/proxy`                             |
+| Operator reconciles, workers, queues                        | operator `GET /metrics`                         | pod proxy, the `metrics` port of its container (8080)            | RBAC `pods/proxy` in the operator's namespace |
+| Instance logs                                               | Kubernetes pod log API `GET .../pods/<pod>/log` | Freelens cluster proxy                                           | RBAC `pods/log`                               |
+| Primary lease, operator lease                               | `Lease` objects                                 | the host's own store, through the API manager                    | user's kubeconfig (host)                      |
+| psql                                                        | host terminal tab                               | `kubectl exec -it -n <ns> -c postgres <pod> -- psql -U postgres` | user's kubeconfig (terminal)                  |
+| Query-level detail (later, if ever)                         | `exec` with fixed queries                       | main process, `@kubernetes/client-node`                          | RBAC `pods/exec`                              |
 
 ### Write paths (from M6)
 
 Every write is confirmed in a dialog that lists it, and follows the rules W1
 to W12 of [SPEC-0020](../specs/SPEC-0020-m6-write-actions-ground-rules-and-backup-now.md).
 
-| Write | Target | Path | Credentials |
-| --- | --- | --- | --- |
-| Create a `Backup` (on demand, or with the settings of a schedule) | `backups` | the host's `KubeObjectStore.create` | RBAC `create` on `backups` |
-| Restart or reload a `Cluster` | `clusters` | the host's `KubeObjectStore.patch`, a merge patch of one annotation (`kubectl.kubernetes.io/restartedAt`, `cnpg.io/reloadedAt`) | RBAC `patch` on `clusters` |
-| Fence or lift a fence, hibernate or resume a `Cluster` | `clusters` | the host's `KubeObjectStore.patch`, a merge patch of one annotation (`cnpg.io/fencedInstances`, with the resource version because the whole set is one string; `cnpg.io/hibernation`) | RBAC `patch` on `clusters` |
-| Restart a standby | `pods` | the host's pod store `remove`, only after the labels of the pod say it is an instance of the cluster | RBAC `delete` on `pods` |
-| Suspend or resume a `ScheduledBackup` | `scheduledbackups` | the host's `KubeObjectStore.patch`, a merge patch of `spec.suspend` with its explicit value | RBAC `patch` on `scheduledbackups` |
-| Switchover, in-place restart of the primary | `clusters/status` | merge patch with the resource version through the Freelens cluster proxy, from a module that can express these two bodies only | RBAC `patch` on `clusters/status` |
-| May I? (before an action is offered) | `SelfSubjectAccessReview` | `POST` through the Freelens cluster proxy; the review is answered and not stored | any authenticated user |
+| Write                                                             | Target                    | Path                                                                                                                                                                                  | Credentials                        |
+| ----------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
+| Create a `Backup` (on demand, or with the settings of a schedule) | `backups`                 | the host's `KubeObjectStore.create`                                                                                                                                                   | RBAC `create` on `backups`         |
+| Restart or reload a `Cluster`                                     | `clusters`                | the host's `KubeObjectStore.patch`, a merge patch of one annotation (`kubectl.kubernetes.io/restartedAt`, `cnpg.io/reloadedAt`)                                                       | RBAC `patch` on `clusters`         |
+| Fence or lift a fence, hibernate or resume a `Cluster`            | `clusters`                | the host's `KubeObjectStore.patch`, a merge patch of one annotation (`cnpg.io/fencedInstances`, with the resource version because the whole set is one string; `cnpg.io/hibernation`) | RBAC `patch` on `clusters`         |
+| Restart a standby                                                 | `pods`                    | the host's pod store `remove`, only after the labels of the pod say it is an instance of the cluster                                                                                  | RBAC `delete` on `pods`            |
+| Suspend or resume a `ScheduledBackup`                             | `scheduledbackups`        | the host's `KubeObjectStore.patch`, a merge patch of `spec.suspend` with its explicit value                                                                                           | RBAC `patch` on `scheduledbackups` |
+| Switchover, in-place restart of the primary                       | `clusters/status`         | merge patch with the resource version through the Freelens cluster proxy, from a module that can express these two bodies only                                                        | RBAC `patch` on `clusters/status`  |
+| May I? (before an action is offered)                              | `SelfSubjectAccessReview` | `POST` through the Freelens cluster proxy; the review is answered and not stored                                                                                                      | any authenticated user             |
 
 Nothing in these tables stores a database password. The psql terminal
 connects as the `postgres` superuser through the container's local socket

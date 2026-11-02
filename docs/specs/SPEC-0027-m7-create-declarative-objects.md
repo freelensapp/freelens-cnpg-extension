@@ -100,11 +100,11 @@ Entry points: the floating button of the Databases page.
    `DatabaseRole` objects of the cluster, `postgres`; a typed name is
    accepted with the warning that the role must exist before the database
    is created (the operator fails the object otherwise).
-3. **Objects inside** (*collapsed*). Extensions as rows (name, version,
+3. **Objects inside** (_collapsed_). Extensions as rows (name, version,
    schema) and schemas as rows (name, owner), names unique as the webhook
    demands; the summary lists the `CREATE EXTENSION` and `CREATE SCHEMA`
    statements that follow.
-4. **Creation options** (*collapsed*, creation only). Template
+4. **Creation options** (_collapsed_, creation only). Template
    (`template0`, `template1` or another database of the cluster),
    encoding, locale provider and locale (with the CEL rules of the
    provider enforced inline), tablespace (from the cluster's own list),
@@ -125,12 +125,12 @@ Entry points: the floating button of the Database Roles page.
    the reserved names of the CRD; refused with the reason when the
    cluster's own `managed.roles` names it, since the inline entry always
    wins and the object would never apply).
-2. **Authentication.** A radio: *a password from a secret* (a picker over
+2. **Authentication.** A radio: _a password from a secret_ (a picker over
    the `kubernetes.io/basic-auth` secrets of the namespace whose
    `username` is the role name, else a typed name with the shape the
-   secret must have), *no password* (`disablePassword`, with the sentence
-   that the role then needs a certificate or trust to connect), *leave the
-   password alone* (nothing sent: the operator never touches it and a new
+   secret must have), _no password_ (`disablePassword`, with the sentence
+   that the role then needs a certificate or trust to connect), _leave the
+   password alone_ (nothing sent: the operator never touches it and a new
    role gets none). Can log in (`login`, default on); a client
    certificate managed by the operator (needs login, as the CRD says).
 3. **Privileges.** Superuser, create databases, create roles, replication,
@@ -157,12 +157,12 @@ Entry points: the floating button of the Publications page.
    database (a picker over the databases the extension knows of the
    cluster: the bootstrap database and the `Database` objects; typed
    accepted).
-2. **What it publishes.** A radio: *all tables* (`allTables`), or
-   *objects*: rows that are either a schema (`tablesInSchema`) or a table
+2. **What it publishes.** A radio: _all tables_ (`allTables`), or
+   _objects_: rows that are either a schema (`tablesInSchema`) or a table
    (schema, name, only this table, a column list), with the CEL rules
    inline (a column list never together with a schema row; at least one
    row).
-3. **Options** (*collapsed*). Parameters as key value pairs with the
+3. **Options** (_collapsed_). Parameters as key value pairs with the
    known keys offered (`publish`, `publish_via_partition_root`).
 4. **Reclaim policy.**
 
@@ -188,7 +188,7 @@ Entry points: the floating button of the Subscriptions page.
    the selected namespaces, else typed. Publication database: the
    effective default is the entry's own database, shown; a different one
    can be typed.
-3. **Options** (*collapsed*). Parameters as key value pairs with the
+3. **Options** (_collapsed_). Parameters as key value pairs with the
    known keys offered (`copy_data`, `create_slot`, `slot_name`,
    `failover`, `streaming`), and the note that most cannot change once
    the subscription exists.

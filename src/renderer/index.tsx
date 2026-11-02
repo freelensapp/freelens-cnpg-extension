@@ -4,6 +4,7 @@
  */
 
 import { Renderer } from "@freelensapp/extensions";
+import { CnpgPreferencesStore } from "../common/preferences-store";
 import { ObjectStore as ObjectStoreV1 } from "./api/barmancloud/object-store-v1";
 import { Backup as BackupV1 } from "./api/cnpg/backup-v1";
 import { Cluster as ClusterV1 } from "./api/cnpg/cluster-v1";
@@ -18,28 +19,40 @@ import { Pooler as PoolerV1 } from "./api/cnpg/pooler-v1";
 import { Publication as PublicationV1 } from "./api/cnpg/publication-v1";
 import { ScheduledBackup as ScheduledBackupV1 } from "./api/cnpg/scheduled-backup-v1";
 import { Subscription as SubscriptionV1 } from "./api/cnpg/subscription-v1";
+import { PluginConfiguration as KlioConfiguration } from "./api/klio/plugin-configuration-v1alpha1";
 import { createAvailableVersionPage } from "./components/available-version";
+import {
+  withDetailsErrorBoundary,
+  withMenuItemErrorBoundary,
+  withPageErrorBoundary,
+} from "./components/error-boundary";
 import { BackupDetails as BackupDetailsV1 } from "./details/backup-details-v1";
 import { ClusterDetails as ClusterDetailsV1 } from "./details/cluster-details-v1";
 import { DatabaseDetails as DatabaseDetailsV1 } from "./details/database-details-v1";
 import { DatabaseRoleDetails as DatabaseRoleDetailsV1 } from "./details/database-role-details-v1";
 import { FailoverQuorumDetails as FailoverQuorumDetailsV1 } from "./details/failover-quorum-details-v1";
 import { ImageCatalogDetails as ImageCatalogDetailsV1 } from "./details/image-catalog-details-v1";
+import { KlioConfigurationDetails } from "./details/klio-configuration-details";
 import { ObjectStoreDetails as ObjectStoreDetailsV1 } from "./details/object-store-details-v1";
 import { PoolerDetails as PoolerDetailsV1 } from "./details/pooler-details-v1";
 import { PublicationDetails as PublicationDetailsV1 } from "./details/publication-details-v1";
 import { ScheduledBackupDetails as ScheduledBackupDetailsV1 } from "./details/scheduled-backup-details-v1";
 import { SubscriptionDetails as SubscriptionDetailsV1 } from "./details/subscription-details-v1";
 import { CnpgIcon } from "./icons";
+import { CnpgIpcRenderer } from "./ipc";
 import { ClusterBackupNowMenuItem } from "./menus/cluster-backup-now-menu-item";
+import { ClusterConfigMenuItem } from "./menus/cluster-config-menu-item";
 import { ClusterFencingMenuItem } from "./menus/cluster-fencing-menu-item";
 import { ClusterHibernationMenuItem } from "./menus/cluster-hibernation-menu-item";
 import { ClusterLiveViewMenuItem } from "./menus/cluster-live-view-menu-item";
 import { ClusterLogsMenuItem } from "./menus/cluster-logs-menu-item";
+import { ClusterMaintenanceMenuItem } from "./menus/cluster-maintenance-menu-item";
+import { ClusterReportMenuItem } from "./menus/cluster-report-menu-item";
 import { ClusterReloadMenuItem, ClusterRestartMenuItem } from "./menus/cluster-restart-menu-item";
 import { ClusterSwitchoverMenuItem } from "./menus/cluster-switchover-menu-item";
 import { ClusterTimelineMenuItem } from "./menus/cluster-timeline-menu-item";
 import { ClusterPsqlMenuItem } from "./menus/open-psql";
+import { PoolerPauseMenuItem } from "./menus/pooler-pause-menu-item";
 import { ScheduledBackupRunNowMenuItem } from "./menus/scheduled-backup-run-now-menu-item";
 import { ScheduledBackupSuspendMenuItem } from "./menus/scheduled-backup-suspend-menu-item";
 import {
@@ -48,12 +61,14 @@ import {
   CLUSTER_IMAGE_CATALOGS_PAGE_ID,
   CLUSTERS_GROUP_ID,
   CLUSTERS_PAGE_ID,
+  CONFIG_PAGE_ID,
   DATABASE_ROLES_PAGE_ID,
   DATABASES_GROUP_ID,
   DATABASES_PAGE_ID,
   FAILOVER_QUORUMS_PAGE_ID,
   IMAGE_CATALOGS_PAGE_ID,
   IMAGES_GROUP_ID,
+  KLIO_CONFIGURATIONS_PAGE_ID,
   LIVE_PAGE_ID,
   LOGS_PAGE_ID,
   OBJECT_STORES_PAGE_ID,
@@ -70,6 +85,7 @@ import {
 } from "./navigation";
 import { BackupsPage as BackupsPageV1 } from "./pages/backups-page-v1";
 import { ClustersPage as ClustersPageV1 } from "./pages/clusters-page-v1";
+import { ConfigPage } from "./pages/config-page";
 import { DatabaseRolesPage as DatabaseRolesPageV1 } from "./pages/database-roles-page-v1";
 import { DatabasesPage as DatabasesPageV1 } from "./pages/databases-page-v1";
 import { FailoverQuorumsPage as FailoverQuorumsPageV1 } from "./pages/failover-quorums-page-v1";
@@ -77,6 +93,7 @@ import {
   ClusterImageCatalogsPage as ClusterImageCatalogsPageV1,
   ImageCatalogsPage as ImageCatalogsPageV1,
 } from "./pages/image-catalogs-page-v1";
+import { KlioConfigurationsPage } from "./pages/klio-configurations-page";
 import { LivePage } from "./pages/live-page";
 import { LogsPage } from "./pages/logs-page";
 import { ObjectStoresPage as ObjectStoresPageV1 } from "./pages/object-stores-page-v1";
@@ -87,6 +104,7 @@ import { PublicationsPage as PublicationsPageV1 } from "./pages/publications-pag
 import { ScheduledBackupsPage as ScheduledBackupsPageV1 } from "./pages/scheduled-backups-page-v1";
 import { SubscriptionsPage as SubscriptionsPageV1 } from "./pages/subscriptions-page-v1";
 import { TimelinePage } from "./pages/timeline-page";
+import { GrafanaPreferencesHint, GrafanaPreferencesInput } from "./preferences/grafana-preferences";
 
 // Sidebar: one root "CloudNativePG" with an icon, then text-only groups with a
 // target on their first leaf (DESIGN.md section 4). The Overview group comes
@@ -113,6 +131,9 @@ const AvailableLivePage = createAvailableVersionPage("PostgreSQL Clusters", [
 ]);
 const AvailableLogsPage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: LogsPage, version: "v1" },
+]);
+const AvailableConfigPage = createAvailableVersionPage("PostgreSQL Clusters", [
+  { kubeObjectClass: ClusterV1, PageComponent: ConfigPage, version: "v1" },
 ]);
 const AvailableTimelinePage = createAvailableVersionPage("PostgreSQL Clusters", [
   { kubeObjectClass: ClusterV1, PageComponent: TimelinePage, version: "v1" },
@@ -153,8 +174,54 @@ const AvailableObjectStoresPage = createAvailableVersionPage(
   "Object stores belong to the Barman Cloud plugin of CloudNativePG, which is optional: it is the supported way to back up and archive WAL to object storage.",
 );
 
+const AvailableKlioConfigurationsPage = createAvailableVersionPage(
+  KlioConfiguration.crd.title,
+  [{ kubeObjectClass: KlioConfiguration, PageComponent: KlioConfigurationsPage, version: "v1alpha1" }],
+  "Klio configurations belong to Klio, an optional CNPG-I backup plugin of CloudNativePG (cloudnative-pg.io/klio): a cluster that backs up with the Barman Cloud plugin does not need it.",
+);
+
 export default class CnpgRenderer extends Renderer.LensExtension {
-  kubeObjectDetailItems = [
+  async onActivate() {
+    // The preferences of SPEC-0039; main keeps the file.
+    CnpgPreferencesStore.getInstanceOrCreate().loadExtension(this);
+    // The channels to main of SPEC-0031 and SPEC-0035.
+    CnpgIpcRenderer.resetInstance();
+    CnpgIpcRenderer.createInstance(this);
+  }
+
+  async onDeactivate() {
+    CnpgIpcRenderer.resetInstance();
+  }
+
+  appPreferences = [
+    {
+      title: "Grafana",
+      components: {
+        Input: () => <GrafanaPreferencesInput />,
+        Hint: () => <GrafanaPreferencesHint />,
+      },
+    },
+  ];
+
+  // Every kind below has a page and a sidebar entry of its own under "CloudNativePG", so the Custom Resources tree
+  // of the cluster sidebar would list it a second time. Their definitions stay in the Definitions list.
+  customResources = [
+    ClusterV1,
+    BackupV1,
+    ScheduledBackupV1,
+    PoolerV1,
+    DatabaseV1,
+    DatabaseRoleV1,
+    PublicationV1,
+    SubscriptionV1,
+    FailoverQuorumV1,
+    ImageCatalogV1,
+    ClusterImageCatalogV1,
+    ObjectStoreV1,
+    KlioConfiguration,
+  ];
+
+  kubeObjectDetailItems: Renderer.LensExtension["kubeObjectDetailItems"] = [
     {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
@@ -182,6 +249,16 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       components: {
         Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
           <ScheduledBackupDetailsV1 {...props} extension={this} />
+        ),
+      },
+    },
+    {
+      kind: KlioConfiguration.kind,
+      apiVersions: KlioConfiguration.crd.apiVersions,
+      priority: 10,
+      components: {
+        Details: (props: Renderer.Component.KubeObjectDetailsProps<any>) => (
+          <KlioConfigurationDetails {...props} extension={this} />
         ),
       },
     },
@@ -265,9 +342,9 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         ),
       },
     },
-  ];
+  ].map((registration) => withDetailsErrorBoundary(this, registration));
 
-  kubeObjectMenuItems = [
+  kubeObjectMenuItems: Renderer.LensExtension["kubeObjectMenuItems"] = [
     {
       kind: ClusterV1.kind,
       apiVersions: ClusterV1.crd.apiVersions,
@@ -291,6 +368,21 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         MenuItem: (props: { object: any; toolbar?: boolean }) => (
           <ClusterTimelineMenuItem {...props} extension={this} />
         ),
+      },
+    },
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterConfigMenuItem {...props} extension={this} />,
+      },
+    },
+    // SPEC-0038: reads only, one file where the user chooses.
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterReportMenuItem {...props} />,
       },
     },
     {
@@ -348,6 +440,21 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         ),
       },
     },
+    // SPEC-0037: the maintenance window of the cluster's nodes, and the pause of a pooler.
+    {
+      kind: ClusterV1.kind,
+      apiVersions: ClusterV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <ClusterMaintenanceMenuItem {...props} />,
+      },
+    },
+    {
+      kind: PoolerV1.kind,
+      apiVersions: PoolerV1.crd.apiVersions,
+      components: {
+        MenuItem: (props: { object: any; toolbar?: boolean }) => <PoolerPauseMenuItem {...props} />,
+      },
+    },
     // SPEC-0021: exactly one of Suspend and Resume, then the backup with the settings of the schedule.
     {
       kind: ScheduledBackupV1.kind,
@@ -363,9 +470,9 @@ export default class CnpgRenderer extends Renderer.LensExtension {
         MenuItem: (props: { object: any; toolbar?: boolean }) => <ScheduledBackupRunNowMenuItem {...props} />,
       },
     },
-  ];
+  ].map((registration) => withMenuItemErrorBoundary(this, registration));
 
-  clusterPages = [
+  clusterPages: Renderer.LensExtension["clusterPages"] = [
     {
       id: OVERVIEW_PAGE_ID,
       components: {
@@ -402,6 +509,12 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       id: TIMELINE_PAGE_ID,
       components: {
         Page: () => <AvailableTimelinePage extension={this} />,
+      },
+    },
+    {
+      id: CONFIG_PAGE_ID,
+      components: {
+        Page: () => <AvailableConfigPage extension={this} />,
       },
     },
     {
@@ -465,12 +578,18 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       },
     },
     {
+      id: KLIO_CONFIGURATIONS_PAGE_ID,
+      components: {
+        Page: () => <AvailableKlioConfigurationsPage extension={this} />,
+      },
+    },
+    {
       id: CLUSTER_IMAGE_CATALOGS_PAGE_ID,
       components: {
         Page: () => <AvailableClusterImageCatalogsPage extension={this} />,
       },
     },
-  ];
+  ].map((registration) => withPageErrorBoundary(this, registration));
 
   clusterPageMenus = [
     {
@@ -521,6 +640,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: CLUSTERS_GROUP_ID,
       title: "Timeline",
       target: { pageId: TIMELINE_PAGE_ID },
+      components: {},
+    },
+    {
+      id: CONFIG_PAGE_ID,
+      parentId: CLUSTERS_GROUP_ID,
+      title: "Configuration",
+      target: { pageId: CONFIG_PAGE_ID },
       components: {},
     },
     {
@@ -591,6 +717,13 @@ export default class CnpgRenderer extends Renderer.LensExtension {
       parentId: BACKUPS_GROUP_ID,
       title: ObjectStoreV1.crd.title,
       target: { pageId: OBJECT_STORES_PAGE_ID },
+      components: {},
+    },
+    {
+      id: KLIO_CONFIGURATIONS_PAGE_ID,
+      parentId: BACKUPS_GROUP_ID,
+      title: KlioConfiguration.crd.title,
+      target: { pageId: KLIO_CONFIGURATIONS_PAGE_ID },
       components: {},
     },
     {

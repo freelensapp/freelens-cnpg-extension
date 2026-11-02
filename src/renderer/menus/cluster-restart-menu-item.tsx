@@ -35,7 +35,7 @@ import { apiFailureFacts, failureSentence, firstRefusal, writeWithConflictRetry 
 import { timelineUrl } from "../navigation";
 import { ActionIcon } from "./action-icon";
 import { ActionMenuItem } from "./action-menu-item";
-import { instancePods, liveCluster, loadPods, podsKnown } from "./cluster-live";
+import { clusterReader, instancePods, liveCluster, loadPods, podsKnown } from "./cluster-live";
 
 import type { AccessQuestion } from "../components/access-review";
 import type { RestartClusterFacts } from "../components/restart-reload";
@@ -243,11 +243,12 @@ async function openRestartInstance(
 
   if (instanceRestartKind(opened, instance) === "primary") {
     const run = async () => {
-      const confirmed = restartPrimaryFacts(restartFacts(liveCluster(object)), instance).writes;
+      const reader = clusterReader(object);
+      const confirmed = restartPrimaryFacts(restartFacts(reader.current()), instance).writes;
       const outcome = await writeWithConflictRetry({
         confirmed,
         send: () => {
-          const cluster = restartFacts(liveCluster(object));
+          const cluster = restartFacts(reader.current());
           return requestPrimaryRestart({
             namespace: cluster.namespace,
             name: cluster.name,
@@ -255,8 +256,7 @@ async function openRestartInstance(
           });
         },
         refresh: async () => {
-          await maybe(() => Cluster.getStore<Cluster>())?.load({ name: opened.name, namespace: opened.namespace });
-          const cluster = restartFacts(liveCluster(object));
+          const cluster = restartFacts(await reader.reread());
           const stillPrimary = instanceRestartKind(cluster, instance) === "primary";
           return {
             guard: stillPrimary

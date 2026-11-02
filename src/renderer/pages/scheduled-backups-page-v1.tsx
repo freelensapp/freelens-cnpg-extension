@@ -22,7 +22,6 @@ import { useReferenceStores } from "../components/reference-loader";
 import { openCreateScheduledBackupDialog } from "../components/scheduled-backup-create-dialog";
 import { StoreLink } from "../components/store-link";
 import styles from "./scheduled-backups-page.module.scss";
-import stylesInline from "./scheduled-backups-page.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -98,7 +97,6 @@ export const ScheduledBackupsPage = observer((props: ScheduledBackupsPageProps) 
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgScheduledBackupsTable"
           className={styles.page}

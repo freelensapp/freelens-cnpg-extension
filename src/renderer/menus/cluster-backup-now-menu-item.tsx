@@ -122,7 +122,7 @@ const BackupNowFormFields = observer(({ cluster, form }: FormProps) => {
         ) : (
           <Select
             id="cnpg-backup-now-method"
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={form.methodId}
             options={options.map((option) => ({ value: option.id, label: option.label }))}
@@ -138,7 +138,7 @@ const BackupNowFormFields = observer(({ cluster, form }: FormProps) => {
         <span className={styles.label}>Target</span>
         <Select
           id="cnpg-backup-now-target"
-          themeName="light"
+          themeName="lens"
           menuClass={styles.selectMenu}
           value={form.target}
           options={TARGET_OPTIONS}

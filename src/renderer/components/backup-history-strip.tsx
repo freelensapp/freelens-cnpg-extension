@@ -11,7 +11,6 @@
 import { Renderer } from "@freelensapp/extensions";
 import { humanizeDuration, humanizeRelative } from "./backup-health";
 import styles from "./backup-history-strip.module.scss";
-import stylesInline from "./backup-history-strip.module.scss?inline";
 
 import type { BackupHistory, HistoryMark } from "./backup-history";
 
@@ -49,7 +48,6 @@ export function BackupHistoryStrip({ history, now, backupUrl, listUrl }: BackupH
 
   return (
     <div className={styles.history} data-testid="cnpg-backup-history">
-      <style>{stylesInline}</style>
       <div className={styles.caption}>Backup history, last {windowDays} days</div>
       {marks.length === 0 ? (
         <div className={styles.empty}>

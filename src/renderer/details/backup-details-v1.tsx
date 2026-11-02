@@ -29,7 +29,6 @@ import { MethodLabel } from "../components/method-label";
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./backup-details.module.scss";
-import stylesInline from "./backup-details.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -109,8 +108,6 @@ export const BackupDetails = observer((props: BackupDetailsProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
-
         <DrawerTitle>Outcome</DrawerTitle>
         <DrawerItem name="Condition" labelsOnly>
           <Badge className={health.className} label={health.label} tooltip={health.reason} />

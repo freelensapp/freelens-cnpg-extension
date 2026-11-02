@@ -94,15 +94,15 @@ repositories.
   (defined in core `app.scss` on top of `--colorSuccess` etc.), or, for
   custom elements, to the semantic theme tokens:
 
-  | Meaning | Token |
-  | --- | --- |
-  | healthy / running / ready | `--colorOk` |
-  | completed / succeeded | `--colorSuccess` |
-  | pending / waiting / in progress | `--colorWarning` |
-  | failed / error | `--colorError` |
+  | Meaning                                        | Token               |
+  | ---------------------------------------------- | ------------------- |
+  | healthy / running / ready                      | `--colorOk`         |
+  | completed / succeeded                          | `--colorSuccess`    |
+  | pending / waiting / in progress                | `--colorWarning`    |
+  | failed / error                                 | `--colorError`      |
   | terminated / terminating / hibernated / fenced | `--colorTerminated` |
-  | informational / neutral | `--colorInfo` |
-  | unknown | `--colorVague` |
+  | informational / neutral                        | `--colorInfo`       |
+  | unknown                                        | `--colorVague`      |
 
   This mirrors core's `workloads-mixins.scss`, the canonical status
   color map extensions must not contradict.
@@ -257,10 +257,9 @@ non-happy states, none of which may render a blank area:
 ## 8. SCSS rules
 
 - CSS Modules only (`*.module.scss` + generated `*.module.d.scss.ts`),
-  one module per component, plus the `?inline` + `<style>` injection
-  idiom required by the v1 extension API. When the project migrates to
-  the v2 API, the injection idiom is removed (v2 auto-injects the built
-  CSS); track it in the migration, do not mix styles of the two eras.
+  one module per component. The build extracts every module into
+  `dist/renderer.css`, which Freelens 2 links next to the renderer entry;
+  nothing injects a `<style>`.
 - Page modules contain column sizing almost exclusively, as
   `.page { :global(.TableCell) { &.<column> { flex-grow: ...; } } }`.
   Host class selectors must be wrapped in `:global()` (without it the
@@ -417,8 +416,10 @@ own on top of the write rules.
 - **Width, the one declared deviation.** The host's confirmation box stops
   at half the window: a creation dialog widens it, only while it holds a
   form (`:has`), to `min(1100px, 90vw)`, and stacks its panes under
-  900 px. The box is white in both themes, so the form carries its own
-  ink, like every dialog of the extension.
+  900 px. The box follows the theme (since Freelens 2.0; it was white in
+  both themes in 1.x), so the form takes its ink from the theme's tokens
+  and its selects use the host's `lens` theme, like every dialog of the
+  extension.
 - **Validation before the submit.** Every rule of the operator's admission
   the form can express is enforced inline, with the reason at the field,
   before the submit; the OK button carries the verb and is disabled with
@@ -447,10 +448,11 @@ own on top of the write rules.
 - **Access.** The `create` verb is asked as in W3 when the form opens; a
   denial disables OK with the verb and the resource in the reason, and the
   form stays readable so the YAML can still be copied.
-- **Native controls on the white box.** Radios and checkboxes are native
-  inputs with the host's accent color and one sentence per option: the
-  host's `RadioGroup` takes its radios as direct children and cannot carry
-  a line each, and the host's `Button` paints itself for a dark surface.
+- **Native controls.** Radios and checkboxes are native inputs with the
+  host's accent color and one sentence per option: the host's `RadioGroup`
+  takes its radios as direct children and cannot carry a line each. The
+  small buttons of a form (Copy YAML, Add and Remove of a list) are plain
+  buttons drawn with the dialog's ink, quieter than its OK and Cancel.
 - **Tests.** Every rule, every message and every body is a unit case of
   the pure module of the kind; every form has an E2E case that fills it in
   the real Freelens, compares the YAML pane with the body, creates the

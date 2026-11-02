@@ -5,7 +5,6 @@ declare const classNames: {
   readonly metadata: "metadata";
   readonly generated: "generated";
   readonly windows: "windows";
-  readonly tableCell: "tableCell";
   readonly name: "name";
   readonly key: "key";
   readonly value: "value";
@@ -13,6 +12,7 @@ declare const classNames: {
   readonly first: "first";
   readonly last: "last";
   readonly windowState: "windowState";
+  readonly recoverCell: "recoverCell";
   readonly type: "type";
   readonly tablespace: "tablespace";
   readonly condition: "condition";
@@ -21,5 +21,7 @@ declare const classNames: {
   readonly door: "door";
   readonly secretKey: "secretKey";
   readonly secretRef: "secretRef";
+  readonly recover: "recover";
+  readonly recoverOff: "recoverOff";
 };
 export = classNames;

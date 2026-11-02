@@ -24,14 +24,15 @@ import {
 } from "../api/instance/pod-proxy";
 import { humanizeRelative } from "../components/backup-health";
 import { classifyCluster, instanceFacts } from "../components/cluster-health";
+import { replicaClusterFacts } from "../components/cluster-resources";
 import { parseGoDuration } from "../components/cron-text";
 import { withErrorPage } from "../components/error-page";
 import styles from "../components/live/live.module.scss";
-import stylesInline from "../components/live/live.module.scss?inline";
 import { buildLiveView } from "../components/live/live-model";
 import { LivePoller, METRICS_INTERVAL_MS, STATUS_INTERVAL_MS } from "../components/live/live-poller";
 import {
   BasebackupsTile,
+  CheckpointsTile,
   DatabasesTile,
   LagTile,
   ManagerTile,
@@ -92,6 +93,7 @@ function liveInput(cluster: Cluster, readings: ReadonlyMap<string, InstanceReadi
   const namespace = cluster.getNs() ?? "";
   return {
     declaredPrimary: Cluster.getPrimary(cluster),
+    replicaCluster: replicaClusterFacts(cluster) !== undefined,
     readings,
     instances: instanceFacts(cluster).map((instance) => ({
       name: instance.name,
@@ -117,7 +119,7 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
   latest.current = cluster;
 
   const trends = React.useMemo(
-    () => Mobx.observable(createTrendMemory(Date.now()), { metrics: Mobx.observable.ref, lags: Mobx.observable.ref }),
+    () => Mobx.observable(createTrendMemory(Date.now()), { metrics: Mobx.observableRef, lags: Mobx.observableRef }),
     [],
   );
   const poller = React.useMemo(
@@ -130,12 +132,15 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
           // A hibernated cluster has no instances to read: not a single request leaves.
           if (Cluster.getHibernation(current)) return [];
           const ns = current.getNs() ?? "";
-          return instanceFacts(current).map((instance) => ({
-            namespace: ns,
-            pod: instance.name,
-            statusScheme: statusScheme(podsStore.getByName(instance.name, ns)),
-            metricsScheme: metricsScheme(current),
-          }));
+          return instanceFacts(current).map((instance) => {
+            const pod = podsStore.getByName(instance.name, ns);
+            return {
+              namespace: ns,
+              pod: instance.name,
+              statusScheme: pod ? statusScheme(pod) : undefined,
+              metricsScheme: metricsScheme(current),
+            };
+          });
         },
         sample: (readings) => {
           const view = buildLiveView(liveInput(latest.current, readings));
@@ -254,11 +259,13 @@ const LivePanel = observer(({ cluster, extension }: LivePanelProps) => {
             <LagTile {...tileProps} />
             <WalTile {...tileProps} />
             <DatabasesTile {...tileProps} />
+            <CheckpointsTile {...tileProps} />
             <SlotsTile {...tileProps} />
             <BasebackupsTile {...tileProps} />
             <ManagerTile {...tileProps} />
           </div>
           <TrendsSection
+            grafana={{ extension, namespace, cluster: cluster.getName() }}
             memory={trends}
             now={now.getTime()}
             statusIntervalMs={poller.statusIntervalMs}
@@ -306,7 +313,6 @@ export const LivePage = observer((props: LivePageProps) =>
 
     return (
       <TabLayout scrollable>
-        <style>{stylesInline}</style>
         <div className={styles.page} data-testid="cnpg-live">
           <h5 className={styles.title}>Live View</h5>
           <div className={styles.header}>

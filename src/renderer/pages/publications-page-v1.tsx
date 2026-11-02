@@ -19,7 +19,6 @@ import { openCreatePublicationDialog } from "../components/publication-create-di
 import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import styles from "./logical-replication-page.module.scss";
-import stylesInline from "./logical-replication-page.module.scss?inline";
 
 import type { ClusterLookup } from "../components/declarative";
 
@@ -90,7 +89,6 @@ export const PublicationsPage = observer((props: PublicationsPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgPublicationsTable"
           className={styles.page}

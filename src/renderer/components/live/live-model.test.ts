@@ -7,9 +7,12 @@ import { describe, expect, it } from "vitest";
 import { parsePrometheusText } from "../../api/instance/prometheus-text";
 import {
   buildLiveView,
+  CHECKPOINTS_TO_JUDGE,
   LAG_WARNING_BYTES,
   LAG_WARNING_MS,
   LONG_TRANSACTION_SECONDS,
+  MXID_AGE_ERROR,
+  MXID_AGE_WARNING_CAP,
   READY_WAL_WARNING,
   XID_AGE_ERROR,
   XID_AGE_WARNING,
@@ -376,5 +379,218 @@ describe("page level states", () => {
   it("has no sessions, databases or WAL without metrics and without a primary", () => {
     const live = view({ "pg-2": ok(standbyStatus("pg-2")) });
     expect(live).toMatchObject({ primary: undefined, sessions: undefined, databases: [], wal: undefined, slots: [] });
+  });
+});
+
+// SPEC-0033. Trimmed from the /metrics of e2e-main on the kind cluster (operator 1.30.1, PostgreSQL 18), read on
+// 2026-10-29: the primary,
+// then a standby, with one extension made outdated and the multixact age raised for the levels.
+const PRIMARY_33 = `
+cnpg_pg_database_size_bytes{datname="app"} 7.6e+06
+cnpg_pg_database_size_bytes{datname="inventory"} 7.9e+06
+cnpg_pg_database_xid_age{datname="app"} 1586
+cnpg_pg_database_xid_age{datname="inventory"} 1586
+cnpg_pg_database_mxid_age{datname="app"} 0
+cnpg_pg_database_mxid_age{datname="inventory"} 850000000
+cnpg_pg_extensions_update_available{datname="app",default_version="1.0",extname="plpgsql",installed_version="1.0"} 0
+cnpg_pg_extensions_update_available{datname="inventory",default_version="1.0",extname="plpgsql",installed_version="1.0"} 0
+cnpg_pg_extensions_update_available{datname="inventory",default_version="1.4",extname="pgcrypto",installed_version="1.3"} 1
+cnpg_pg_settings_setting{name="autovacuum_multixact_freeze_max_age"} 4e+08
+cnpg_pg_settings_setting{name="max_wal_size"} 1024
+cnpg_pg_stat_checkpointer_buffers_written 62
+cnpg_pg_stat_checkpointer_checkpoints_req 1
+cnpg_pg_stat_checkpointer_checkpoints_timed 7
+cnpg_pg_stat_checkpointer_restartpoints_done 0
+cnpg_pg_stat_checkpointer_restartpoints_req 0
+cnpg_pg_stat_checkpointer_restartpoints_timed 0
+cnpg_pg_stat_checkpointer_stats_reset_time 1.793260343383011e+09
+cnpg_pg_stat_checkpointer_sync_time 44
+cnpg_pg_stat_checkpointer_write_time 5623
+`;
+const STANDBY_33 = `
+cnpg_pg_stat_checkpointer_buffers_written 68
+cnpg_pg_stat_checkpointer_checkpoints_req 0
+cnpg_pg_stat_checkpointer_checkpoints_timed 0
+cnpg_pg_stat_checkpointer_restartpoints_done 8
+cnpg_pg_stat_checkpointer_restartpoints_req 1
+cnpg_pg_stat_checkpointer_restartpoints_timed 7
+cnpg_pg_stat_checkpointer_stats_reset_time 1.793260374735472e+09
+cnpg_pg_stat_checkpointer_sync_time 38
+cnpg_pg_stat_checkpointer_write_time 6857
+`;
+
+describe("wraparound, extension updates, checkpoints and the lag stages (SPEC-0033)", () => {
+  const live33 = (primaryMetrics = PRIMARY_33, standbyMetrics = STANDBY_33) =>
+    view(
+      {
+        "pg-1": ok(
+          primaryStatus({
+            currentLsn: "0/C000000",
+            replicationInfo: [
+              streaming("pg-2", {
+                writeLsn: "0/BFFF000",
+                flushLsn: "0/BFF0000",
+                replayLsn: "0/BF00000",
+                writeLag: "00:00:00.002",
+                flushLag: "00:00:00.004",
+                replayLag: "00:00:01.5",
+              }),
+            ],
+          }),
+          primaryMetrics,
+        ),
+        "pg-2": ok(standbyStatus("pg-2"), standbyMetrics),
+      },
+      "pg-1",
+      SEEDS.slice(0, 2),
+    );
+
+  it("reads the multixact age with levels from autovacuum_multixact_freeze_max_age", () => {
+    const live = live33();
+    expect(live.mxidCollected).toBe(true);
+    expect(live.mxidThresholds).toEqual({ freezeMaxAge: 400_000_000, warning: 800_000_000, error: MXID_AGE_ERROR });
+    expect(live.databases.map((database) => [database.name, database.mxidAge, database.mxidLevel])).toEqual([
+      ["inventory", 850_000_000, "warning"],
+      ["app", 0, "ok"],
+    ]);
+  });
+
+  it("caps the warning at the one of the XID age, and errs past the error", () => {
+    const high = PRIMARY_33.replace(
+      'autovacuum_multixact_freeze_max_age"} 4e+08',
+      'autovacuum_multixact_freeze_max_age"} 1.2e+09',
+    ).replace('mxid_age{datname="app"} 0', 'mxid_age{datname="app"} 1500000001');
+    const live = live33(high);
+    expect(live.mxidThresholds.warning).toBe(MXID_AGE_WARNING_CAP);
+    expect(live.databases.find((database) => database.name === "app")?.mxidLevel).toBe("error");
+    // Without the setting the cap is the warning.
+    const unknown = live33(PRIMARY_33.replace(/^cnpg_pg_settings_setting\{name="autovacuum.*$/m, ""));
+    expect(unknown.mxidThresholds).toEqual({ warning: MXID_AGE_WARNING_CAP, error: MXID_AGE_ERROR });
+  });
+
+  it("lists the extensions with a newer version, per database", () => {
+    const live = live33();
+    expect(live.extensionsCollected).toBe(true);
+    expect(live.databases.find((database) => database.name === "inventory")?.extensionUpdates).toEqual([
+      { name: "pgcrypto", installed: "1.3", available: "1.4" },
+    ]);
+    expect(live.databases.find((database) => database.name === "app")?.extensionUpdates).toEqual([]);
+  });
+
+  it("says not collected, never zero, when the exporter has no query for it", () => {
+    const bare = PRIMARY_33.split("\n")
+      .filter((line) => !/mxid_age|extensions_update_available|stat_checkpointer/.test(line))
+      .join("\n");
+    const live = live33(bare, "cnpg_pg_database_size_bytes 0\n");
+    expect(live.mxidCollected).toBe(false);
+    expect(live.extensionsCollected).toBe(false);
+    expect(
+      live.databases.every((database) => database.mxidAge === undefined && database.extensionUpdates === undefined),
+    ).toBe(true);
+    expect(live.checkpoints.map((checkpoints) => [checkpoints.instance, checkpoints.collected])).toEqual([
+      ["pg-1", false],
+      ["pg-2", false],
+    ]);
+  });
+
+  it("reads the checkpoints of every instance, and the restartpoints of a standby", () => {
+    const [primary, standby] = live33().checkpoints;
+    expect(primary).toMatchObject({
+      instance: "pg-1",
+      role: "primary",
+      collected: true,
+      timed: 7,
+      requested: 1,
+      requestedShare: 1 / 8,
+      buffersWritten: 62,
+      writeTimeMs: 5623,
+      syncTimeMs: 44,
+      maxWalSizeMb: 1024,
+      level: "ok",
+    });
+    expect(primary.since?.toISOString()).toBe("2026-10-29T07:52:23.383Z");
+    expect(standby).toMatchObject({
+      instance: "pg-2",
+      role: "standby",
+      restartpointsTimed: 7,
+      restartpointsRequested: 1,
+      restartpointsDone: 8,
+      level: "ok",
+    });
+  });
+
+  it("warns when half of the checkpoints of the primary are requested, once there are enough to tell", () => {
+    const share = (timed: number, requested: number) =>
+      live33(
+        PRIMARY_33.replace("checkpoints_timed 7", `checkpoints_timed ${timed}`).replace(
+          "checkpoints_req 1",
+          `checkpoints_req ${requested}`,
+        ),
+      ).checkpoints[0].level;
+    expect(CHECKPOINTS_TO_JUDGE).toBe(10);
+    expect(share(5, 5)).toBe("warning");
+    expect(share(6, 4)).toBe("ok");
+    expect(share(2, 7)).toBe("ok");
+  });
+
+  it("reads the checkpoints of PostgreSQL 16 and older from pg_stat_bgwriter", () => {
+    const old =
+      "cnpg_pg_stat_bgwriter_checkpoints_timed 30\ncnpg_pg_stat_bgwriter_checkpoints_req 10\ncnpg_pg_stat_bgwriter_buffers_checkpoint 400\n";
+    const [primary] = live33(old, old).checkpoints;
+    expect(primary).toMatchObject({
+      collected: true,
+      timed: 30,
+      requested: 10,
+      buffersWritten: 400,
+      requestedShare: 0.25,
+    });
+    expect(primary.restartpointsDone).toBeUndefined();
+  });
+
+  it("tells how far a standby is behind at each stage, in time and in bytes", () => {
+    const [edge] = live33().edges;
+    expect(edge).toMatchObject({
+      standby: "pg-2",
+      writeLagMs: 2,
+      flushLagMs: 4,
+      replayLagMs: 1500,
+      writeBytes: BigInt(0xc000000 - 0xbfff000),
+      flushBytes: BigInt(0xc000000 - 0xbff0000),
+      replayBytes: BigInt(0xc000000 - 0xbf00000),
+    });
+  });
+});
+
+describe("the designated primary of a replica cluster (SPEC-0034)", () => {
+  // As e2e-replica-1 answered on the kind cluster: in recovery, restoring from the object store, no WAL receiver.
+  const designated = standbyStatus("pg-1", {
+    isWalReceiverActive: false,
+    replayLsn: "0/56000000",
+    receivedLsn: "0/56000000",
+  });
+
+  it("draws the declared primary of a replica cluster as its designated primary, without a false alarm", () => {
+    const live = buildLiveView({
+      instances: SEEDS.slice(0, 1),
+      declaredPrimary: "pg-1",
+      replicaCluster: true,
+      readings: new Map([["pg-1", ok(designated, STANDBY_33)]]),
+    });
+    expect(live.primary).toBe("pg-1");
+    expect(live.instances[0]).toMatchObject({ role: "primary", designated: true, lsn: "0/56000000" });
+    // The badge of the role says it: no flag on top, and no "WAL receiver down" for restoring from the object store.
+    expect(live.instances[0].flags).toEqual([]);
+    // In recovery, it writes restartpoints, as a standby does.
+    expect(live.checkpoints[0]).toMatchObject({ role: "primary", inRecovery: true, restartpointsDone: 8, level: "ok" });
+  });
+
+  it("keeps a standby that lost its WAL receiver a standby in a primary cluster", () => {
+    const live = buildLiveView({
+      instances: SEEDS.slice(0, 1),
+      declaredPrimary: "pg-1",
+      readings: new Map([["pg-1", ok(designated)]]),
+    });
+    expect(live.instances[0]).toMatchObject({ role: "standby", flags: ["WAL receiver down"] });
+    expect(live.instances[0].designated).toBeUndefined();
   });
 });

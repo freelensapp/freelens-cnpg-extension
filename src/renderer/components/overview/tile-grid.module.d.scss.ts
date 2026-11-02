@@ -9,13 +9,9 @@ declare const classNames: {
   readonly skeletonTile: "skeletonTile";
   readonly skeletonCard: "skeletonCard";
   readonly statValue: "statValue";
-  readonly warning: "warning";
-  readonly error: "error";
   readonly statLabel: "statLabel";
   readonly statDetail: "statDetail";
   readonly statChart: "statChart";
-  readonly pieChart: "pieChart";
-  readonly chartContainer: "chartContainer";
   readonly grid: "grid";
   readonly attention: "attention";
   readonly tileHeader: "tileHeader";

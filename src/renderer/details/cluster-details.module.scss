@@ -27,7 +27,9 @@
 .instances,
 .certificates,
 .plugins,
-.tablespaces {
+.tablespaces,
+.volumes,
+.jobs {
   margin: $unit 0 calc($unit * 2);
 
   :global(.TableCell) {
@@ -51,6 +53,15 @@
     &.timeline,
     &.version {
       flex-grow: 0.45;
+    }
+
+    &.instance,
+    &.storageClass {
+      flex-grow: 0.8;
+    }
+
+    &.logs {
+      flex-grow: 0.3;
     }
 
     &.reason,

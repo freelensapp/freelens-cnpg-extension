@@ -85,17 +85,17 @@ unless said otherwise. "Per interval" means the difference between two
 consecutive metric samples of the exporter, 30 seconds apart by default;
 "per second" is that difference divided by the seconds between the samples.
 
-| Card | What is drawn | Source | Kind |
-| --- | --- | --- | --- |
-| Sessions | backends by state, stacked: active, idle, idle in transaction, other; the cluster total is the sum over the instances that answer | `cnpg_backends_total` of every instance | stacked bars |
-| Replay lag | one line per standby, seconds, as the primary reports it | status endpoint of the primary (every 5 s) | lines |
-| Transactions | commits and rollbacks per second, summed over the databases of the primary | `cnpg_pg_stat_database_xact_commit`, `_xact_rollback` | bars |
-| Cache hit ratio | `blks_hit / (blks_hit + blks_read)` of the interval, in percent, over all databases; no point when the interval read no block | `cnpg_pg_stat_database_blks_hit`, `_blks_read` | line |
-| WAL archiving | WAL files archived and failed per interval | `cnpg_pg_stat_archiver_archived_count`, `_failed_count` | bars |
-| WAL on disk | size of `pg_wal` in bytes, with the file count in the tooltip | `cnpg_collector_pg_wal{value=size}`, `{value=count}` | line |
-| Database sizes | one line per database, bytes; templates excluded | `cnpg_pg_database_size_bytes{datname}` | lines |
-| Checkpoints | timed and requested per interval | `cnpg_pg_stat_bgwriter_*` or `cnpg_pg_stat_checkpointer_*` by what the instance exports | bars |
-| Contention | deadlocks per interval and temporary file bytes per interval, over all databases | `cnpg_pg_stat_database_deadlocks`, `_temp_bytes` | bars, two axes |
+| Card            | What is drawn                                                                                                                     | Source                                                                                  | Kind           |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | -------------- |
+| Sessions        | backends by state, stacked: active, idle, idle in transaction, other; the cluster total is the sum over the instances that answer | `cnpg_backends_total` of every instance                                                 | stacked bars   |
+| Replay lag      | one line per standby, seconds, as the primary reports it                                                                          | status endpoint of the primary (every 5 s)                                              | lines          |
+| Transactions    | commits and rollbacks per second, summed over the databases of the primary                                                        | `cnpg_pg_stat_database_xact_commit`, `_xact_rollback`                                   | bars           |
+| Cache hit ratio | `blks_hit / (blks_hit + blks_read)` of the interval, in percent, over all databases; no point when the interval read no block     | `cnpg_pg_stat_database_blks_hit`, `_blks_read`                                          | line           |
+| WAL archiving   | WAL files archived and failed per interval                                                                                        | `cnpg_pg_stat_archiver_archived_count`, `_failed_count`                                 | bars           |
+| WAL on disk     | size of `pg_wal` in bytes, with the file count in the tooltip                                                                     | `cnpg_collector_pg_wal{value=size}`, `{value=count}`                                    | line           |
+| Database sizes  | one line per database, bytes; templates excluded                                                                                  | `cnpg_pg_database_size_bytes{datname}`                                                  | lines          |
+| Checkpoints     | timed and requested per interval                                                                                                  | `cnpg_pg_stat_bgwriter_*` or `cnpg_pg_stat_checkpointer_*` by what the instance exports | bars           |
+| Contention      | deadlocks per interval and temporary file bytes per interval, over all databases                                                  | `cnpg_pg_stat_database_deadlocks`, `_temp_bytes`                                        | bars, two axes |
 
 Rules of the figures:
 

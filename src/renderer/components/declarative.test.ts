@@ -152,6 +152,21 @@ describe("classifyDeclarative", () => {
     expect(classifyDeclarative(database(undefined), { cluster: undefined, known: false }, WORDS).state).toBe("Pending");
   });
 
+  it("stays an orphan once the operator has answered for the missing cluster", () => {
+    // As e2e-db-orphan read on the kind cluster after the operator restarted (1.30.1).
+    const answered = database({
+      applied: false,
+      message: "cluster resource has been deleted, skipping reconciliation",
+    });
+    expect(classifyDeclarative(answered, { cluster: undefined }, WORDS)).toMatchObject({
+      state: "Orphan",
+      reason:
+        "The Cluster pg is not there: nothing applies this object. The operator said: cluster resource has been deleted, skipping reconciliation",
+    });
+    // Before the clusters are known the answer stands.
+    expect(classifyDeclarative(answered, { cluster: undefined, known: false }, WORDS).state).toBe("Failed");
+  });
+
   it("says what a deletion does to PostgreSQL, by reclaim policy", () => {
     const deleting = { deletionTimestamp: "2026-09-19T10:00:00Z" };
     expect(

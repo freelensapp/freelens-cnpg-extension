@@ -3,16 +3,20 @@
 // The body of every creation dialog (SPEC-0025, F2 and F3): the form on the
 // left, the YAML the create will send on the right, the write summary under
 // the form. Like the action dialog, it lives on the host's confirmation box,
-// which is white in both themes, so it carries its own ink.
-$ink: rgba(0, 0, 0, 0.87);
-$ink-secondary: rgba(0, 0, 0, 0.6);
-$line: rgba(0, 0, 0, 0.12);
+// which follows the theme since Freelens 2.0: its ink comes from the theme's
+// tokens, which on the light theme give the ink of 1.0.0 on its white box.
+$ink: var(--textColorAccent);
+$ink-secondary: var(--textColorSecondary);
+$line: var(--borderFaintColor);
+// Faint fills drawn with the ink, so they read on either surface.
+$tint: color-mix(in srgb, var(--textColorAccent) 4%, transparent);
+$tint-strong: color-mix(in srgb, var(--textColorAccent) 8%, transparent);
 
 // F3, the one declared deviation: the host's box stops at half the window,
 // which is too narrow for a form and its preview side by side. The rule
 // widens the box only while it holds a creation form (`:has`), and the panes
 // stack under 900 px.
-:global(.ConfirmDialog .box:has(.cnpgCreateDialog)) {
+:global(.ConfirmDialog .dialog-content):has(.dialog) {
   width: min(1100px, 90vw);
   max-width: min(1100px, 90vw);
 }
@@ -40,8 +44,8 @@ $line: rgba(0, 0, 0, 0.12);
   }
 
   // The host's global `label` rule paints every label with the theme's
-  // secondary text color, a light grey on this white box in the dark theme:
-  // the native radios and checkboxes of the form take the dialog's ink.
+  // secondary text color: the native radios and checkboxes of the form take
+  // the dialog's ink, as its other text does.
   label,
   :global(.Input) label {
     color: inherit;
@@ -154,7 +158,7 @@ $line: rgba(0, 0, 0, 0.12);
   font-size: 0.9em;
 }
 
-// `--colorError` is the one semantic token whose value reads on white in both themes.
+// `--colorError` reads on the dialog's surface in both themes.
 .error {
   color: var(--colorError);
   font-size: 0.9em;
@@ -174,7 +178,7 @@ $line: rgba(0, 0, 0, 0.12);
 .fact {
   padding: calc($unit / 2) $unit;
   border-radius: calc($unit / 2);
-  background-color: rgba(0, 0, 0, 0.04);
+  background-color: $tint;
 }
 
 .inline {
@@ -245,20 +249,20 @@ $line: rgba(0, 0, 0, 0.12);
   grid-column: 1 / -1;
 }
 
-// Plain buttons: the host's `Button` paints itself from tokens chosen for a
-// dark surface, illegible on this white box.
+// Plain buttons drawn with the dialog's ink (chosen in 1.0.0, when the host's
+// `Button` was illegible on the white box), quieter than its OK and Cancel.
 .button {
   padding: calc($unit / 2) $unit;
   border: 1px solid $line;
   border-radius: calc($unit / 2);
-  background: rgba(0, 0, 0, 0.03);
+  background: $tint;
   color: inherit;
   font: inherit;
   font-size: 0.9em;
   cursor: pointer;
 
   &:hover {
-    background: rgba(0, 0, 0, 0.07);
+    background: $tint-strong;
   }
 
   &:disabled {
@@ -303,4 +307,18 @@ $line: rgba(0, 0, 0, 0.12);
 .copied {
   color: $ink-secondary;
   font-size: 0.9em;
+}
+
+// The answer of the API server to the dry run of the form (SPEC-0032).
+.serverCheck {
+  display: flex;
+  flex-direction: column;
+  gap: calc($unit / 2);
+}
+
+.serverCauses {
+  margin: 0;
+  padding-left: calc($unit * 2);
+  list-style: disc outside;
+  overflow-wrap: anywhere;
 }

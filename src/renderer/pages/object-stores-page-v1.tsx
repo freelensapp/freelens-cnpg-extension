@@ -23,7 +23,6 @@ import {
 } from "../components/object-stores";
 import { useReferenceStores } from "../components/reference-loader";
 import styles from "./object-stores-page.module.scss";
-import stylesInline from "./object-stores-page.module.scss?inline";
 
 const { observer } = MobxReact;
 
@@ -92,7 +91,6 @@ export const ObjectStoresPage = observer((props: ObjectStoresPageProps) =>
 
     return (
       <>
-        <style>{stylesInline}</style>
         <KubeObjectListLayout<KubeObject, KubeObjectApi>
           tableId="cnpgObjectStoresTable"
           className={styles.page}

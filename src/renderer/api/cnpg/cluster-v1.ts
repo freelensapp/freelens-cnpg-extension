@@ -148,6 +148,10 @@ export interface ClusterSpec {
   superuserSecret?: LocalObjectReference;
   primaryUpdateStrategy?: "unsupervised" | "supervised";
   primaryUpdateMethod?: "switchover" | "restart";
+  /** The maintenance window of the nodes (SPEC-0037). `reusePVC` is on when unset. */
+  nodeMaintenanceWindow?: { inProgress?: boolean; reusePVC?: boolean };
+  /** Whether the operator creates the PodDisruptionBudgets of the cluster; on when unset. */
+  enablePDB?: boolean;
   minSyncReplicas?: number;
   maxSyncReplicas?: number;
   resources?: Record<string, unknown>;
@@ -200,6 +204,8 @@ export interface PluginStatus {
   walCapabilities?: string[];
   backupCapabilities?: string[];
   restoreJobHookCapabilities?: string[];
+  /** New in 1.30.1: what the plugin adds to the configuration of PostgreSQL. */
+  postgresCapabilities?: string[];
 }
 
 export interface TablespaceStatus {

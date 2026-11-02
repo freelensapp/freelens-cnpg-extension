@@ -38,18 +38,18 @@ spec adds its own cases to the suite).
 
 ### Pins (single place: `e2e/scripts/lib.sh`, Renovate-annotated)
 
-| Component | Version | Source |
-| --- | --- | --- |
-| kind | 0.33.0 | `kubernetes-sigs/kind` |
-| Kubernetes node image | `kindest/node:v1.36.4` (digest pinned) | kind 0.33.0 release |
-| CloudNativePG operator | 1.30.0 | `releases/cnpg-1.30.0.yaml` at the tag |
-| cert-manager | v1.21.2 | `cert-manager/cert-manager` release manifest |
-| Barman Cloud plugin | v0.15.0 | release asset `manifest.yaml` |
-| S3 object store | SeaweedFS 4.47 (one process with its S3 gateway, amd64 and arm64) | `chrislusf/seaweedfs` |
-| CSI hostpath driver | v1.18.0 (the version the CloudNativePG testing tools pin) | `kubernetes-csi/csi-driver-host-path`, `deploy/kubernetes-1.34/hostpath` |
-| External snapshotter (CRDs, snapshot controller, sidecar RBAC) | v8.6.0 | `kubernetes-csi/external-snapshotter` |
-| CSI sidecar RBAC | provisioner v6.3.0, attacher v4.13.0, resizer v2.2.1, health monitor v0.18.0 | each sidecar's own release |
-| PostgreSQL image | the operator's default for 1.30.0 (18.x) | operator |
+| Component                                                      | Version                                                                      | Source                                                                   |
+| -------------------------------------------------------------- | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| kind                                                           | 0.33.0                                                                       | `kubernetes-sigs/kind`                                                   |
+| Kubernetes node image                                          | `kindest/node:v1.36.4` (digest pinned)                                       | kind 0.33.0 release                                                      |
+| CloudNativePG operator                                         | 1.30.0                                                                       | `releases/cnpg-1.30.0.yaml` at the tag                                   |
+| cert-manager                                                   | v1.21.2                                                                      | `cert-manager/cert-manager` release manifest                             |
+| Barman Cloud plugin                                            | v0.15.0                                                                      | release asset `manifest.yaml`                                            |
+| S3 object store                                                | SeaweedFS 4.47 (one process with its S3 gateway, amd64 and arm64)            | `chrislusf/seaweedfs`                                                    |
+| CSI hostpath driver                                            | v1.18.0 (the version the CloudNativePG testing tools pin)                    | `kubernetes-csi/csi-driver-host-path`, `deploy/kubernetes-1.34/hostpath` |
+| External snapshotter (CRDs, snapshot controller, sidecar RBAC) | v8.6.0                                                                       | `kubernetes-csi/external-snapshotter`                                    |
+| CSI sidecar RBAC                                               | provisioner v6.3.0, attacher v4.13.0, resizer v2.2.1, health monitor v0.18.0 | each sidecar's own release                                               |
+| PostgreSQL image                                               | the operator's default for 1.30.0 (18.x)                                     | operator                                                                 |
 
 Local prerequisites: Docker with at least 8 GB for its VM, `kind`,
 `kubectl`, `curl`. On macOS `brew install kind` provides the pinned major.

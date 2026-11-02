@@ -46,6 +46,7 @@ import {
   objectStoreWarnings,
   WAL_COMPRESSIONS,
 } from "./object-store-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { ActionDialogModel } from "./action-dialog";
@@ -84,7 +85,7 @@ function createModel(namespace: string, fixedNamespace: string | undefined): Sto
       accessReason: undefined,
       fixedNamespace,
     },
-    { inputs: Mobx.observable.ref },
+    { inputs: Mobx.observableRef },
   );
 }
 
@@ -333,7 +334,7 @@ const StoreCreateForm = observer(({ model }: { model: StoreCreateModel }) => {
         <Field label="Namespace" error={errors.namespace} testId={`${TEST_ID}-namespace`}>
           <NamespaceSelect
             id={`${TEST_ID}-namespace-select`}
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={form.namespace || null}
             onChange={(option: { value: string } | null) => changeNamespace(model, option?.value ?? "")}
@@ -557,6 +558,12 @@ function open(model: StoreCreateModel, delayed: boolean, changedNotice?: string)
       facts: () => objectStoreFacts(model.inputs, model.form),
       form: () => <StoreCreateForm model={model} />,
       yaml: () => toYaml(objectStoreBody(model.form)),
+      server: {
+        apiBase: ObjectStore.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => objectStoreBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => objectStoreBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {

@@ -2,7 +2,8 @@
 #
 # Shared settings and helpers for the CloudNativePG E2E scripts.
 #
-# Sourced by cluster-up.sh, cluster-down.sh, run-suite.sh and e2e.sh. This file
+# Sourced by the scripts of e2e/scripts, and read by the integration helpers
+# for the versions of the lab (integration/__tests__/cnpg-cluster.ts). This file
 # is not executable on its own.
 #
 # SC2034 is disabled for the whole file: everything defined here is read by the
@@ -13,14 +14,14 @@
 # The operator, cert-manager and the Barman Cloud plugin are applied from their
 # release manifests at these versions; nothing is vendored into this repository
 # (see docs/development/ARCHITECTURE.md and SPEC-0002).
-CNPG_VERSION="${CNPG_VERSION:-1.30.0}"                    # datasource=github-releases depName=cloudnative-pg/cloudnative-pg
-BARMAN_PLUGIN_VERSION="${BARMAN_PLUGIN_VERSION:-v0.15.0}" # datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
+CNPG_VERSION="${CNPG_VERSION:-1.30.1}"                    # datasource=github-releases depName=cloudnative-pg/cloudnative-pg
+BARMAN_PLUGIN_VERSION="${BARMAN_PLUGIN_VERSION:-v0.15.1}" # datasource=github-releases depName=cloudnative-pg/plugin-barman-cloud
 CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.2}"   # datasource=github-releases depName=cert-manager/cert-manager
 # The in-cluster S3 object store of the fixtures: SeaweedFS, one process with
 # its S3 gateway, published for amd64 and arm64 (the E2E runners are arm64).
 S3_IMAGE="${S3_IMAGE:-chrislusf/seaweedfs:4.47}" # datasource=docker depName=chrislusf/seaweedfs
 
-# Pins of the disposable cluster, aligned with .github/workflows/e2e-tests.yaml.
+# Pins of the disposable cluster, read by .github/workflows/integration-tests.yaml too.
 # CloudNativePG 1.30.x supports Kubernetes 1.34, 1.35 and 1.36.
 KIND_VERSION="${KIND_VERSION:-0.33.0}"             # datasource=github-releases depName=kubernetes-sigs/kind
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-1.36.4}" # datasource=docker depName=kindest/node
@@ -82,6 +83,9 @@ E2E_CLUSTERS=(e2e-main e2e-single e2e-hibernated e2e-fenced)
 # The namespace and the cluster the write cases run against (SPEC-0020): apart
 # from the read-only fixtures, so a write never changes what those cases assert.
 E2E_ACTIONS_NAMESPACE="cnpg-e2e-actions"
+# The replica cluster (SPEC-0034), in a namespace of its own: it follows e2e-main through its object store.
+E2E_REPLICA_NAMESPACE="cnpg-e2e-replica"
+E2E_REPLICA_CLUSTER="e2e-replica"
 E2E_ACTIONS_CLUSTER="e2e-actions"
 # The cluster of the volume snapshot cases (SPEC-0029): one instance on the CSI
 # hostpath storage class, a tablespace, cold snapshot backups; its fixture backup
@@ -99,69 +103,69 @@ WAIT_CLUSTER="${WAIT_CLUSTER:-900s}"
 WAIT_BACKUP="${WAIT_BACKUP:-600s}"
 
 log() {
-	printf '[e2e] %s\n' "$*" >&2
+  printf '[e2e] %s\n' "$*" >&2
 }
 
 die() {
-	printf '[e2e] error: %s\n' "$*" >&2
-	exit 1
+  printf '[e2e] error: %s\n' "$*" >&2
+  exit 1
 }
 
 require_command() {
-	local command
-	for command in "$@"; do
-		command -v "${command}" >/dev/null 2>&1 || die "missing required command: ${command}"
-	done
+  local command
+  for command in "$@"; do
+    command -v "${command}" >/dev/null 2>&1 || die "missing required command: ${command}"
+  done
 }
 
 require_docker() {
-	require_command docker
-	docker info >/dev/null 2>&1 || die "the Docker daemon is not reachable; start Docker and retry"
+  require_command docker
+  docker info >/dev/null 2>&1 || die "the Docker daemon is not reachable; start Docker and retry"
 }
 
 # kubectl against the disposable cluster only. Every kubectl call of the
 # scripts goes through here, so that nothing can touch another context.
 kubectl_e2e() {
-	kubectl --kubeconfig "${E2E_KUBECONFIG}" --context "${E2E_KUBE_CONTEXT}" "$@"
+  kubectl --kubeconfig "${E2E_KUBECONFIG}" --context "${E2E_KUBE_CONTEXT}" "$@"
 }
 
 # Waits until `kubectl get <resource> <name> -o jsonpath=<path>` prints the
 # expected value, polling every 5 seconds up to the given timeout (in seconds).
 wait_for_jsonpath() {
-	local namespace="$1" resource="$2" name="$3" json_path="$4" expected="$5" timeout="$6"
-	local deadline actual
-	deadline=$(($(date +%s) + timeout))
-	while :; do
-		actual="$(kubectl_e2e get "${resource}" "${name}" --namespace "${namespace}" \
-			--output "jsonpath=${json_path}" 2>/dev/null || true)"
-		[[ ${actual} == "${expected}" ]] && return 0
-		[[ "$(date +%s)" -ge ${deadline} ]] &&
-			die "timeout waiting for ${resource}/${name} ${json_path} to be '${expected}' (last: '${actual}')"
-		sleep 5
-	done
+  local namespace="$1" resource="$2" name="$3" json_path="$4" expected="$5" timeout="$6"
+  local deadline actual
+  deadline=$(($(date +%s) + timeout))
+  while :; do
+    actual="$(kubectl_e2e get "${resource}" "${name}" --namespace "${namespace}" \
+      --output "jsonpath=${json_path}" 2>/dev/null || true)"
+    [[ ${actual} == "${expected}" ]] && return 0
+    [[ "$(date +%s)" -ge ${deadline} ]] &&
+      die "timeout waiting for ${resource}/${name} ${json_path} to be '${expected}' (last: '${actual}')"
+    sleep 5
+  done
 }
 
 wait_for_nonempty_jsonpath() {
-	local namespace="$1" resource="$2" name="$3" json_path="$4" timeout="$5"
-	local deadline actual
-	deadline=$(($(date +%s) + timeout))
-	while :; do
-		actual="$(kubectl_e2e get "${resource}" "${name}" --namespace "${namespace}" \
-			--output "jsonpath=${json_path}" 2>/dev/null || true)"
-		[[ -n ${actual} ]] && return 0
-		[[ "$(date +%s)" -ge ${deadline} ]] &&
-			die "timeout waiting for ${resource}/${name} ${json_path} to have a value"
-		sleep 5
-	done
+  local namespace="$1" resource="$2" name="$3" json_path="$4" timeout="$5"
+  local deadline actual
+  deadline=$(($(date +%s) + timeout))
+  while :; do
+    actual="$(kubectl_e2e get "${resource}" "${name}" --namespace "${namespace}" \
+      --output "jsonpath=${json_path}" 2>/dev/null || true)"
+    [[ -n ${actual} ]] && return 0
+    [[ "$(date +%s)" -ge ${deadline} ]] &&
+      die "timeout waiting for ${resource}/${name} ${json_path} to have a value"
+    sleep 5
+  done
 }
 
 wait_rollout() {
-	local namespace="$1"
-	shift
-	local deployment
-	for deployment in "$@"; do
-		kubectl_e2e rollout status "deployment/${deployment}" --namespace "${namespace}" \
-			--timeout "${WAIT_ROLLOUT}" >/dev/null ||
-			die "deployment ${namespace}/${deployment} did not become available"
-	done
+  local namespace="$1"
+  shift
+  local deployment
+  for deployment in "$@"; do
+    kubectl_e2e rollout status "deployment/${deployment}" --namespace "${namespace}" \
+      --timeout "${WAIT_ROLLOUT}" >/dev/null ||
+      die "deployment ${namespace}/${deployment} did not become available"
+  done
 }

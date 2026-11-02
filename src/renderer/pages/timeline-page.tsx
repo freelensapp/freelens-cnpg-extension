@@ -27,7 +27,6 @@ import { useReferenceStores } from "../components/reference-loader";
 import { StoreLink } from "../components/store-link";
 import { buildTimeline, categoryCounts, filterTimeline, groupTimeline } from "../components/timeline";
 import styles from "../components/timeline.module.scss";
-import stylesInline from "../components/timeline.module.scss?inline";
 import { LIVE_CLUSTER_PARAM, timelineUrl } from "../navigation";
 
 import type { StoreLinkProps } from "../components/store-link";
@@ -240,7 +239,6 @@ export const TimelinePage = observer((props: TimelinePageProps) =>
         testId="cnpg-timeline"
         paramName={LIVE_CLUSTER_PARAM}
         urlOf={(namespace, name) => timelineUrl(extension.name, namespace, name)}
-        extraStyles={stylesInline}
       >
         {(cluster, key) => <TimelinePanel key={key} cluster={cluster} />}
       </ClusterPickerPage>

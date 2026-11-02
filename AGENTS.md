@@ -12,12 +12,14 @@ CloudNativePG resources (Cluster, Backup, ScheduledBackup, Pooler and the
 other CRDs of `postgresql.cnpg.io`) and the live state of the databases inside
 Freelens. The goal is the most complete and usable graphical interface for
 CloudNativePG. It was scaffolded from freelens-example-extension and built
-spec by spec; the roadmap to v1.0.0 (`docs/development/ROADMAP.md`) is
-complete and every spec under `docs/specs/` is verified.
+spec by spec; the roadmap (`docs/development/ROADMAP.md`) is complete to M9,
+version 2 for the Freelens v2 extension API, and every spec under
+`docs/specs/` is verified.
 
-- **Language**: TypeScript 5.9.3
-- **Runtime**: Node.js >= 22.0.0, Freelens >= 1.10.3
-- **Package manager**: pnpm 10.x (locked)
+- **Language**: TypeScript 7.0.2
+- **Runtime**: Freelens >= 2.0.0 (the extension API of `@freelensapp/extensions`
+  2.x); Node.js of `.nvmrc` to build
+- **Package manager**: pnpm 12 (`packageManager`, locked)
 - **License**: MIT
 
 ## Licensing and provenance constraints (critical)
@@ -38,14 +40,20 @@ complete and every spec under `docs/specs/` is verified.
 ## Safety rules (binding)
 
 - Read-only first. Every write action (switchover, restart, reload, fencing,
-  hibernation, on-demand backup, maintenance window, delete) needs its own
-  spec and an explicit confirmation dialog that names the CloudNativePG
-  cluster and the Kubernetes context.
+  hibernation, on-demand backup, maintenance window, pooler pause, delete,
+  destroy of an instance) needs its own spec and an explicit confirmation
+  dialog that names the CloudNativePG cluster and the Kubernetes context.
+- Destroying an instance (SPEC-0037) is offered on a replica only, never on
+  the current or the target primary, after its name is typed, with every
+  write listed in the order of `kubectl cnpg destroy`.
 - Never run user-supplied SQL from the extension's programmatic path. Queries
   executed by the extension are fixed strings.
 - Do not store or forward database credentials. Prefer the metrics endpoint
   through the API server pod proxy, then `exec` with peer authentication on
-  the instance socket.
+  the instance socket. The one exception is the Connect section (SPEC-0031):
+  the application user Secret is read when a copy button is pressed, its
+  value is shown masked and goes to the clipboard only, never into state,
+  logs, IPC or storage.
 - The psql terminal connects as the `postgres` superuser: say so in the UI
   (tooltip) and in the README.
 - Deprecated CloudNativePG forms (for example the in-tree `barmanObjectStore`)
@@ -78,32 +86,34 @@ This repository is developed spec-first. Before implementing anything, read:
 
 ## Common Commands
 
+Node 24.22.0 (`.nvmrc`, `mise.toml`) and pnpm 12 through Corepack (`packageManager`).
+
 ```bash
-# Type checking
+# Type checking (one program per environment)
 pnpm type:check
 
 # Linting & formatting
-pnpm biome:check          # TypeScript/TSX, JS, JSON, CSS/SCSS, HTML (biome)
+pnpm biome:check          # TypeScript/TSX, JS, JSON, CSS/SCSS, Markdown, YAML (biome)
 pnpm biome:fix            # Auto-fix the formats above
-pnpm trunk:check          # Markdown, YAML, TOML, and other formats not covered by biome
-pnpm trunk:fix            # Auto-fix Markdown, YAML, etc.
+pnpm trunk:check          # The linters Trunk runs on the changed files
 pnpm lint:check           # Alias for biome:check
 pnpm lint:fix             # Alias for biome:fix
+pnpm knip:check           # Unused files and dependencies
 
 # Tests
 pnpm test:unit            # vitest
 
 # Build
-pnpm build                # Full build (type-check + electron-vite)
-pnpm build:production     # Production build (no preserveModules)
+pnpm build                # Vite: dist/renderer.js, dist/renderer.css, dist/main.js
+pnpm dev                  # Rebuild on change; Freelens reloads the extension
 
 # Pack for testing
 pnpm pack:dev             # Bump prerelease version, build, and create .tgz for install in Freelens app
 
 # Clean
-pnpm clean                # Clean out/
+pnpm clean                # Clean dist/
 pnpm clean:dts            # Remove generated *.d.scss.ts files
-pnpm clean:all            # Clean everything (dts, node_modules, out, tgz)
+pnpm clean:all            # Clean everything (dist, dts, node_modules, tgz)
 ```
 
 ## Architecture
@@ -128,7 +138,9 @@ e2e/                        # kind cluster scripts, fixtures and the Playwright 
 docs/                       # Development docs and one spec per feature
 ```
 
-Build output goes to `out/`.
+Build output goes to `dist/`: `renderer.js`, `renderer.css` (the host links it next to the renderer entry) and
+`main.js`, two Vite runs of `vite.config.mjs` (`vite build` for the renderer, `vite build --mode main` for main) with the
+plugins under `build/` (host modules, standard decorators, CSS module declarations). Each entry is one ES module.
 
 ## CRD KubeObject Pattern
 
@@ -169,27 +181,44 @@ Each CRD file exports three classes: the KubeObject, the KubeApi, and the KubeOb
 
 ## Renderer Components
 
-- Detail views and pages are wrapped with `observer` from `mobx-react` and render through `withErrorPage` (see `src/renderer/components/error-page.tsx`).
-- SCSS modules generate TypeScript type files (`*.module.d.scss.ts`) via `vite-plugin-sass-dts`. These are auto-generated and should be cleaned with `pnpm clean:dts` when SCSS changes.
+- Detail views and pages are wrapped with `observer` from `mobx-react`. Every registration of `clusterPages`, `kubeObjectDetailItems` and `kubeObjectMenuItems` goes through `withPageErrorBoundary`, `withDetailsErrorBoundary` or `withMenuItemErrorBoundary` (`src/renderer/components/error-boundary.tsx`): `withErrorPage`, a `try`/`catch` around the call, does not see what a child component throws, and the host has no boundary of its own around a details panel or a menu item.
+- Rules that fail silently, from the template's `AGENTS.md`:
+  - a component that decides through `getStore()` (as `createAvailableVersionPage` does) is an `observer`: the host registers the APIs of a CRD after the cluster frame has loaded the CRDs, and a page rendered before then (Freelens restores the last page of a cluster) would say the kind is not installed until the user navigates away;
+  - an effect creates inside itself the `AbortController` and the watches its cleanup releases: Freelens dev renders in `React.StrictMode`, and one kept in a ref is aborted by the first cleanup, so a view that is the first to load its stores shows nothing;
+  - every kind with a page of its own is in `customResources`, so the Custom Resources tree of the sidebar does not list it a second time.
+- SCSS modules generate TypeScript type files (`*.module.d.scss.ts`) through `build/vite-plugin-css-module-declarations.mjs` on every build; they are committed. Only local classes are declared: a host class under `:global()` is not. Every module ends up in `dist/renderer.css`, which the host links; nothing injects a `<style>`.
+- mobx 7: field annotations are `observable`, `observableRef`, `computed`, `action` in `makeObservable`; `observable.ref` and the other dotted forms are gone.
+- Chart.js v4 for the host's `Chart` and `BarChart`: keyed `scales` (`x`, `y`), `grid`, `ticks.color`/`ticks.font`, `plugins.tooltip` and `plugins.legend`.
 
 ## Key Dependencies (provided by Freelens host at runtime)
 
-These are NOT bundled, they come from the Freelens host as globals:
-- `@freelensapp/extensions` → `global.LensExtensions`
-- `mobx` → `global.Mobx`
-- `react` → `global.React`
-- `react-dom` → `global.ReactDom`
-- `mobx-react` → `global.MobxReact`
-- `react-router-dom` → `global.ReactRouterDom`
+These are NOT bundled: `build/vite-plugin-host-modules.mjs` maps them onto `globalThis.FreelensExtensionApi`
+(contract C3 of the Freelens extension API): `@freelensapp/extensions`, `react`, `react-dom`, `react/jsx-runtime`,
+`mobx`, `mobx-react` and `monaco-editor`; main gets `@freelensapp/extensions` and `mobx` only. They are
+devDependencies, for their types.
 
-Other dependencies ARE bundled into the extension output.
+Other dependencies ARE bundled into the extension output (`cronstrue`, `js-yaml`), and are `dependencies`.
+
+## Lint and CI
+
+- **Biome** (`biome.jsonc`, the template's) formats and lints TypeScript, JavaScript, JSON, CSS/SCSS, Markdown and
+  YAML, the Kubernetes manifests of `e2e/fixtures/` included.
+- **Trunk** (`.trunk/trunk.yaml`) runs Biome, shellcheck, shfmt (which follows `.editorconfig`), yamllint, taplo,
+  actionlint and the git checks on the changed files, in the hooks and in CI.
+- **Knip** (`knip.jsonc`, `pnpm knip:check`) reports unused files and dependencies, for development and for
+  production, the integration tests included.
+- **Renovate** (`.renovaterc.json`, the template's): every library and tool that Freelens also has takes the version
+  Freelens has on `main`.
+- **Workflows** (`.github/workflows/`): build and checks, type check, unit tests, Trunk, mise.lock, OSV, the
+  integration suite, dedupe, version, tag and release, the cache cleanup, the Claude agent. A change to a workflow is
+  proposed under `github-workflow-fix/` (see "Modifying GitHub Actions Workflows").
 
 ## Code Style
 
 - **Biome** formats **TypeScript/TSX, JS, JSON, CSS/SCSS, HTML**: double quotes, semicolons, trailing commas, 2-space indent, 120 char line width, use `pnpm biome:fix`
 - **Trunk** formats **Markdown, YAML**, and other formats not covered by biome, use `pnpm trunk:fix`
 - Import order (enforced by biome organizeImports): built-in modules → `@freelensapp/**` → packages → relative paths
-- React 17 (no `react/jsx-runtime` in tsconfig needed, but handled by build)
+- React 19 with the automatic JSX runtime (`react/jsx-runtime`, provided by the host)
 - **No emoji** in Markdown files (`.md`), comments, or any source code
 
 ## Security
@@ -227,7 +256,7 @@ Code in `src/common/` is shared between both processes.
 
 ### Changes Not Appearing
 
-1. Check that files are not in ignored output directories (`out/`, `dist/`, `node_modules/`)
+1. Check that files are not in ignored output directories (`dist/`, `node_modules/`)
 2. Full clean and rebuild: `pnpm clean:all && pnpm build`
 3. Reinstall the extension in Freelens (or restart the app in dev mode)
 
@@ -244,7 +273,7 @@ Code in `src/common/` is shared between both processes.
 2. Check the terminal where Freelens was launched for main process errors
 3. Look for stack traces with file:line numbers
 4. Verify all CRD objects have proper `static readonly` properties (kind, apiBase, crd)
-5. Validate both with `pnpm type:check` **and** `pnpm build`, runtime failures can appear only in bundled `out/` code
+5. Validate both with `pnpm type:check` **and** `pnpm build`, runtime failures can appear only in bundled `dist/` code
 
 ## Best Practices
 
@@ -281,6 +310,7 @@ When reviewing code and proposing fixes:
    ```
 
    You can generate this from the terminal with:
+
    ```bash
    git diff -u -- path/to/file
    ```
@@ -312,9 +342,9 @@ When reviewing code and proposing fixes:
    - Use GitHub's `suggestion` block for small targeted fixes so the PR
      author can accept the change with a single click:
 
-     ````suggestion
+     ```suggestion
      <same unified-diff format as shown above>
-     ````
+     ```
 
    - For larger multi-file changes, use `diff -u` blocks in a regular
      comment instead, with the proposed commit subject shown first
@@ -331,6 +361,28 @@ When asked to implement a change on a PR:
    separately. Do not batch multiple independent fixes into a single
    commit. This keeps the history bisectable and makes each change easy
    to revert individually.
+
+### Modifying GitHub Actions Workflows
+
+Claude cannot push changes to files under `.github/workflows/` directly,
+because the GitHub token used by the action lacks the `workflows` permission.
+Any patch to a workflow file MUST therefore be delivered as a new, complete
+file under the `github-workflow-fix/` directory in the repository root instead
+of editing the file in place:
+
+1. Write the full, final contents of the workflow to
+   `github-workflow-fix/<workflow-file-name>`, with the same file name as in
+   `.github/workflows/` (e.g. `github-workflow-fix/check.yaml`). Do **not**
+   edit the original file under `.github/workflows/`.
+2. Make it a **complete** file — the entire workflow as it should look after
+   the change, not just a diff or fragment — so it can be copied verbatim.
+3. Commit it with the change that needs it, and list it in the report. In the
+   PR description, note it as a proposed workflow change that a maintainer
+   must move from `github-workflow-fix/` to `.github/workflows/`.
+
+A maintainer moves the file into `.github/workflows/` in a separate commit and
+removes `github-workflow-fix/`. Pull before continuing on the branch, as it may
+have gained such a commit.
 
 ### Branch Naming Conventions
 

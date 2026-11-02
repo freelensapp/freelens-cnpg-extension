@@ -48,6 +48,7 @@ import {
   poolerTypeReason,
   poolerWarnings,
 } from "./pooler-create";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 import { apiFailureFacts, failureSentence, isAlreadyExists } from "./write-actions";
 
 import type { ActionDialogModel } from "./action-dialog";
@@ -92,7 +93,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref },
+    { inputs: Mobx.observableRef },
   );
 }
 
@@ -214,7 +215,7 @@ const PoolerCreateForm = observer(({ model }: { model: PoolerCreateModel }) => {
         <Field label="Namespace" error={errors.namespace} testId={`${TEST_ID}-namespace`}>
           <NamespaceSelect
             id={`${TEST_ID}-namespace-select`}
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={form.namespace || null}
             onChange={(option: { value: string } | null) => changeNamespace(model, option?.value ?? "")}
@@ -385,6 +386,12 @@ function open(model: PoolerCreateModel, delayed: boolean, changedNotice?: string
       facts: () => poolerFacts(model.inputs, model.form),
       form: () => <PoolerCreateForm model={model} />,
       yaml: () => toYaml(poolerBody(model.form)),
+      server: {
+        apiBase: Pooler.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => poolerBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => poolerBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: async () => {

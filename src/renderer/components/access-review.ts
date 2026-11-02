@@ -24,7 +24,7 @@ export const ACCESS_REVIEW_TTL_MS = 60_000;
 
 /** What the user must be allowed to do for an action to make sense. */
 export interface AccessQuestion {
-  verb: "create" | "patch" | "delete";
+  verb: "get" | "create" | "patch" | "delete";
   /** API group, empty for the core group. */
   group: string;
   resource: string;
@@ -142,7 +142,7 @@ export function accessGuard(questions: readonly AccessQuestion[], answers: reado
   if (index < 0) return enabledGuard;
   const question = questions[index];
   return disabledGuard(
-    `Your account may not ${question.verb} ${resourceWords(question)} in ${question.namespace} (the API server was asked)`,
+    `Your account may not ${question.verb} ${resourceWords(question)} ${question.namespace ? `in ${question.namespace}` : "cluster-wide"} (the API server was asked)`,
   );
 }
 

@@ -134,6 +134,15 @@ function waitingForPrimary(cluster: Cluster): string | undefined {
   return undefined;
 }
 
+/** What the operator says of a declarative object whose cluster is gone (1.30.1). */
+const CLUSTER_GONE = /cluster resource has been deleted/i;
+
+function orphan(object: DeclarativeObject, message?: string): DeclarativeHealth {
+  const name = object.spec?.cluster?.name;
+  const words = name ? `The Cluster ${name} is not there: nothing applies this object` : "It names no Cluster";
+  return declarativeHealth("Orphan", message ? `${words}. The operator said: ${message}` : words);
+}
+
 export function classifyDeclarative(
   object: DeclarativeObject,
   { cluster, known = true }: ClusterLookup,
@@ -151,6 +160,13 @@ export function classifyDeclarative(
       "Deleting",
       message ? `Being deleted, ${fate}. Last answer: ${message}` : `Being deleted: ${fate}`,
     );
+  }
+
+  // Once it reconciles the object again (after a restart), the operator answers a missing cluster with
+  // `applied: false` and this message: that is the orphan of SPEC-0013, not a failure of the object. Any
+  // other failure stays a failure, cluster or not.
+  if (!cluster && known && status?.applied === false && CLUSTER_GONE.test(message ?? "")) {
+    return orphan(object, message);
   }
 
   if (status?.applied === false) return declarativeHealth("Failed", failureWords(status.message, words));
@@ -173,14 +189,7 @@ export function classifyDeclarative(
         : message,
     );
   }
-  if (!cluster) {
-    if (!known) return declarativeHealth("Pending", "Not applied yet");
-    const name = object.spec?.cluster?.name;
-    return declarativeHealth(
-      "Orphan",
-      name ? `The Cluster ${name} is not there: nothing applies this object` : "It names no Cluster",
-    );
-  }
+  if (!cluster) return known ? orphan(object) : declarativeHealth("Pending", "Not applied yet");
   const waiting = waitingForPrimary(cluster);
   if (waiting) return declarativeHealth(waiting.includes("replica") ? "Waiting" : "Pending", waiting);
   return declarativeHealth("Pending", "Not applied yet");

@@ -4,5 +4,6 @@ declare const classNames: {
   readonly unavailableTitle: "unavailableTitle";
   readonly unavailableMessage: "unavailableMessage";
   readonly unavailableDetails: "unavailableDetails";
+  readonly unavailableGuide: "unavailableGuide";
 };
 export = classNames;

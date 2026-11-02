@@ -39,6 +39,7 @@ import {
   emptyDatabaseInputs,
 } from "./database-create";
 import { listClusterFacts, NamespaceAndClusterFields, ReclaimField, readInto, runCreate } from "./declarative-dialog";
+import { COMMON_FIELDS, prefixFieldOf } from "./server-check";
 
 import type { ActionDialogModel } from "./action-dialog";
 import type { DatabaseForm, DatabaseInputs, ExistingDatabase, ExtensionRow, SchemaRow } from "./database-create";
@@ -107,7 +108,7 @@ function createModel(
       fixedNamespace,
       fixedCluster: cluster,
     },
-    { inputs: Mobx.observable.ref, clusterFacts: Mobx.observable.ref, roleObjects: Mobx.observable.ref },
+    { inputs: Mobx.observableRef, clusterFacts: Mobx.observableRef, roleObjects: Mobx.observableRef },
   );
 }
 
@@ -146,7 +147,7 @@ function loadNamespaced(model: DatabaseCreateModel, namespace: string): void {
   );
   DatabaseRole.getStore<DatabaseRole>()
     .api.list({ namespace })
-    .then((items) => {
+    .then((items: DatabaseRole[] | null) => {
       Mobx.runInAction(() => {
         model.roleObjects = (items ?? []).map((item) => ({
           cluster: item.spec?.cluster?.name ?? "",
@@ -498,6 +499,12 @@ function open(model: DatabaseCreateModel, delayed: boolean, changedNotice?: stri
       facts: () => databaseFacts(model.inputs, model.form),
       form: () => <DatabaseCreateForm model={model} />,
       yaml: () => toYaml(databaseBody(model.form)),
+      server: {
+        apiBase: Database.apiBase,
+        namespace: () => model.form.namespace,
+        body: () => databaseBody(model.form),
+        fieldOf: prefixFieldOf(COMMON_FIELDS),
+      },
       blockReason: () => databaseBlockReason(model.inputs, model.form, model.accessReason),
       changedNotice,
       run: () => {

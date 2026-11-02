@@ -1,6 +1,7 @@
 *.d.ts
 *.gz
 *.lock
+!mise.lock
 *.log
 *.map
 *.out
@@ -22,9 +23,14 @@
 
 /coverage/
 /node_modules/
-/out/
+
+# Scratch space of the CI agent, which checks out Freelens at tmp/freelens.
+/tmp/
 
 /.nyc_output/
+
+# Snapshots, screenshots and console logs written by the Playwright MCP server.
+/.playwright-mcp/
 
 *.DS_Store
 /.idea
@@ -32,6 +38,7 @@
 
 # Kubeconfig and state of the disposable E2E cluster (e2e/scripts/lib.sh)
 /.e2e/
+/.e2e-bare/
 /.demo/
 
 # Screenshots the E2E suite takes when an assertion fails

@@ -115,6 +115,19 @@ export function ClusterTile({ tile, detailsUrl, backupsUrl, scheduleUrl, liveUrl
       </span>
       <span className={styles.tileFooter}>
         <span className={certificate.className}>{certificate.text}</span>
+        {tile.maintenance ? (
+          <span
+            className={styles.warningText}
+            title={
+              tile.maintenance.reusePVC
+                ? "An instance on a drained node waits for the node to come back; self-healing is limited until the window closes"
+                : "An instance on a drained node is recreated elsewhere on a new volume; self-healing is limited until the window closes"
+            }
+            data-testid={`cnpg-overview-maintenance-${tile.namespace}-${tile.name}`}
+          >
+            maintenance window open
+          </span>
+        ) : null}
         {tile.declaredFailed > 0 ? (
           <span
             className={styles.errorText}

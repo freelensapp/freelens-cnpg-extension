@@ -53,7 +53,7 @@ export async function readInto<T, Inputs extends { reads: Record<string, ReadSta
 export function listClusterFacts(namespace: string): Promise<DeclarativeClusterFacts[]> {
   return Cluster.getStore<Cluster>()
     .api.list({ namespace })
-    .then((items) => (items ?? []).map(declarativeClusterFacts));
+    .then((items: Cluster[] | null) => (items ?? []).map(declarativeClusterFacts));
 }
 
 export interface NamespaceAndClusterProps {
@@ -96,7 +96,7 @@ export function NamespaceAndClusterFields({
         <Field label="Namespace" error={errors.namespace} testId={`${testId}-namespace`}>
           <NamespaceSelect
             id={`${testId}-namespace-select`}
-            themeName="light"
+            themeName="lens"
             menuClass={styles.selectMenu}
             value={namespace || null}
             onChange={(option: { value: string } | null) => onNamespace(option?.value ?? "")}

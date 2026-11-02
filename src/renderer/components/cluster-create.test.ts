@@ -17,11 +17,13 @@ import {
   defaultClusterForm,
   emptyClusterCreateInputs,
   emptyTablespaceRow,
+  recoveryClusterForm,
   tablespaceNameError,
   tablespaceVolumeName,
 } from "./cluster-create";
 import { toYaml } from "./create-forms";
 
+import type { Cluster } from "../api/cnpg/cluster-v1";
 import type { ClusterCreateInputs, ClusterForm } from "./cluster-create";
 
 const READY: ClusterCreateInputs = {
@@ -774,5 +776,70 @@ describe("recovery from volume snapshots (SPEC-0029)", () => {
         warning.startsWith("The replicas of a cluster recovered from a snapshot"),
       ),
     ).toBe(false);
+  });
+});
+
+describe("Recover into a new cluster (SPEC-0032)", () => {
+  const recovered = (source?: Partial<Cluster>) => ({
+    ...defaultClusterForm("db"),
+    ...recoveryClusterForm("db", "minio-store", "pg-old", source as Cluster | undefined),
+  });
+
+  it("fills a recovery from the store and the server, named after it, with no source cluster", () => {
+    const form = recovered();
+    expect(form).toMatchObject({
+      namespace: "db",
+      name: "pg-old-recovered",
+      bootstrap: "recovery",
+      recoverySource: "objectStore",
+      recoveryObjectStore: "minio-store",
+      recoveryServerName: "pg-old",
+      imageSource: "operator",
+      storageSize: "",
+    });
+    const body = clusterCreateBody({ ...form, storageSize: "1Gi" }) as { spec: Record<string, unknown> };
+    expect(body.spec.bootstrap).toEqual({ recovery: { source: "pg-old" } });
+    expect(body.spec.externalClusters).toEqual([
+      {
+        name: "pg-old",
+        plugin: {
+          name: "barman-cloud.cloudnative-pg.io",
+          parameters: { barmanObjectName: "minio-store", serverName: "pg-old" },
+        },
+      },
+    ]);
+    expect(clusterFormErrors(READY, { ...form, storageSize: "1Gi" })).toEqual({});
+  });
+
+  it("takes the image and the volumes of the cluster that wrote there", () => {
+    expect(
+      recovered({
+        spec: {
+          instances: 3,
+          imageName: "ghcr.io/cloudnative-pg/postgresql:17.5",
+          storage: { size: "5Gi", storageClass: "fast" },
+          walStorage: { size: "2Gi" },
+        },
+      } as Partial<Cluster>),
+    ).toMatchObject({
+      imageSource: "name",
+      imageName: "ghcr.io/cloudnative-pg/postgresql:17.5",
+      storageSize: "5Gi",
+      storageClass: "fast",
+      walEnabled: true,
+      walSize: "2Gi",
+      walClass: "",
+    });
+    expect(
+      recovered({
+        spec: { instances: 1, imageCatalogRef: { kind: "ImageCatalog", name: "postgres", major: 16 } },
+      } as Partial<Cluster>),
+    ).toMatchObject({ imageSource: "catalog", catalog: "ImageCatalog/postgres", catalogMajor: "16" });
+    expect(
+      recovered({
+        spec: { instances: 1 },
+        status: { image: "ghcr.io/cloudnative-pg/postgresql:18.1" },
+      } as Partial<Cluster>),
+    ).toMatchObject({ imageSource: "name", imageName: "ghcr.io/cloudnative-pg/postgresql:18.1" });
   });
 });

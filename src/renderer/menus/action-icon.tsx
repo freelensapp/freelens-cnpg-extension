@@ -16,7 +16,6 @@
 
 import { Renderer } from "@freelensapp/extensions";
 import styles from "./action-icon.module.scss";
-import stylesInline from "./action-icon.module.scss?inline";
 
 const {
   Component: { Icon },
@@ -37,7 +36,6 @@ export function ActionIcon({ material, tooltip, disabled, toolbar }: ActionIconP
 
   return (
     <>
-      {dimmed ? <style>{stylesInline}</style> : null}
       <Icon
         material={material}
         interactive={toolbar}
