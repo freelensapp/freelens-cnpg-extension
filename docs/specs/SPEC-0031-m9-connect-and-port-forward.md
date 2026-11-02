@@ -4,6 +4,7 @@
 - **Milestone:** `M9` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1`
 - **Author / date:** freelensapp core team, 2026-10-28
+- **Issue:** #96
 
 ## Goal
 
@@ -21,7 +22,7 @@ or the pooler to connect a desktop tool, without typing `kubectl port-forward`.
   a `Pooler` has its own service. `spec.managed.services` can disable `-ro` and `-r` and add more.
 - `kubectl port-forward service/<name> <local>:5432`; RBAC `create` on `pods/portforward`.
 - Other UIs: the Headlamp plugin shows a connection panel from the Secret; port-forward is asked for
-  in its issue #94. Functional reference only (AGENTS.md).
+  in cloudnative-pg/cnpg-headlamp-plugin#94. Functional reference only (AGENTS.md).
 
 ## Scope
 

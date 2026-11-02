@@ -4,6 +4,7 @@
 - **Milestone:** `M8` (see [ROADMAP.md](../development/ROADMAP.md))
 - **CloudNativePG version reviewed:** `v1.30.1` (Barman Cloud plugin `v0.15.1`)
 - **Author / date:** freelensapp core team, 2026-10-28
+- **Issue:** #90 (migration), with the port features #91 data access, #92 views, #93 writes and forms, #94 terminal and logs, #95 test suites
 
 ## Goal
 
@@ -13,8 +14,8 @@ tested on the stack of Freelens 2, so that the features of M9 are built on it.
 ## Upstream reference
 
 - Freelens: `docs/extensions/migrating-from-v1.md`, `docs/extensions/api.md` (contracts C1 to C15)
-  and `docs/extensions/binaries.md` of freelensapp/freelens, at the commit the pinned
-  `@freelensapp/extensions` nightly was built from (`14a491f1`, nightly `2.0.0-0-nightly-2026-10-26`),
+  and `docs/extensions/binaries.md` of freelensapp/freelens, at the `v2.0.0` tag, which
+  `@freelensapp/extensions` 2.0.0 was built from (the port started on the nightly of 2026-10-26),
   and the skill `port-freelens-extension-to-v2` of freelensapp/freelens-example-extension with its
   migration issue template.
 - CloudNativePG: the CRD schemas of v1.30.1 against v1.30.0, which the types were written from:
