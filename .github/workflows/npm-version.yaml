@@ -19,7 +19,7 @@ jobs:
   npm-version:
     name: npm version
 
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-26.04-arm
     environment: automated
     timeout-minutes: 10
 
@@ -46,9 +46,9 @@ jobs:
         uses: actions/cache@v6
         with:
           path: ${{ env.pnpm_cache_dir }}
-          key: ubuntu-24.04-arm-node-${{ hashFiles('**/pnpm-lock.yaml') }}
+          key: ubuntu-26.04-arm-node-${{ hashFiles('**/pnpm-lock.yaml') }}
           restore-keys: |
-            ubuntu-24.04-arm-node-
+            ubuntu-26.04-arm-node-
 
       - name: Install pnpm dependencies
         id: install-pnpm
@@ -87,7 +87,7 @@ jobs:
 
       - name: Commit and push to branch
         if: env.changes == 'true'
-        uses: EndBug/add-and-commit@v10
+        uses: EndBug/add-and-commit@v11
         with:
           github_token: ${{ secrets.GH_TOKEN }}
           default_author: github_actions

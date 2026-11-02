@@ -21,7 +21,7 @@ CERT_MANAGER_VERSION="${CERT_MANAGER_VERSION:-v1.21.2}"   # datasource=github-re
 # its S3 gateway, published for amd64 and arm64 (the E2E runners are arm64).
 S3_IMAGE="${S3_IMAGE:-chrislusf/seaweedfs:4.47}" # datasource=docker depName=chrislusf/seaweedfs
 
-# Pins of the disposable cluster, aligned with .github/workflows/e2e-tests.yaml.
+# Pins of the disposable cluster, read by .github/workflows/integration-tests.yaml too.
 # CloudNativePG 1.30.x supports Kubernetes 1.34, 1.35 and 1.36.
 KIND_VERSION="${KIND_VERSION:-0.33.0}"             # datasource=github-releases depName=kubernetes-sigs/kind
 KUBERNETES_VERSION="${KUBERNETES_VERSION:-1.36.4}" # datasource=docker depName=kindest/node

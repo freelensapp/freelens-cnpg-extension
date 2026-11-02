@@ -50,9 +50,7 @@
   // psql and pg_isready, which the SPEC-0031 case runs against a forwarded port,
   // from the PostgreSQL client of the system; python3, whose zipfile reads the
   // report of SPEC-0038 back.
-  // electron-rebuild: the E2E and integration workflows of the v1 harness, until
-  // the proposed integration-tests.yaml of github-workflow-fix/ replaces them.
-  "ignoreBinaries": ["electron-rebuild", "kubectl", "pg_isready", "psql", "python3", "yq"],
+  "ignoreBinaries": ["kubectl", "pg_isready", "psql", "python3", "yq"],
 
   "ignoreDependencies": [
     // host-provided modules. The bundle maps them onto

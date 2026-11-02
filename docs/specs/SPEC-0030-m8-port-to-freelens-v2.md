@@ -130,8 +130,8 @@ each is read back on the kind cluster before and after the port.
   Barman Cloud plugin) come from `e2e/scripts/lib.sh`, now at CloudNativePG 1.30.1 and the plugin
   v0.15.1. `pnpm e2e:freelens` (`e2e/scripts/freelens-dev.sh`) starts Freelens dev on a fresh profile
   that syncs the lab's kubeconfig alone; `pnpm e2e` and `run-suite.sh`, which ran the suite inside a
-  Freelens 1.x checkout, are gone. The integration workflow is proposed in `github-workflow-fix/`
-  and replaces `e2e-tests.yaml` and `integration-tests.yaml`.
+  Freelens 1.x checkout, are gone. The integration workflow of the template, with the kind cluster of
+  the repository, replaces `e2e-tests.yaml` and the 1.x `integration-tests.yaml`.
 - **The themes of the pre-review (feature E).** The theme switch is checked on the cluster frame
   (`theme-light` on its body). In 1.0.0 the dark walk ran on the default theme of the profile, the
   light one, so its "dark" screenshots were light and the dark theme was never reviewed by the pass.

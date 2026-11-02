@@ -209,8 +209,8 @@ Other dependencies ARE bundled into the extension output (`cronstrue`, `js-yaml`
   production, the integration tests included.
 - **Renovate** (`.renovaterc.json`, the template's): every library and tool that Freelens also has takes the version
   Freelens has on `main`.
-- **Workflows** (`.github/workflows/`): build and checks, type check, unit tests, Trunk, mise.lock, OSV, the E2E and
-  integration suites, npm audit, dedupe, version, tag and release, the Claude agent. A change to a workflow is
+- **Workflows** (`.github/workflows/`): build and checks, type check, unit tests, Trunk, mise.lock, OSV, the
+  integration suite, dedupe, version, tag and release, the cache cleanup, the Claude agent. A change to a workflow is
   proposed under `github-workflow-fix/` (see "Modifying GitHub Actions Workflows").
 
 ## Code Style
