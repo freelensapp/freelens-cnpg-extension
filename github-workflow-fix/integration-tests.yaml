@@ -6,7 +6,7 @@ on:
       - main
   pull_request:
     branches:
-      - "*"
+      - "**"
   workflow_dispatch: {}
 
 permissions:
@@ -20,9 +20,8 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # No Freelens release has the v2 extension API yet; `main` is the
-          # only ref that does.
-          - freelens_version: main
+          # The Freelens releases the extension supports, by their tags.
+          - freelens_version: v2.0.0
 
     runs-on: ubuntu-24.04-arm
     # The bring-up of the lab cluster takes up to 15 minutes, the scenarios
@@ -118,7 +117,7 @@ jobs:
       # browsers are never downloaded. `install-deps` still apt-installs the
       # shared libraries that Chromium (and thus Electron) needs to launch
       # under xvfb. It runs the playwright that pnpm-lock.yaml pins.
-      - name: Install Playwright's OS dependencies
+      - name: Install Playwright's OS dependencies and the PostgreSQL client
         run: |
           set -eo pipefail
           # `playwright install-deps` runs its own `apt-get update`/`install`,
@@ -131,6 +130,10 @@ jobs:
           Dir::State::lists "$PWD/.apt/state/lists";
           EOF
           pnpm exec playwright install-deps chromium
+          # psql and pg_isready, for the case that connects through a forwarded
+          # port (SPEC-0031); python3, which reads the diagnostic report back
+          # (SPEC-0038), is on the runner already.
+          sudo apt-get install -y --no-install-recommends postgresql-client
           # apt ran as root, so hand the cache dir back to the runner user for
           # the cache-save post step to read.
           sudo chown -R "$(id -u):$(id -g)" .apt
@@ -351,3 +354,18 @@ jobs:
       - name: Delete the CloudNativePG lab cluster
         if: always()
         run: pnpm e2e:cluster:down
+
+  integration-tests:
+    name: integration tests
+
+    needs: test-integration
+    if: always()
+
+    runs-on: ubuntu-26.04-arm
+    timeout-minutes: 5
+
+    steps:
+      - name: Check the result of the matrix
+        run: test "${RESULT}" = success
+        env:
+          RESULT: ${{ needs.test-integration.result }}
