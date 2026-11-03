@@ -1,6 +1,6 @@
 {
   "name": "@freelensapp/cnpg-extension",
-  "version": "2.0.0-0",
+  "version": "2.0.0",
   "description": "Freelens extension for CloudNativePG",
   "repository": {
     "type": "git",
